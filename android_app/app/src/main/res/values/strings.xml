@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ResoNet Nano</string>
+    
+    <!-- Połączenie -->
+    <string name="label_connection">Połączenie</string>
+    <string name="label_ip_address">Adres IP</string>
+    <string name="label_port">Port</string>
+    <string name="btn_connect">Połącz</string>
+    <string name="btn_disconnect">Rozłącz</string>
+    <string name="status_disconnected">Rozłączony</string>
+    <string name="status_connecting">Łączenie…</string>
+    <string name="status_connected">Połączono</string>
+    <string name="status_error">Błąd</string>
+    
+    <!-- Status systemu -->
+    <string name="label_system_status">Status Systemu</string>
+    <string name="label_uptime">Czas pracy</string>
+    <string name="label_temperature">Temperatura</string>
+    <string name="label_memory">Wolna pamięć</string>
+    <string name="label_pwm_status">PWM</string>
+    <string name="label_frequency">Częstotliwość</string>
+    <string name="label_network">Sieć</string>
+    <string name="label_effector">Efektor</string>
+    <string name="label_safety">Bezpieczeństwo</string>
+    
+    <!-- Terapia -->
+    <string name="label_therapy">Terapia</string>
+    <string name="btn_start">START</string>
+    <string name="btn_stop">STOP</string>
+    <string name="btn_scan_devices">Skanuj Urządzenia</string>
+    <string name="btn_refresh">Odśwież</string>
+    
+    <!-- Kanały -->
+    <string name="label_channels">Kanały</string>
+    <string name="label_channel_enabled">Włączony</string>
+    
+    <!-- Logi -->
+    <string name="label_logs">Logi Systemowe</string>
+    <string name="msg_no_logs">Brak logów</string>
+    
+    <!-- Komunikaty -->
+    <string name="msg_connected">Połączono z %1$s:%2$d</string>
+    <string name="msg_disconnected">Rozłączono</string>
+    <string name="msg_therapy_started">Terapia rozpoczęta</string>
+    <string name="msg_therapy_stopped">Terapia zatrzymana</string>
+    <string name="msg_device_detected">Wykryto: %1$s</string>
+    <string name="msg_error">Błąd: %1$s</string>
+    
+    <!-- Typy efektorów -->
+    <string name="effector_none">Brak efektora</string>
+    <string name="effector_helmholtz">Cewka Helmholtza</string>
+    <string name="effector_otic">Aplikator Uszny</string>
+    <string name="effector_contact">Elektrody Kontaktowe</string>
+    <string name="effector_wrap">Aplikator Okrężny</string>
+    <string name="effector_ir_led">Pasek LED IR</string>
+    <string name="effector_piezo">Głośnik Piezo/Audio</string>
+    <string name="effector_vibrator">Wibrator</string>
+    
+    <!-- Tryby pracy -->
+    <string name="mode_single">Pojedyncza</string>
+    <string name="mode_dual_independent">Dual Niezależny</string>
+    <string name="mode_dual_sync">Dual Sync</string>
+    <string name="mode_multi_channel">Wielokanałowa</string>
+    <string name="mode_sequential">Sekwencyjna</string>
+</resources>
