@@ -223,7 +223,7 @@ flowchart TD
     subgraph IR_System["💡 SYSTEM PODCZERWIENI"]
         IR1["<b>OPTOIZOLATOR IR</b><br/>6N137 Pin1-2: LED<br/>Pin4-5: Photo<br/>Isolation 2500V"]
         IR2["<b>MOSFET IR</b><br/>IRLZ44N<br/>Logic-level<br/>Gate←Opto"]
-        IR3["<b>IR LED STRIP</b><br/>850nm/940nm<br/>60 LED/m, 5V<br/>Drain→LED(-)"]
+        IR3["<b>IR LED STRIP</b><br/>850nm/940nm<br/>60 LED/m, 5V<br/>Drain→LED"]
     end
     
     %% Zasilanie główne
@@ -255,7 +255,7 @@ flowchart TD
     IR1 -->|Pin4→GND_ISO_IR| GND2
     IR1 -->|Pin5→Gate| IR2
     IR2 -->|Source→GND_ISO_IR| GND2
-    IR2 -->|Drain→LED(-)| IR3
+    IR2 -->|Drain→LED| IR3
     
     classDef power fill:#1565c0,stroke:#0d47a1,stroke-width:3px,color:#ffffff,font-weight:bold
     classDef control fill:#e65100,stroke:#bf3603,stroke-width:3px,color:#ffffff,font-weight:bold
@@ -679,25 +679,57 @@ flowchart LR
 - **Częstotliwość**: 0.1 Hz - 500 kHz
 
 **Podłączenie Elektryczne**:
+
+```mermaid
+flowchart LR
+    subgraph Arduino["Arduino Nano"]
+        D9["D9 (PWM)"]
+        GND["GND"]
+        A1["A1 (SENSE)"]
+        D2["D2 (DETECT)"]
+    end
+    
+    subgraph MOSFET["MOSFET Driver<br/>IRF540N"]
+        Gate["Gate"]
+        Source["Source"]
+        Drain["Drain"]
+        VCC["VCC (5V)"]
+    end
+    
+    subgraph Coil["Cewka Helmholtza"]
+        HOT["+ (HOT)"]
+        COLD["- (COLD)"]
+    end
+    
+    subgraph Components["Komponenty"]
+        R100["100Ω"]
+        D1["1N5822<br/>Flyback Diode"]
+        R10k["10kΩ"]
+        Rsense["0.1Ω<br/>Current Sense"]
+    end
+    
+    D9 -->|przez| R100 --> Gate
+    GND --> Source
+    Source --> COLD
+    Drain --> HOT
+    VCC --> D1
+    D1 --> Drain
+    VCC --> R10k --> Drain
+    Drain --> Rsense --> GND_ISO["GND_ISO"]
+    Rsense -.->|pomiar| A1
+    Rsense -.->|wykrywanie| D2
+    
+    classDef arduino fill:#e65100,stroke:#bf3603,stroke-width:2px,color:#ffffff
+    classDef mosfet fill:#f9a825,stroke:#f57f17,stroke-width:2px,color:#000000
+    classDef coil fill:#1565c0,stroke:#0d47a1,stroke-width:2px,color:#ffffff
+    classDef components fill:#6a1b9a,stroke:#4a148c,stroke-width:2px,color:#ffffff
+    
+    class Arduino arduino
+    class MOSFET mosfet
+    class Coil coil
+    class Components components
 ```
-Arduino Nano                    MOSFET Driver                 Cewka Helmholtza
-┌──────────────┐               ┌──────────────────┐          ┌─────────────────┐
-│   D9 (PWM)   │──[100Ω]───▶│ Gate (IRF540N)   │          │   + (HOT)       │
-│   GND        │────────────│ Source           │──────────│   - (COLD)      │
-│              │             │                  │          │                 │
-│              │             │ Drain ───────────┼──────────│                 │
-│              │             │                  │          │                 │
-│              │         ┌───│ VCC (5V)         │          │                 │
-│              │         │   │                  │          │                 │
-│              │         │   └──[1N5822]◀───────┘ Flyback │                 │
-│              │         │      Diode                     │                 │
-│              │         └──[10kΩ]──┐                     │                 │
-│              │                    │                     │                 │
-│   A1         │◀───────────────────┴──[0.1Ω]──┐ Current │                 │
-│   (SENSE)    │                               │ Sense   │                 │
-│   D2         │◀──────────────────────────────┘ Detect  │                 │
-└──────────────┘                                         └─────────────────┘
-```
+
 
 **Piny Arduino**:
 | Pin | Funkcja | Opis |
@@ -756,21 +788,46 @@ bool detectHelmholtzCoil() {
 - **Częstotliwość**: 1 kHz - 500 kHz
 
 **Podłączenie Elektryczne**:
-```
-Arduino Nano                    Driver HF                     Aplikator Uszny
-┌──────────────┐               ┌──────────────────┐          ┌─────────────────┐
-│   D9 (PWM)   │────────────▶│ Input (OPA2134)  │          │   Tip (HOT)     │
-│   GND        │────────────│ GND              │──────────│   Ring (GND)    │
-│   D4         │────────────│ Enable           │          │                 │
-│              │             │                  │          │                 │
-│              │             │ Output ──[220Ω]──┼──────────│                 │
-│              │             │         ┌┴┐      │          │                 │
-│              │             │      [10µF]──────┘ DC Block│                 │
-│              │             │         └┬┐      │          │                 │
-│   A2         │◀───────────────────────┴───────┘ Impedance│                │
-│   (IMPEDANCE)│                              AC Coupling │                 │
-│   D5         │◀──────────────────────────────────────────┘ Detect         │
-└──────────────┘
+
+```mermaid
+flowchart LR
+    subgraph Arduino["Arduino Nano"]
+        D9["D9 (PWM)"]
+        GND["GND"]
+        D4["D4 (ENABLE)"]
+        A2["A2 (IMPEDANCE)"]
+        D5["D5 (DETECT)"]
+    end
+    
+    subgraph Driver["Driver HF<br/>OPA2134"]
+        Input["Input (+)"]
+        GNDD["GND"]
+        Enable["Enable"]
+        Output["Output"]
+        C1["10µF<br/>DC Block"]
+        R220["220Ω"]
+    end
+    
+    subgraph Applicator["Aplikator Uszny"]
+        Tip["Tip (HOT)"]
+        Ring["Ring (GND)"]
+    end
+    
+    D9 --> Input
+    GND --> GNDD
+    D4 --> Enable
+    Output --> R220 --> Tip
+    Output --> C1 --> Ring
+    C1 -.->|AC Coupling| A2
+    Ring -.->|Impedance Detect| D5
+    
+    classDef arduino fill:#e65100,stroke:#bf3603,stroke-width:2px,color:#ffffff
+    classDef driver fill:#f9a825,stroke:#f57f17,stroke-width:2px,color:#000000
+    classDef applicator fill:#1565c0,stroke:#0d47a1,stroke-width:2px,color:#ffffff
+    
+    class Arduino arduino
+    class Driver driver
+    class Applicator applicator
 ```
 
 **Piny Arduino**:
@@ -842,20 +899,48 @@ bool detectOticApplicator() {
 - **Gęstość prądu**: <10 mA/cm²
 
 **Podłączenie Elektryczne**:
-```
-Arduino Nano                    Driver Bipolar                Elektrody
-┌──────────────┐               ┌──────────────────┐          ┌─────────────────┐
-│   D9 (PWM)   │────────────▶│ Input (+) L298N  │──────────│   RED (+)       │
-│   D3 (PWM)   │────────────▶│ Input (-)        │──────────│   BLACK (-)     │
-│   GND        │────────────│ GND              │──────────│   COMMON        │
-│   D6         │────────────│ Enable           │          │                 │
-│              │             │                  │          │                 │
-│              │             │ Output ──[470µF]─┼──────────│ DC Block        │
-│              │             │         ┌┴┐      │          │                 │
-│   A3         │◀───────────────────────┴───────┘ Impedance│                │
-│   (IMPEDANCE)│                              Test        │                 │
-│   D7         │◀──────────────────────────────────────────┘ Detect         │
-└──────────────┘
+
+```mermaid
+flowchart LR
+    subgraph Arduino["Arduino Nano"]
+        D9["D9 (PWM)"]
+        D3["D3 (PWM)"]
+        GND["GND"]
+        D6["D6 (ENABLE)"]
+        A3["A3 (IMPEDANCE)"]
+        D7["D7 (DETECT)"]
+    end
+    
+    subgraph Driver["Driver Bipolar<br/>L298N"]
+        InputP["Input (+)"]
+        InputN["Input (-)"]
+        GNDD["GND"]
+        Enable["Enable"]
+        Output["Output"]
+        C1["470µF<br/>DC Block"]
+    end
+    
+    subgraph Electrodes["Elektrody"]
+        RED["RED (+)"]
+        BLACK["BLACK (-)"]
+        COMMON["COMMON"]
+    end
+    
+    D9 --> InputP --> RED
+    D3 --> InputN --> BLACK
+    GND --> GNDD --> COMMON
+    D6 --> Enable
+    Output --> C1 -.->|DC Block| Electrodes
+    C1 -.->|Impedance Test| A3
+    COMMON -.->|Detect| D7
+    
+    classDef arduino fill:#e65100,stroke:#bf3603,stroke-width:2px,color:#ffffff
+    classDef driver fill:#f9a825,stroke:#f57f17,stroke-width:2px,color:#000000
+    classDef electrodes fill:#1565c0,stroke:#0d47a1,stroke-width:2px,color:#ffffff
+    
+    class Arduino arduino
+    class Driver driver
+    class Electrodes electrodes
 ```
 
 **Piny Arduino**:
@@ -947,21 +1032,46 @@ ContactQuality_t detectElectrodes() {
 - **Temperatura pracy**: 0-45°C
 
 **Podłączenie Elektryczne**:
-```
-Arduino Nano                    Driver Prądu Stałego         Aplikator Okrężny
-┌──────────────┐               ┌──────────────────┐          ┌─────────────────┐
-│   D9 (PWM)   │────────────▶│ Control Input    │          │   Coil IN       │
-│   GND        │────────────│ GND              │──────────│   Coil OUT      │
-│   D8         │────────────│ Enable           │          │                 │
-│              │             │                  │          │                 │
-│              │             │ Output ──────────┼──────────│                 │
-│              │             │                  │          │                 │
-│   A4         │◀──────────────────────────────────────────┘ NTC Temp        │
-│   (TEMP)     │                              Temperature │                 │
-│   A5         │◀──────────────────────────────────────────┘ Current Sense  │
-│   (CURRENT)  │                                          │                 │
-│   D10        │◀──────────────────────────────────────────┘ Detect         │
-└──────────────┘
+
+```mermaid
+flowchart LR
+    subgraph Arduino["Arduino Nano"]
+        D9["D9 (PWM)"]
+        GND["GND"]
+        D8["D8 (ENABLE)"]
+        A4["A4 (TEMP)"]
+        A5["A5 (CURRENT)"]
+        D10["D10 (DETECT)"]
+    end
+    
+    subgraph Driver["Driver Prądu Stałego"]
+        Control["Control Input"]
+        GNDD["GND"]
+        Enable["Enable"]
+        Output["Output"]
+    end
+    
+    subgraph Coil["Aplikator Okrężny"]
+        CoilIN["Coil IN"]
+        CoilOUT["Coil OUT"]
+        NTC["NTC Temp"]
+        CurrentSense["Current Sense"]
+    end
+    
+    D9 --> Control --> CoilIN
+    GND --> GNDD --> CoilOUT
+    D8 --> Enable
+    Coil -.->|NTC Temperature| A4
+    Coil -.->|Current Sense| A5
+    Coil -.->|Detect| D10
+    
+    classDef arduino fill:#e65100,stroke:#bf3603,stroke-width:2px,color:#ffffff
+    classDef driver fill:#f9a825,stroke:#f57f17,stroke-width:2px,color:#000000
+    classDef coil fill:#1565c0,stroke:#0d47a1,stroke-width:2px,color:#ffffff
+    
+    class Arduino arduino
+    class Driver driver
+    class Coil coil
 ```
 
 **Piny Arduino**:
@@ -1056,22 +1166,62 @@ WrapStatus_t detectWrapApplicator() {
 - **Izolacja**: 2500V RMS
 
 **Podłączenie Elektryczne**:
-```
-Arduino Nano                    Interface Board              Sensory
-┌──────────────┐               ┌──────────────────┐          ┌─────────────────┐
-│   A4 (SDA)   │◀────────────▶│ SDA (I2C)        │──────────│   GSR Sensor    │
-│   A5 (SCL)   │◀────────────▶│ SCL (I2C)        │          │   (0x48)        │
-│              │               │                  │          │                 │
-│   D11 (MOSI) │◀────────────▶│ MOSI (SPI)       │──────────│   PPG Sensor    │
-│   D12 (MISO) │◀────────────▶│ MISO (SPI)       │          │   (MAX30102)    │
-│   D13 (SCK)  │◀────────────▶│ SCK (SPI)        │          │                 │
-│   3.3V       │────────────▶│ VCC              │          │                 │
-│   GND        │────────────▶│ GND              │──────────│   COMMON        │
-│   D5         │◀────────────│ INT (PPG)        │          │                 │
-│   D6         │◀────────────│ DRDY (GSR)       │          │                 │
-│   A0         │◀────────────│ ADC (Temp NTC)   │──────────│   NTC 10k       │
-│   D7         │◀────────────│ DETECT           │          │                 │
-└──────────────┘               └──────────────────┘          └─────────────────┘
+
+```mermaid
+flowchart LR
+    subgraph Arduino["Arduino Nano"]
+        A4["A4 (SDA)"]
+        A5["A5 (SCL)"]
+        D11["D11 (MOSI)"]
+        D12["D12 (MISO)"]
+        D13["D13 (SCK)"]
+        V33["3.3V"]
+        GND["GND"]
+        D5["D5 (INT)"]
+        D6["D6 (DRDY)"]
+        A0["A0 (ADC)"]
+        D7["D7 (DETECT)"]
+    end
+    
+    subgraph Interface["Interface Board"]
+        SDA["SDA (I2C)"]
+        SCL["SCL (I2C)"]
+        MOSI["MOSI (SPI)"]
+        MISO["MISO (SPI)"]
+        SCK["SCK (SPI)"]
+        VCC["VCC"]
+        GNDD["GND"]
+        INT["INT (PPG)"]
+        DRDY["DRDY (GSR)"]
+        ADC["ADC (Temp NTC)"]
+        DETECT["DETECT"]
+    end
+    
+    subgraph Sensors["Sensory"]
+        GSR["GSR Sensor<br/>(0x48)"]
+        PPG["PPG Sensor<br/>(MAX30102)"]
+        NTC["NTC 10k"]
+    end
+    
+    A4 <--> SDA <--> GSR
+    A5 <--> SCL <--> GSR
+    D11 --> MOSI --> PPG
+    D12 <-- MISO <-- PPG
+    D13 --> SCK --> PPG
+    V33 --> VCC
+    GND --> GNDD
+    INT --> D5
+    DRDY --> D6
+    ADC <--> A0
+    DETECT --> D7
+    
+    classDef arduino fill:#e65100,stroke:#bf3603,stroke-width:2px,color:#ffffff
+    classDef interface fill:#f9a825,stroke:#f57f17,stroke-width:2px,color:#000000
+    classDef sensors fill:#1565c0,stroke:#0d47a1,stroke-width:2px,color:#ffffff
+    
+    class Arduino arduino
+    class Interface interface
+    class Sensors sensors
 ```
 
 **Piny Arduino**:
@@ -1345,20 +1495,52 @@ flowchart LR
 | **GND** | DGND | GND_ISO | ✅ 2500V | Oddzielne masy! |
 
 **Obwód Izolacji IR**:
-```
-Arduino Side                      IR Driver Side
-┌──────────────┐                 ┌──────────────────┐
-│   D5 (PWM)   │────[220Ω]──────▶│ Anode (6N137)    │
-│   GND        │◀────────────────│ Cathode (6N137)  │
-│              │                 │                  │
-│              │                 │ Emitter (6N137)  │──[10kΩ]──▶ 5V_ISO_IR
-│              │                 │ Collector (6N137)│──────────▶ MOSFET Gate
-│              │                 │                  │
-│              │                 │ MOSFET Drain     │──────────▶ IR_STRIP (-)
-│              │                 │ MOSFET Source    │──────────▶ GND_ISO_IR
-└──────────────┘                 └──────────────────┘
-                                          │
-                                    5V_ISO_IR ─────────────▶ IR_STRIP (+)
+
+```mermaid
+flowchart LR
+    subgraph Arduino["Arduino Side"]
+        D5["D5 (PWM)"]
+        GND["GND"]
+    end
+    
+    subgraph Opto["IR Driver Side<br/>6N137 + MOSFET"]
+        Anode["Anode (6N137)"]
+        Cathode["Cathode (6N137)"]
+        Emitter["Emitter (6N137)"]
+        Collector["Collector (6N137)"]
+        Gate["MOSFET Gate"]
+        Drain["MOSFET Drain"]
+        Source["MOSFET Source"]
+        R10k["10kΩ Pull-up"]
+    end
+    
+    subgraph IRStrip["IR Strip"]
+        VCC["IR_STRIP (+)"]
+        GND_IR["IR_STRIP (-)"]
+    end
+    
+    subgraph Power["Power"]
+        P5V["5V_ISO_IR"]
+        GND_ISO["GND_ISO_IR"]
+    end
+    
+    D5 -->|220Ω| Anode
+    GND --> Cathode
+    P5V --> R10k --> Emitter
+    Collector --> Gate
+    Drain --> GND_IR
+    Source --> GND_ISO
+    P5V --> VCC
+    
+    classDef arduino fill:#e65100,stroke:#bf3603,stroke-width:2px,color:#ffffff
+    classDef opto fill:#f9a825,stroke:#f57f17,stroke-width:2px,color:#000000
+    classDef ir fill:#006064,stroke:#00363a,stroke-width:2px,color:#ffffff
+    classDef power fill:#1565c0,stroke:#0d47a1,stroke-width:2px,color:#ffffff
+    
+    class Arduino arduino
+    class Opto opto
+    class IRStrip ir
+    class Power power
 ```
 
 **Parametry Sygnału IR**:
@@ -1372,36 +1554,123 @@ Arduino Side                      IR Driver Side
 ### Połączenia Zasilania
 
 #### Tor Główny (5V)
-```
-Zasilacz Medyczny 5V
-       │
-       ├──[Fuse 2A]───┬───▶ Arduino Nano VIN/5V
-       │              │
-       │              └───▶ LDO 3.3V ───▶ ENC28J60 VREG
-       │
-       └──[Izolator DC-DC 2500V]───▶ 5V_ISO ───▶ ProbeHolder VCC
-       │
-       └──[Izolator DC-DC 2500V]───▶ 5V_ISO_IR ───▶ IR LED Strip VCC
+
+```mermaid
+flowchart TD
+    subgraph PSU["Zasilacz Medyczny 5V"]
+        OUT5V["5V Output"]
+    end
+    
+    subgraph Protection["Ochrona"]
+        Fuse["Fuse 2A"]
+    end
+    
+    subgraph Arduino["Arduino Nano"]
+        VIN["VIN/5V"]
+        LDO["LDO 3.3V"]
+    end
+    
+    subgraph Ethernet["ENC28J60"]
+        VREG["VREG"]
+    end
+    
+    subgraph Isolation1["Izolator DC-DC 2500V"]
+        ISO1["5V_ISO"]
+    end
+    
+    subgraph Isolation2["Izolator DC-DC 2500V"]
+        ISO2["5V_ISO_IR"]
+    end
+    
+    subgraph ProbeHolder["ProbeHolder"]
+        VCC_PH["VCC"]
+    end
+    
+    subgraph IRStrip["IR LED Strip"]
+        VCC_IR["VCC"]
+    end
+    
+    Out5V --> Fuse
+    Fuse --> VIN
+    Fuse --> LDO --> VREG
+    Fuse --> Isolation1
+    Fuse --> Isolation2
+    ISO1 --> VCC_PH
+    ISO2 --> VCC_IR
+    
+    classDef power fill:#1565c0,stroke:#0d47a1,stroke-width:2px,color:#ffffff
+    classDef protection fill:#c2185b,stroke:#880e4f,stroke-width:2px,color:#ffffff
+    classDef arduino fill:#e65100,stroke:#bf3603,stroke-width:2px,color:#ffffff
+    classDef isolation fill:#b71c1c,stroke:#880e4f,stroke-width:2px,color:#ffffff
+    
+    class PSU,Isolation1,Isolation2 power
+    class Protection protection
+    class Arduino,Ethernet arduino
+    class ProbeHolder,IRStrip isolation
 ```
 
 #### Tor Izolowany (5V_ISO) - ProbeHolder
-```
-Izolator DC-DC (np. B0505S-1W)
-       │
-       ├── 5V_ISO ───[100µF]───▶ ProbeHolder VCC
-       │              [100nF]
-       │
-       └── GND_ISO ────────────▶ ProbeHolder AGND
+
+```mermaid
+flowchart LR
+    subgraph Isolator["Izolator DC-DC<br/>B0505S-1W"]
+        OUT5V["5V_ISO"]
+        GND_ISO["GND_ISO"]
+    end
+    
+    subgraph Filtering["Filtracja"]
+        C1["100µF<br/>elektrolityczny"]
+        C2["100nF<br/>ceramiczny X7R"]
+    end
+    
+    subgraph ProbeHolder["ProbeHolder"]
+        VCC["VCC"]
+        AGND["AGND"]
+    end
+    
+    OUT5V --> C1 --> VCC
+    OUT5V --> C2 --> VCC
+    GND_ISO --> AGND
+    
+    classDef isolation fill:#b71c1c,stroke:#880e4f,stroke-width:2px,color:#ffffff
+    classDef filtering fill:#6a1b9a,stroke:#4a148c,stroke-width:2px,color:#ffffff
+    classDef probe fill:#1565c0,stroke:#0d47a1,stroke-width:2px,color:#ffffff
+    
+    class Isolator isolation
+    class Filtering filtering
+    class ProbeHolder probe
 ```
 
 #### Tor Izolowany (5V_ISO_IR) - Pasek LED IR
-```
-Izolator DC-DC (np. B0505S-1W lub większy 2W)
-       │
-       ├── 5V_ISO_IR ───[470µF]───▶ IR Strip VCC
-       │                 [100nF]
-       │
-       └── GND_ISO_IR ────────────▶ IR Strip GND
+
+```mermaid
+flowchart LR
+    subgraph Isolator["Izolator DC-DC<br/>B0505S-2W"]
+        OUT5V["5V_ISO_IR"]
+        GND_ISO["GND_ISO_IR"]
+    end
+    
+    subgraph Filtering["Filtracja"]
+        C1["470µF<br/>elektrolityczny"]
+        C2["100nF<br/>ceramiczny X7R"]
+    end
+    
+    subgraph IRStrip["IR Strip"]
+        VCC["VCC"]
+        GND["GND"]
+    end
+    
+    OUT5V --> C1 --> VCC
+    OUT5V --> C2 --> VCC
+    GND_ISO --> GND
+    
+    classDef isolation fill:#b71c1c,stroke:#880e4f,stroke-width:2px,color:#ffffff
+    classDef filtering fill:#6a1b9a,stroke:#4a148c,stroke-width:2px,color:#ffffff
+    classDef ir fill:#006064,stroke:#00363a,stroke-width:2px,color:#ffffff
+    
+    class Isolator isolation
+    class Filtering filtering
+    class IRStrip ir
 ```
 
 **Komponenty Filtrujące**:
