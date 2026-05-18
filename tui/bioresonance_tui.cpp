@@ -26,6 +26,7 @@
 #include <iomanip>
 #include <algorithm>
 #include <functional>
+#include <fstream>
 
 #include <ncurses.h>
 #include <sys/socket.h>
@@ -556,6 +557,9 @@ public:
         }
         
         createWindows();
+        
+        // Load frequencies database from frequencies.md
+        loadFrequencies();
         
         // Try to connect
         connectToDevice();
