@@ -1,11 +1,18 @@
 /**
  * @file device_detector.h
  * @brief System wykrywania i obsługi efektorów oraz sensorów
- * @version 1.0
+ * @version 1.1 (Rozszerzona obsługa błędów, verbose mode, CLI)
  * 
  * Obsługuje automatyczne wykrywanie podłączonych urządzeń:
  * - Efektory: Helmholtz Coil, Otic, Contact Electrodes, Wrap
  * - Sensory: Biofeedback (GSR, HRV, Temp)
+ * 
+ * Funkcje dodatkowe:
+ * - Debug logging z poziomami VERBOSE/DEBUG/INFO/WARNING/ERROR
+ * - Error handling z klasyfikacją błędów
+ * - Command-line interface (CLI) dla argumentów startowych
+ * - Event-driven architecture
+ * - Verbose mode konfigurowalny runtime
  */
 
 #ifndef DEVICE_DETECTOR_H
@@ -17,8 +24,34 @@
 #include "types.h"
 
 // ============================================================================
-// DEFINICJE PINÓW DLA EFEKTORÓW I SENSORÓW
+// KONFIGURACJA SYSTEMU DETEKCJI
 // ============================================================================
+
+// Flagi konfiguracyjne - mogą być ustawiane przez CLI
+#define DETECTION_DEBUG_ENABLED     true    // Włącza debug logging
+#define DETECTION_VERBOSE_MODE      false   // Rozbudowane logi (można zmienić runtime)
+#define ERROR_HANDLING_ENABLED      true    // Obsługa błędów z klasyfikacją
+#define EVENT_DRIVEN_DETECTION      true    // Wykrywanie oparte na zdarzeniach
+
+// Command-line arguments (symulacja dla Arduino - wartości domyślne)
+// Używane w setup() do inicjalizacji z argumentami
+typedef struct {
+    bool verbose_mode;           // --verbose lub -v
+    bool debug_enabled;          // --debug lub -d
+    bool force_calibration;      // --calibrate lub -c
+    uint8_t detection_interval;  // --interval=N (sekundy)
+    bool quiet_mode;             // --quiet lub -q (tylko błędy)
+} DetectionConfig_t;
+
+static DetectionConfig_t g_detection_config = {
+    .verbose_mode = DETECTION_VERBOSE_MODE,
+    .debug_enabled = DETECTION_DEBUG_ENABLED,
+    .force_calibration = false,
+    .detection_interval = 5,  // Co 5 sekund
+    .quiet_mode = false
+};
+
+// Definicje pinów dla efektorów i sensorów - kontynuacja
 
 // --- Cewka Helmholtza ---
 #define PIN_HELMHOLTZ_DETECT    2     // Detekcja cyfrowa
@@ -92,10 +125,37 @@
 #define HRV_CONFIDENCE_MIN    0.7f
 
 // ============================================================================
-// TYPY I STRUKTURY
+// TYPY I STRUKTURY - ROZSZERZONE O ERROR HANDLING
 // ============================================================================
 
-// Typy efektorów
+// Klasyfikacja błędów detekcji urządzeń
+typedef enum {
+    DETECT_OK = 0,              // Brak błędu
+    DETECT_ERR_NOT_FOUND,       // Urządzenie nie wykryte
+    DETECT_ERR_SHORT_CIRCUIT,   // Zwarcie wykryte
+    DETECT_ERR_OPEN_CIRCUIT,    // Przerwa w obwodzie
+    DETECT_ERR_OVERTEMP,        // Przegrzanie
+    DETECT_ERR_INVALID_IMP,     // Nieprawidłowa impedancja
+    DETECT_ERR_COMM_FAIL,       // Błąd komunikacji (I2C/SPI)
+    DETECT_ERR_TIMEOUT,         // Timeout operacji
+    DETECT_ERR_CONFIG           // Błąd konfiguracji
+} DetectionError_t;
+
+// Struktura wyniku detekcji z informacją o błędzie
+typedef struct {
+    bool success;               // Czy detekcja udana
+    DetectionError_t error;     // Kod błędu jeśli nieudana
+    uint16_t impedance;         // Zmierzona impedancja
+    float temperature;          // Temperatura jeśli dostępna
+    uint8_t quality;            // Jakość połączenia 0-100%
+    const char* message;        // Komunikat tekstowy
+} DetectionResult_t;
+
+// Makra pomocnicze dla error handlingu
+#define DETECTION_RESULT_OK()   (DetectionResult_t){true, DETECT_OK, 0, 0.0f, 100, "OK"}
+#define DETECTION_RESULT_ERR(err, msg) (DetectionResult_t){false, err, 0, 0.0f, 0, msg}
+
+// Typy efektorów - kontynuacja
 typedef enum {
     EFFECTOR_NONE = 0,
     EFFECTOR_HELMHOLTZ,
@@ -168,13 +228,14 @@ typedef struct {
 } DeviceSystemState_t;
 
 // ============================================================================
-// FUNKCJE PUBLICZNE
+// FUNKCJE PUBLICZNE - ROZSZERZONE API
 // ============================================================================
 
 /**
  * @brief Inicjalizacja systemu detekcji urządzeń
+ * @param config Konfiguracja początkowa (może być NULL dla domyślnej)
  */
-void device_detector_init();
+void device_detector_init(DetectionConfig_t* config);
 
 /**
  * @brief Główna pętla systemu detekcji
@@ -253,5 +314,62 @@ bool detect_ir_led_strip();
  * @param params Wskaźnik do parametrów terapii do modyfikacji
  */
 void adapt_therapy_based_on_biofeedback(TherapyParams_t* params);
+
+// ============================================================================
+// NOWE FUNKCJE: CLI, VERBOSE, ERROR HANDLING
+// ============================================================================
+
+/**
+ * @brief Parsowanie argumentów linii poleceń (symulacja)
+ * @param argc Liczba argumentów
+ * @param argv Tablica argumentów
+ * @return true jeśli parsowanie udane
+ */
+bool detection_parse_cli_args(int argc, char** argv);
+
+/**
+ * @brief Ustaw tryb verbose runtime
+ * @param enabled true = włącz verbose logi
+ */
+void detection_set_verbose(bool enabled);
+
+/**
+ * @brief Sprawdź czy tryb verbose jest aktywny
+ * @return true jeśli verbose włączone
+ */
+bool detection_is_verbose();
+
+/**
+ * @brief Zaloguj komunikat z uwzględnieniem poziomu verbose
+ * @param level Poziom logowania
+ * @param format Format wiadomości (printf-like)
+ * @param ... Argumenty dla formatu
+ */
+void detection_log_printf(uint8_t level, const char* format, ...);
+
+/**
+ * @brief Obsłuż zdarzenie detekcji urządzenia
+ * @param event_type Typ zdarzenia
+ * @param effector Typ efektora którego dotyczy
+ */
+void detection_handle_event(EventType_t event_type, EffectorType_t effector);
+
+/**
+ * @brief Pobierz licznik błędów detekcji
+ * @return Liczba błędów od ostatniego resetu
+ */
+uint32_t detection_get_error_count();
+
+/**
+ * @brief Resetuj liczniki błędów
+ */
+void detection_reset_error_count();
+
+/**
+ * @brief Pobierz opis błędu jako string
+ * @param error Kod błędu
+ * @return Opis błędu z pamięci FLASH
+ */
+const char* detection_get_error_string(DetectionError_t error);
 
 #endif // DEVICE_DETECTOR_H
