@@ -34,6 +34,7 @@
 #include "pwm_engine.h"
 #include "network_system.h"
 #include "ir_led_engine.h"  // Nowy moduł: IR LED Strip
+#include "device_detector.h"  // Nowy moduł: Wykrywanie efektorów i sensorów
 
 // ============================================================================
 // KONFIGURACJA SYSTEMU
@@ -48,6 +49,7 @@
 #define TASK_EVENT_INTERVAL       50    // Co 50ms
 #define TASK_PWM_INTERVAL         10    // Co 10ms
 #define TASK_IR_LED_INTERVAL      10    // Co 10ms (IR LED Strip)
+#define TASK_DEVICE_INTERVAL      100   // Co 100ms (Device Detection)
 #define TASK_NETWORK_INTERVAL     100   // Co 100ms
 #define TASK_STATS_INTERVAL       10000 // Co 10s
 
@@ -69,6 +71,7 @@ static TaskControl task_logging = {0, TASK_LOGGING_INTERVAL, 0, 0, true};
 static TaskControl task_events = {0, TASK_EVENT_INTERVAL, 0, 0, true};
 static TaskControl task_pwm = {0, TASK_PWM_INTERVAL, 0, 0, true};
 static TaskControl task_ir_led = {0, TASK_IR_LED_INTERVAL, 0, 0, true};  // IR LED Strip
+static TaskControl task_device = {0, TASK_DEVICE_INTERVAL, 0, 0, true};  // Device Detection
 static TaskControl task_network = {0, TASK_NETWORK_INTERVAL, 0, 0, true};
 static TaskControl task_stats = {0, TASK_STATS_INTERVAL, 0, 0, true};
 
@@ -196,6 +199,17 @@ static void task_ir_led_run() {
 }
 
 /**
+ * @brief Zadanie wykrywania urządzeń (efektory i sensory)
+ */
+static void task_device_run() {
+    uint32_t start = measure_task_start();
+    
+    device_detector_loop();
+    
+    measure_task_end(&task_device, start);
+}
+
+/**
  * @brief Zadanie sieciowe
  */
 static void task_network_run() {
@@ -295,6 +309,9 @@ void setup() {
     // 5. System sieciowy
     network_init();
     
+    // 6. System detekcji urządzeń
+    device_detector_init();
+    
     // Inicjalizacja statystyk
     memset(&stats, 0, sizeof(SystemStats));
     stats.free_memory = freeMemory();
@@ -342,6 +359,12 @@ void loop() {
     // Zadanie IR LED Strip - wysoki priorytet (timing krytyczny)
     if (should_run_task(&task_ir_led, now)) {
         task_ir_led_run();
+        stats.total_tasks_executed++;
+    }
+    
+    // Zadanie wykrywania urządzeń
+    if (should_run_task(&task_device, now)) {
+        task_device_run();
         stats.total_tasks_executed++;
     }
     
@@ -409,8 +432,23 @@ void loop() {
                     Serial.println(F(" Hz"));
                 }
                 
-                Serial.print(F("Network: "));
+                Serial.println(F("Network: "));
                 Serial.println(network_is_connected() ? "CONNECTED" : "DISCONNECTED");
+                
+                // Device status
+                DeviceSystemState_t* dev = get_device_system_state();
+                Serial.print(F("Effector: "));
+                switch (dev->effector.type) {
+                    case EFFECTOR_HELMHOLTZ: Serial.println(F("Helmholtz Coil")); break;
+                    case EFFECTOR_OTIC: Serial.println(F("Otic Applicator")); break;
+                    case EFFECTOR_CONTACT: Serial.println(F("Contact Electrodes")); break;
+                    case EFFECTOR_WRAP: Serial.println(F("Wrap Applicator")); break;
+                    default: Serial.println(F("None")); break;
+                }
+                Serial.print(F("Connected: "));
+                Serial.println(dev->effector.connected ? "YES" : "NO");
+                Serial.print(F("Biofeedback: "));
+                Serial.println(dev->biofeedbackEnabled ? "ENABLED" : "DISABLED");
                 break;
                 
             case 't':
@@ -454,6 +492,51 @@ void loop() {
                 Serial.println(event_get_dropped_count());
                 break;
                 
+            case 'd':
+                // Device detection scan
+                {
+                    Serial.println(F("\n=== Device Detection Scan ==="));
+                    EffectorType_t eff = detect_effector();
+                    
+                    Serial.print(F("Detected effector: "));
+                    switch (eff) {
+                        case EFFECTOR_HELMHOLTZ: Serial.println(F("Helmholtz Coil")); break;
+                        case EFFECTOR_OTIC: Serial.println(F("Otic Applicator")); break;
+                        case EFFECTOR_CONTACT: Serial.println(F("Contact Electrodes")); break;
+                        case EFFECTOR_WRAP: Serial.println(F("Wrap Applicator")); break;
+                        default: Serial.println(F("None")); break;
+                    }
+                    
+                    BioSensorStatus_t bio_status;
+                    BioStatus_t bio = detect_biofeedback_sensors(&bio_status);
+                    
+                    Serial.print(F("Biofeedback status: "));
+                    switch (bio) {
+                        case BIO_READY: Serial.println(F("READY - All sensors OK")); break;
+                        case BIO_PARTIAL: Serial.println(F("PARTIAL - Some sensors missing")); break;
+                        case BIO_GSR_MISSING: Serial.println(F("GSR sensor missing")); break;
+                        case BIO_PPG_MISSING: Serial.println(F("PPG sensor missing")); break;
+                        case BIO_TEMP_MISSING: Serial.println(F("Temp sensor missing")); break;
+                        default: Serial.println(F("ERROR")); break;
+                    }
+                    
+                    if (bio_status.gsrConnected) {
+                        Serial.print(F("  GSR Quality: "));
+                        Serial.println(bio_status.gsrQuality, 2);
+                    }
+                    if (bio_status.ppgConnected) {
+                        Serial.print(F("  PPG Quality: "));
+                        Serial.println(bio_status.ppgQuality, 2);
+                    }
+                    
+                    DeviceSystemState_t* dev = get_device_system_state();
+                    Serial.print(F("Detection count: "));
+                    Serial.println(dev->detectionCount);
+                    Serial.print(F("Error count: "));
+                    Serial.println(dev->errorCount);
+                }
+                break;
+                
             case 'h':
             default:
                 Serial.println(F("\nCommands:"));
@@ -462,6 +545,7 @@ void loop() {
                 Serial.println(F("  x - Stop PWM"));
                 Serial.println(F("  l - Show log history"));
                 Serial.println(F("  e - Event statistics"));
+                Serial.println(F("  d - Detect devices"));
                 Serial.println(F("  h - This help"));
                 break;
         }
