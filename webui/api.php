@@ -8,7 +8,55 @@
  * 
  * @version 1.0
  * @author ResoNet-Nano Team
+ * 
+ * ============================================================================
+ * DEBUG MODE - Tryb Debugowania
+ * ============================================================================
+ * Ustaw na true aby włączyć szczegółowe logowanie wszystkich operacji
+ * W trybie debug:
+ * - Wszystkie operacje są logowane do pliku debug.log
+ * - Komunikaty błędów są bardziej szczegółowe
+ * - Czas wykonania operacji jest mierzony
+ * - Surowe dane z urządzenia są zapisywane
  */
+define('DEBUG_MODE', true);
+define('DEBUG_LOG_FILE', __DIR__ . '/debug.log');
+
+// Funkcja pomocnicza do logowania debug
+function debug_log($message, $level = 'INFO') {
+    if (!DEBUG_MODE) {
+        return;
+    }
+    
+    $timestamp = date('Y-m-d H:i:s.u');
+    $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
+    $caller = isset($backtrace[1]) ? $backtrace[1]['function'] : 'unknown';
+    $line = isset($backtrace[0]) ? $backtrace[0]['line'] : 'unknown';
+    
+    $log_message = sprintf(
+        "[%s] [%s] [%s:%d] %s",
+        $timestamp,
+        $level,
+        $caller,
+        $line,
+        $message
+    );
+    
+    // Loguj do pliku
+    file_put_contents(DEBUG_LOG_FILE, $log_message . PHP_EOL, FILE_APPEND | LOCK_EX);
+    
+    // Jeśli to błąd, loguj też do error_log PHP
+    if ($level === 'ERROR' || $level === 'CRITICAL') {
+        error_log($log_message);
+    }
+}
+
+// Rozpocznij mierzenie czasu wykonania skryptu
+$script_start_time = microtime(true);
+debug_log("=== URUCHOMIENIE SKRYPTU api.php ===", "START");
+debug_log("REQUEST_METHOD: " . $_SERVER['REQUEST_METHOD']);
+debug_log("REQUEST_URI: " . $_SERVER['REQUEST_URI']);
+debug_log("REMOTE_ADDR: " . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
 
 // ============================================================================
 // KONFIGURACJA SYSTEMU
@@ -92,41 +140,74 @@ if (!isset($_SESSION['probe_mode'])) {
 
 /**
  * Dodaj wpis do dziennika zdarzeń
+ * 
+ * @param string $message Wiadomość do zalogowania
+ * @return void
  */
 function log_message($message) {
+    debug_log("log_message called: $message");
+    
     $timestamp = date('H:i:s');
     $log_entry = "[$timestamp] $message";
     
     if (!isset($_SESSION['logs'])) {
         $_SESSION['logs'] = [];
+        debug_log("Zainicjalizowano pustą listę logów w sesji", "DEBUG");
     }
     
     array_push($_SESSION['logs'], $log_entry);
+    debug_log("Dodano wpis do logu: $log_entry", "DEBUG");
     
     // Ogranicz liczbę wpisów do 50
     if (count($_SESSION['logs']) > 50) {
+        debug_log("Ograniczanie liczby logów (usunięcie najstarszego wpisu)", "DEBUG");
         array_shift($_SESSION['logs']);
     }
+    
+    debug_log("Aktualna liczba wpisów w logu: " . count($_SESSION['logs']), "DEBUG");
 }
 
 /**
  * Połącz z urządzeniem Arduino
+ * 
+ * @param string $ip Adres IP urządzenia
+ * @param int $port Port TCP urządzenia
+ * @return bool true jeśli połączenie成功了，false w przeciwnym razie
  */
 function connect_to_device($ip, $port) {
+    debug_log("connect_to_device called with IP: $ip, Port: $port", "INFO");
+    
     log_message("Łączenie z urządzeniem $ip:$port...");
     
     // Sprawdź czy socket jest dostępny
     if (!function_exists('fsockopen')) {
+        debug_log("Funkcja fsockopen niedostępna w tej instalacji PHP", "ERROR");
         log_message("ERROR: Funkcja fsockopen niedostępna!");
+        return false;
+    }
+    
+    // Walidacja adresu IP
+    if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+        debug_log("Nieprawidłowy format adresu IP: $ip", "ERROR");
+        log_message("ERROR: Nieprawidłowy adres IP: $ip");
+        return false;
+    }
+    
+    // Walidacja portu
+    if (!is_numeric($port) || $port < 1 || $port > 65535) {
+        debug_log("Nieprawidłowy numer portu: $port", "ERROR");
+        log_message("ERROR: Nieprawidłowy port: $port");
         return false;
     }
     
     // Spróbuj połączyć się z urządzeniem
     $errno = 0;
     $errstr = '';
+    debug_log("Próba połączenia przez fsockopen...", "DEBUG");
     $socket = @fsockopen($ip, $port, $errno, $errstr, 2);
     
     if ($socket) {
+        debug_log("Połączenie nawiązane pomyślnie", "INFO");
         fclose($socket);
         $_SESSION['connected'] = true;
         $_SESSION['device_ip'] = $ip;
@@ -134,25 +215,40 @@ function connect_to_device($ip, $port) {
         log_message("Połączono z $ip:$port");
         return true;
     } else {
+        debug_log("Błąd połączenia: errno=$errno, errstr=$errstr", "ERROR");
         $_SESSION['connected'] = false;
-        log_message("ERROR: Błąd połączenia z urządzeniem $ip:$port - $errstr");
+        log_message("ERROR: Błąd połączenia z urządzeniem $ip:$port - $errstr (errno: $errno)");
         return false;
     }
 }
 
 /**
  * Rozłącz z urządzeniem
+ * 
+ * @return void
  */
 function disconnect_from_device() {
+    debug_log("disconnect_from_device called", "INFO");
+    
+    if (isset($_SESSION['connected']) && $_SESSION['connected']) {
+        debug_log("Aktywne połączenie zostanie zamknięte", "DEBUG");
+    }
+    
     $_SESSION['connected'] = false;
     log_message("Rozłączono z urządzeniem");
 }
 
 /**
  * Wyślij komendę do urządzenia
+ * 
+ * @param string $cmd Komenda do wysłania
+ * @return string|false Odpowiedź z urządzenia lub false w przypadku błędu
  */
 function send_command($cmd) {
+    debug_log("send_command called with command: '$cmd'", "INFO");
+    
     if (!$_SESSION['connected']) {
+        debug_log("Brak aktywnego połączenia - nie można wysłać komendy", "ERROR");
         log_message("ERROR: Nie można wysłać komendy - brak połączenia: $cmd");
         return false;
     }
@@ -160,35 +256,82 @@ function send_command($cmd) {
     $ip = $_SESSION['device_ip'];
     $port = $_SESSION['device_port'];
     
+    debug_log("Połączenie aktywne z {$ip}:{$port}", "DEBUG");
     log_message("Wysyłanie komendy: $cmd");
+    
+    // Sprawdź czy socket jest dostępny
+    if (!function_exists('fsockopen')) {
+        debug_log("Funkcja fsockopen niedostępna", "ERROR");
+        log_message("ERROR: Funkcja fsockopen niedostępna!");
+        return false;
+    }
     
     $errno = 0;
     $errstr = '';
+    debug_log("Otwieranie socketu do wysłania komendy...", "DEBUG");
     $socket = @fsockopen($ip, $port, $errno, $errstr, 2);
     
     if ($socket) {
-        fwrite($socket, $cmd . "\n");
+        debug_log("Socket otwarty pomyślnie", "DEBUG");
+        
+        // Dodaj znak nowej linii na końcu komendy
+        $full_cmd = $cmd . "\n";
+        debug_log("Wysyłanie danych: " . trim($full_cmd), "DEBUG");
+        $bytes_written = fwrite($socket, $full_cmd);
+        debug_log("Wysłano bajtów: $bytes_written", "DEBUG");
+        
+        // Ustaw timeout na odczyt
+        stream_set_timeout($socket, 2);
+        
+        // Odczytaj odpowiedź
+        debug_log("Oczekiwanie na odpowiedź...", "DEBUG");
         $response = fread($socket, 1024);
+        debug_log("Otrzymano odpowiedź: " . trim($response ?? '(brak)'), "DEBUG");
+        
+        // Sprawdź czy nie wystąpił timeout
+        $meta = stream_get_meta_data($socket);
+        if ($meta['timed_out']) {
+            debug_log("Timeout podczas oczekiwania na odpowiedź", "WARNING");
+            log_message("WARNING: Timeout odpowiedzi z urządzenia");
+        }
+        
         fclose($socket);
+        debug_log("Socket zamknięty", "DEBUG");
+        
         return $response;
     } else {
-        log_message("ERROR: Nie udało się wysłać komendy: $cmd");
+        debug_log("Nie udało się otworzyć socketu: errno=$errno, errstr=$errstr", "ERROR");
+        log_message("ERROR: Nie udało się wysłać komendy: $cmd (errno: $errno)");
         return false;
     }
 }
 
 /**
  * Wyślij konfigurację końcówki do urządzenia
+ * 
+ * @param int $channel Numer kanału (1-8)
+ * @return string|false Odpowiedź z urządzenia lub false w przypadku błędu
  */
 function send_probe_config($channel) {
+    debug_log("send_probe_config called for channel: $channel", "INFO");
+    
     if (!$_SESSION['connected']) {
+        debug_log("Brak połączenia - nie można wysłać konfiguracji", "ERROR");
+        return false;
+    }
+    
+    if (!isset($_SESSION['probes'][$channel])) {
+        debug_log("Nieprawidłowy numer kanału: $channel", "ERROR");
+        log_message("ERROR: Nieprawidłowy kanał: $channel");
         return false;
     }
     
     $probe = $_SESSION['probes'][$channel];
+    debug_log("Konfiguracja kanału $channel: " . json_encode($probe, JSON_UNESCAPED_UNICODE), "DEBUG");
     
     // Konwertuj częstotliwość do formatu Hz * 100
     $freq_x100 = intval(floatval($probe['freq']) * 100);
+    debug_log("Częstotliwość {$probe['freq']} Hz -> {$freq_x100} (x100)", "DEBUG");
     
     // Format pakietu: CONFIG:channel,freq_x100,duty,intensity,modulation
     $cmd = sprintf("CONFIG:%d,%d,%d,%d,%s", 
@@ -199,63 +342,110 @@ function send_probe_config($channel) {
         $probe['modulation']
     );
     
+    debug_log("Generowanie komendy: $cmd", "DEBUG");
     $response = send_command($cmd);
-    log_message("Wysłano konfigurację kanału $channel");
+    
+    if ($response !== false) {
+        log_message("Wysłano konfigurację kanału $channel: {$probe['name']}");
+        debug_log("Odpowiedź z urządzenia: " . trim($response ?? '(brak)'), "DEBUG");
+    } else {
+        log_message("ERROR: Nie udało się wysłać konfiguracji kanału $channel");
+    }
     
     return $response;
 }
 
 /**
  * Pobierz status urządzenia
+ * 
+ * @return string|false Odpowiedź z urządzenia lub false w przypadku błędu
  */
 function request_status() {
+    debug_log("request_status called", "INFO");
+    
     if (!$_SESSION['connected']) {
+        debug_log("Brak połączenia - nie można pobrać statusu", "WARNING");
         return false;
     }
     
+    debug_log("Wysyłanie komendy statusu 's'", "DEBUG");
     $response = send_command("s");
-    parse_status_response($response);
+    
+    if ($response !== false) {
+        debug_log("Otrzymano odpowiedź statusu, parsowanie...", "DEBUG");
+        parse_status_response($response);
+    } else {
+        debug_log("Brak odpowiedzi na komendę statusu", "WARNING");
+    }
     
     return $response;
 }
 
 /**
- * Parsuj odpowiedź statusu
+ * Parsuj odpowiedź statusu i aktualizuj sesję
+ * 
+ * @param string $response Surowa odpowiedź z urządzenia
+ * @return void
  */
 function parse_status_response($response) {
+    debug_log("parse_status_response called", "DEBUG");
+    
     if (!$response) {
+        debug_log("Pusta odpowiedź - pomijam parsowanie", "DEBUG");
         return;
     }
+    
+    debug_log("Surowa odpowiedź: " . trim($response), "DEBUG");
     
     // Parsuj temperaturę
     if (preg_match('/Temperature:\s*([0-9.]+)/', $response, $matches)) {
         $_SESSION['status']['temp'] = $matches[1];
+        debug_log("Znaleziono temperaturę: {$matches[1]}°C", "DEBUG");
+    } else {
+        debug_log("Nie znaleziono temperatury w odpowiedzi", "DEBUG");
     }
     
     // Parsuj pamięć
     if (preg_match('/Free Memory:\s*([0-9]+)/', $response, $matches)) {
         $_SESSION['status']['memory'] = $matches[1];
+        debug_log("Znaleziono pamięć: {$matches[1]} bytes", "DEBUG");
+    } else {
+        debug_log("Nie znaleziono pamięci w odpowiedzi", "DEBUG");
     }
     
     // Parsuj uptime
     if (preg_match('/Uptime:\s*([0-9]+)/', $response, $matches)) {
         $_SESSION['status']['uptime'] = $matches[1];
+        debug_log("Znaleziono uptime: {$matches[1]} s", "DEBUG");
+    } else {
+        debug_log("Nie znaleziono uptime w odpowiedzi", "DEBUG");
     }
     
     // Parsuj stan PWM
     if (preg_match('/PWM Running:\s*(YES|NO)/', $response, $matches)) {
         $_SESSION['status']['pwm'] = ($matches[1] === 'YES');
+        debug_log("Znaleziono stan PWM: " . ($matches[1] === 'YES' ? 'TAK' : 'NIE'), "DEBUG");
+    } else {
+        debug_log("Nie znaleziono stanu PWM w odpowiedzi", "DEBUG");
     }
     
     // Parsuj częstotliwość
     if (preg_match('/Frequency:\s*([0-9]+)/', $response, $matches)) {
         $_SESSION['status']['freq'] = $matches[1];
+        debug_log("Znaleziono częstotliwość: {$matches[1]} Hz", "DEBUG");
+    } else {
+        debug_log("Nie znaleziono częstotliwości w odpowiedzi", "DEBUG");
     }
     
     // Parsuj stan bezpieczeństwa
     if (preg_match('/Safety State:\s*([A-Z_]+)/', $response, $matches)) {
         $_SESSION['status']['safety'] = $matches[1];
+        debug_log("Znaleziono stan bezpieczeństwa: {$matches[1]}", "DEBUG");
+    } else {
+        debug_log("Nie znaleziono stanu bezpieczeństwa w odpowiedzi", "DEBUG");
     }
+    
+    debug_log("Aktualny status po parsowaniu: " . json_encode($_SESSION['status']), "DEBUG");
 }
 
 /**

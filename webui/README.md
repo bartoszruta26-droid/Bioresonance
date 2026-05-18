@@ -8,6 +8,7 @@ Interfejs webowy do obsługi efektora Arduino Nano z Ethernet HAT.
 webui/
 ├── index.html    # Główny plik HTML z interfejsem użytkownika (CSS + JavaScript)
 ├── api.php       # Backend PHP obsługujący komunikację TCP z Arduino
+├── debug.log     # Plik logów debugowania (tworzony automatycznie)
 └── README.md     # Ten plik
 ```
 
@@ -113,6 +114,56 @@ Automatycznie rejestruje wszystkie zdarzenia:
 - Zmiany konfiguracji
 - Komendy wysyłane do urządzenia
 
+## Debugowanie
+
+Aplikacja zawiera rozbudowany system debugowania:
+
+### PHP Debug (api.php)
+
+- Stała `DEBUG_MODE` włączona domyślnie
+- Logi zapisywane do pliku `debug.log` w tym samym katalogu
+- Szczegółowe informacje o:
+  - Połączeniach sieciowych
+  - Komendach wysyłanych do Arduino
+  - Błędach walidacji
+  - Czasie wykonania operacji
+
+Przykładowy wpis z logu:
+```
+[2024-01-15 10:30:45.123456] [INFO] [connect_to_device:178] connect_to_device called with IP: 192.168.1.100, Port: 5001
+[2024-01-15 10:30:45.234567] [DEBUG] [send_command:271] Otwieranie socketu do wysłania komendy...
+[2024-01-15 10:30:45.345678] [ERROR] [send_command:303] Nie udało się otworzyć socketu: errno=111, errstr=Connection refused
+```
+
+### JavaScript Debug (index.html)
+
+- Stała `DEBUG` włączona domyślnie
+- Logi wyświetlane w konsoli przeglądarki (F12)
+- Szczegółowe informacje o:
+  - Wywołaniach API
+  - Czasie odpowiedzi serwera
+  - Błędach walidacji formularzy
+  - Stanie aplikacji
+
+Aby zobaczyć logi:
+1. Otwórz narzędzia deweloperskie (F12)
+2. Przejdź do zakładki "Console"
+3. Zobaczysz komunikaty z prefiksem `[HH:MM:SS.mmm] [LEVEL]`
+
+### Wyłączenie debugowania
+
+W produkcji możesz wyłączyć debugowanie:
+
+**PHP** - w `api.php`:
+```php
+define('DEBUG_MODE', false);
+```
+
+**JavaScript** - w `index.html`:
+```javascript
+const DEBUG = false;
+```
+
 ## API JSON
 
 Backend udostępnia API REST poprzez `api.php?action=<action>`
@@ -175,9 +226,12 @@ CONFIG:1,72700,50,2048,NONE
 ## Bezpieczeństwo
 
 - Walidacja danych wejściowych (zakresy wartości)
+- Walidacja formatu adresu IP
+- Walidacja zakresu portów (1-65535)
 - Sesje PHP do przechowywania stanu
 - Timeout połączenia (2 sekundy)
 - Obsługa błędów sieciowych
+- Escape znaków specjalnych w logach
 
 ## Rozwiązywanie Problemów
 
@@ -187,6 +241,7 @@ CONFIG:1,72700,50,2048,NONE
 2. Zweryfikuj adres IP i port
 3. Upewnij się, że firewall nie blokuje połączenia
 4. Sprawdź czy Arduino nasłuchuje na porcie 5001
+5. Sprawdź logi debugowania (`debug.log` lub konsola przeglądarki)
 
 ### Błąd sesji PHP
 
@@ -198,6 +253,13 @@ CONFIG:1,72700,50,2048,NONE
 
 1. Sprawdź czy funkcja `fsockopen()` jest włączona
 2. Sprawdź logi błędów Apache2: `/var/log/apache2/error.log`
+3. Sprawdź plik `debug.log` w katalogu aplikacji
+
+### Błędy JavaScript
+
+1. Otwórz konsolę przeglądarki (F12)
+2. Sprawdź czerwone komunikaty błędów
+3. Upewnij się, że serwer PHP działa poprawnie
 
 ## Autor
 

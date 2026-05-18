@@ -656,6 +656,36 @@
          JAVASCRIPT - LOGIKA APLIKACJI
          ============================================================================ -->
     <script>
+        /**
+         * ============================================================================
+         * DEBUG MODE - Tryb Debugowania JavaScript
+         * ============================================================================
+         * Ustaw na true aby włączyć szczegółowe logowanie w konsoli przeglądarki
+         */
+        const DEBUG = true;
+        
+        // Funkcja pomocnicza do logowania debug
+        function debugLog(message, level = 'INFO', data = null) {
+            if (!DEBUG) return;
+            
+            const timestamp = new Date().toISOString().substr(19, 12);
+            const prefix = `[${timestamp}] [${level}]`;
+            
+            if (level === 'ERROR') {
+                console.error(`${prefix} ${message}`, data !== null ? data : '');
+            } else if (level === 'WARN' || level === 'WARNING') {
+                console.warn(`${prefix} ${message}`, data !== null ? data : '');
+            } else if (level === 'DEBUG') {
+                console.log(`${prefix} ${message}`, data !== null ? data : '');
+            } else {
+                console.info(`${prefix} ${message}`, data !== null ? data : '');
+            }
+        }
+        
+        debugLog("=== URUCHOMIENIE index.html ===", "START");
+        debugLog("User Agent: " + navigator.userAgent, "DEBUG");
+        debugLog("Window size: " + window.innerWidth + "x" + window.innerHeight, "DEBUG");
+        
         // Global state
         let probes = {};
         let currentChannel = null;
@@ -666,23 +696,50 @@
         // API endpoint
         const API_URL = 'api.php';
         
+        debugLog("Inicjalizacja stanu globalnego", "DEBUG", {
+            probes: probes,
+            currentChannel: currentChannel,
+            isConnected: isConnected,
+            probeMode: probeMode
+        });
+        
         // ============================================================================
         // FUNKCJE POMOCNICZE
         // ============================================================================
         
+        /**
+         * Wyświetl powiadomienie dla użytkownika
+         * @param {string} message - Wiadomość do wyświetlenia
+         * @param {boolean} isError - Czy to jest błąd
+         */
         function showNotification(message, isError = false) {
+            debugLog("showNotification called", "DEBUG", { message, isError });
+            
             const notification = document.getElementById('notification');
             notification.textContent = message;
             notification.className = 'notification' + (isError ? ' error' : '');
             notification.style.display = 'block';
             
+            debugLog("Powiadomienie wyświetlone", "DEBUG");
+            
             setTimeout(() => {
                 notification.style.display = 'none';
+                debugLog("Powiadomienie ukryte", "DEBUG");
             }, 3000);
         }
         
+        /**
+         * Wykonaj zapytanie API do backendu PHP
+         * @param {string} action - Nazwa akcji
+         * @param {object|null} data - Dane do wysłania
+         * @returns {Promise<object>} Wynik zapytania
+         */
         async function apiCall(action, data = null) {
+            debugLog(`apiCall started: action=${action}`, "INFO", data);
+            
             try {
+                const startTime = performance.now();
+                
                 const options = {
                     method: data ? 'POST' : 'GET',
                     headers: {
@@ -692,15 +749,26 @@
                 
                 if (data) {
                     options.body = JSON.stringify(data);
+                    debugLog("Wysyłanie danych JSON", "DEBUG", data);
                 }
                 
                 const url = `${API_URL}?action=${action}`;
+                debugLog(`Wykonanie fetch: ${options.method} ${url}`, "DEBUG");
+                
                 const response = await fetch(url, options);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
                 const result = await response.json();
+                const endTime = performance.now();
+                
+                debugLog(`Odpowiedź API otrzymana w ${(endTime - startTime).toFixed(2)}ms`, "DEBUG", result);
                 
                 return result;
             } catch (error) {
-                console.error('API Error:', error);
+                debugLog(`Błąd API: ${error.message}`, "ERROR", { action, error });
                 throw error;
             }
         }
@@ -709,47 +777,91 @@
         // POŁĄCZENIE Z URZĄDZENIEM
         // ============================================================================
         
+        /**
+         * Połącz z urządzeniem Arduino
+         */
         async function connectToDevice() {
+            debugLog("connectToDevice called", "INFO");
+            
             const ip = document.getElementById('deviceIp').value.trim();
             const port = document.getElementById('devicePort').value;
             
+            debugLog("Dane połączenia", "DEBUG", { ip, port });
+            
             if (!ip) {
+                debugLog("Brak adresu IP", "WARNING");
                 showNotification('Podaj adres IP urządzenia', true);
                 return;
             }
             
+            // Walidacja adresu IP
+            const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
+            if (!ipRegex.test(ip)) {
+                debugLog("Nieprawidłowy format IP", "WARNING");
+                showNotification('Nieprawidłowy format adresu IP', true);
+                return;
+            }
+            
+            // Walidacja portu
+            if (port < 1 || port > 65535) {
+                debugLog("Nieprawidłowy numer portu", "WARNING");
+                showNotification('Port musi być w zakresie 1-65535', true);
+                return;
+            }
+            
             try {
+                debugLog("Wywołanie API connect...", "INFO");
                 const result = await apiCall('connect', { ip, port });
+                
+                debugLog("Odpowiedź API connect", "DEBUG", result);
                 
                 if (result.success) {
                     isConnected = true;
                     updateConnectionStatus(true);
                     showNotification('Połączono z urządzeniem');
                     startAutoRefresh();
+                    debugLog("Połączenie nawiązane pomyślnie", "INFO");
                 } else {
+                    debugLog("Błąd połączenia: " + result.message, "ERROR");
                     showNotification(result.message, true);
                 }
             } catch (error) {
+                debugLog("Wyjątek podczas łączenia: " + error.message, "ERROR");
                 showNotification('Błąd połączenia: ' + error.message, true);
             }
         }
         
+        /**
+         * Rozłącz z urządzeniem Arduino
+         */
         async function disconnectFromDevice() {
+            debugLog("disconnectFromDevice called", "INFO");
+            
             try {
                 const result = await apiCall('disconnect');
+                
+                debugLog("Odpowiedź API disconnect", "DEBUG", result);
                 
                 if (result.success) {
                     isConnected = false;
                     updateConnectionStatus(false);
                     showNotification('Rozłączono z urządzeniem');
                     stopAutoRefresh();
+                    debugLog("Rozłączono pomyślnie", "INFO");
                 }
             } catch (error) {
+                debugLog("Wyjątek podczas rozłączania: " + error.message, "ERROR");
                 showNotification('Błąd rozłączania: ' + error.message, true);
             }
         }
         
+        /**
+         * Aktualizuj wskaźnik statusu połączenia w UI
+         * @param {boolean} connected - Czy połączenie jest aktywne
+         */
         function updateConnectionStatus(connected) {
+            debugLog("updateConnectionStatus called", "DEBUG", { connected });
+            
             const indicator = document.getElementById('statusIndicator');
             const statusText = document.getElementById('statusText');
             const disconnectBtn = document.getElementById('disconnectBtn');
@@ -758,10 +870,12 @@
                 indicator.classList.add('connected');
                 statusText.textContent = 'Połączono';
                 disconnectBtn.style.display = 'inline-block';
+                debugLog("Status: Połączono", "DEBUG");
             } else {
                 indicator.classList.remove('connected');
                 statusText.textContent = 'Rozłączono';
                 disconnectBtn.style.display = 'none';
+                debugLog("Status: Rozłączono", "DEBUG");
             }
         }
         
@@ -1078,52 +1192,87 @@
         }
         
         // ============================================================================
-        // AUTO REFRESH
+        // AUTO REFRESH - Automatyczne odświeżanie statusu
         // ============================================================================
         
+        /**
+         * Uruchom automatyczne odświeżanie statusu co 5 sekund
+         */
         function startAutoRefresh() {
+            debugLog("startAutoRefresh called", "INFO");
+            
             if (refreshInterval) clearInterval(refreshInterval);
+            
             refreshInterval = setInterval(() => {
                 if (isConnected) {
+                    debugLog("Automatyczne odświeżanie statusu...", "DEBUG");
                     refreshStatus();
+                } else {
+                    debugLog("Brak połączenia - pomijam odświeżanie", "DEBUG");
                 }
             }, 5000);
+            
+            debugLog("Timer auto-refresh uruchomiony (5s)", "DEBUG");
         }
         
+        /**
+         * Zatrzymaj automatyczne odświeżanie
+         */
         function stopAutoRefresh() {
+            debugLog("stopAutoRefresh called", "INFO");
+            
             if (refreshInterval) {
                 clearInterval(refreshInterval);
                 refreshInterval = null;
+                debugLog("Timer auto-refresh zatrzymany", "DEBUG");
             }
         }
         
         // ============================================================================
-        // INICJALIZACJA
+        // INICJALIZACJA APLIKACJI
         // ============================================================================
         
+        /**
+         * Funkcja inicjalizująca aplikację po załadowaniu strony DOM
+         */
         async function init() {
+            debugLog("=== INICJALIZACJA APLIKACJI ===", "START");
+            
             try {
                 // Sprawdź aktualne połączenie
+                debugLog("Sprawdzanie istniejącego połączenia...", "INFO");
                 const connResult = await apiCall('get_connection');
+                
+                debugLog("Odpowiedź get_connection", "DEBUG", connResult);
+                
                 if (connResult.success && connResult.connected) {
                     isConnected = true;
                     document.getElementById('deviceIp').value = connResult.ip || '';
                     document.getElementById('devicePort').value = connResult.port || '5001';
                     updateConnectionStatus(true);
                     startAutoRefresh();
+                    debugLog("Przywrócono istniejące połączenie", "INFO");
+                } else {
+                    debugLog("Brak aktywnego połączenia w sesji", "DEBUG");
                 }
                 
                 // Załaduj konfigurację końcówek
+                debugLog("Ładowanie konfiguracji końcówek...", "INFO");
                 await loadProbes();
                 
                 // Odśwież status
+                debugLog("Pobieranie statusu urządzenia...", "INFO");
                 await refreshStatus();
+                
+                debugLog("=== INICJALIZACJA ZAKOŃCZONA ===", "SUCCESS");
             } catch (error) {
-                console.error('Initialization error:', error);
+                debugLog("Błąd inicjalizacji: " + error.message, "ERROR", error);
+                showNotification('Błąd inicjalizacji aplikacji', true);
             }
         }
         
-        // Start aplikacji po załadowaniu strony
+        // Start aplikacji po załadowaniu strony DOM
+        debugLog("Rejestracja event listener DOMContentLoaded", "DEBUG");
         document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>

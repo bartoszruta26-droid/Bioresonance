@@ -1,1 +1,15 @@
-Nothing needs to be added to .gitignore since the changes only include source files (.md, .php, .html) and no build artifacts, dependencies, or temporary files.
+(webui/.env
+webui/.env.local
+webui/.env.*
+webui/node_modules/
+webui/dist/
+webui/build/
+webui/.vscode/
+webui/.idea/
+webui/*.log
+webui/__pycache__/
+webui/.pytest_cache/
+webui/.mypy_cache/
+webui/venv/
+webui/.venv/
+)
