@@ -8,19 +8,24 @@
 #include <cstring>
 #include <chrono>
 #include <thread>
+#include <atomic>
 
 #ifdef _WIN32
-    static bool ws_initialized = false;
+    // Reference counter for WSA initialization with proper cleanup
+    static std::atomic<int> ws_init_count{0};
 #else
     #include <cerrno>
 #endif
 
 NetworkClient::NetworkClient() : socket_fd(INVALID_SOCKET_VALUE), connected(false) {
 #ifdef _WIN32
-    if (!ws_initialized) {
+    if (ws_init_count++ == 0) {
         WSADATA wsa_data;
-        WSAStartup(MAKEWORD(2, 2), &wsa_data);
-        ws_initialized = true;
+        int result = WSAStartup(MAKEWORD(2, 2), &wsa_data);
+        if (result != 0) {
+            REPORT_ERROR(ErrorCode::ERR_NETWORK_SOCKET_FAILED, ErrorCategory::NETWORK,
+                        "WSAStartup failed: " + std::to_string(result));
+        }
     }
 #endif
 }
@@ -28,7 +33,9 @@ NetworkClient::NetworkClient() : socket_fd(INVALID_SOCKET_VALUE), connected(fals
 NetworkClient::~NetworkClient() {
     disconnect();
 #ifdef _WIN32
-    // Don't cleanup WSA here - other parts of app might use it
+    if (--ws_init_count == 0) {
+        WSACleanup();
+    }
 #endif
 }
 
@@ -73,6 +80,8 @@ bool NetworkClient::connect(const std::string& ip, int port_num) {
     if (inet_pton(AF_INET, ip.c_str(), &server_addr.sin_addr) <= 0) {
         CLOSE_SOCKET(socket_fd);
         socket_fd = INVALID_SOCKET_VALUE;
+        REPORT_ERROR(ErrorCode::ERR_NETWORK_UNREACHABLE, ErrorCategory::NETWORK,
+                    "Invalid IP address format: " + ip);
         return false;
     }
     
@@ -84,6 +93,8 @@ bool NetworkClient::connect(const std::string& ip, int port_num) {
 #endif
         CLOSE_SOCKET(socket_fd);
         socket_fd = INVALID_SOCKET_VALUE;
+        REPORT_ERROR(ErrorCode::ERR_NETWORK_UNREACHABLE, ErrorCategory::NETWORK,
+                    "Connection failed");
         return false;
     }
     
@@ -119,6 +130,8 @@ bool NetworkClient::connect(const std::string& ip, int port_num) {
 #endif
         CLOSE_SOCKET(socket_fd);
         socket_fd = INVALID_SOCKET_VALUE;
+        REPORT_ERROR(ErrorCode::ERR_NETWORK_UNREACHABLE, ErrorCategory::NETWORK,
+                    "Connection error: " + std::to_string(so_error));
         return false;
     }
     
@@ -132,6 +145,7 @@ bool NetworkClient::connect(const std::string& ip, int port_num) {
 #endif
     
     connected = true;
+    LOG_INFO("Connected to " + ip + ":" + std::to_string(port));
     return true;
 }
 
@@ -141,6 +155,7 @@ void NetworkClient::disconnect() {
         socket_fd = INVALID_SOCKET_VALUE;
     }
     connected = false;
+    LOG_INFO("Disconnected from device");
 }
 
 bool NetworkClient::isConnected() const {

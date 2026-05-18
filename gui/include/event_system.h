@@ -255,9 +255,12 @@ public:
         // Notify the processing thread
         queue_cv_.notify_one();
         
-        // Start processing thread if not already running
-        if (!processing_thread_.joinable() || !processing_active_) {
-            startProcessingThread();
+        // Start processing thread if not already running (with proper locking)
+        {
+            std::lock_guard<std::mutex> lock(processing_mutex_);
+            if (!processing_thread_.joinable() || !processing_active_) {
+                startProcessingThread();
+            }
         }
     }
     
@@ -364,6 +367,7 @@ private:
     int next_subscription_id_;
     
     std::mutex queue_mutex_;
+    std::mutex processing_mutex_;
     std::condition_variable queue_cv_;
     std::queue<Event> event_queue_;
     std::thread processing_thread_;

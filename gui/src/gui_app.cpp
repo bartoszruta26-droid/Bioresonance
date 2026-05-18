@@ -468,8 +468,14 @@ void GuiApp::renderStatusPanel() {
             disconnectFromDevice();
         }
     } else {
-        static char ip_buffer[64] = "192.168.1.100";
-        static int port_buffer = 5001;
+        // Non-static buffers to avoid thread safety issues
+        char ip_buffer[64];
+        int port_buffer;
+        
+        // Initialize with current values
+        strncpy(ip_buffer, device_ip.c_str(), sizeof(ip_buffer) - 1);
+        ip_buffer[sizeof(ip_buffer) - 1] = '\0';
+        port_buffer = device_port;
         
         ImGui::InputText("IP urządzenia", ip_buffer, sizeof(ip_buffer));
         ImGui::SameLine();
@@ -565,8 +571,18 @@ void GuiApp::run() {
         ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
         SDL_RenderPresent(renderer);
         
-        // Limit to ~60 FPS (16.67ms per frame)
-        std::this_thread::sleep_for(std::chrono::milliseconds(16));
+        // Start frame timing
+        auto frame_start = std::chrono::steady_clock::now();
+        
+        ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
+        SDL_RenderPresent(renderer);
+        
+        // End frame and calculate duration
+        auto frame_end = std::chrono::steady_clock::now();
+        auto frame_duration = std::chrono::duration_cast<std::chrono::microseconds>(frame_end - frame_start).count();
+        if (frame_duration < 16667) {
+            std::this_thread::sleep_for(std::chrono::microseconds(16667 - frame_duration));
+        }
     }
 }
 
