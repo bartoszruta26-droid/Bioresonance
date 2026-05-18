@@ -448,6 +448,82 @@ private:
     std::string device_ip;
     int device_port;
     
+    // Frequencies database from frequencies.md
+    struct FrequencyEntry {
+        uint32_t frequency_hz;
+        std::string category;
+        std::string subcategory;
+        std::string description;
+        std::string disease_name;  // Extracted disease name
+        std::string modulation;
+        uint32_t carrier_khz;
+    };
+    
+    std::vector<FrequencyEntry> frequency_database;
+    
+    void loadFrequencies() {
+        std::ifstream freq_file("/workspace/frequencies.md");
+        if (!freq_file.is_open()) {
+            // Try relative path
+            freq_file.open("frequencies.md");
+        }
+        if (!freq_file.is_open()) {
+            addLog("Nie można otworzyć frequencies.md");
+            return;
+        }
+        
+        std::string line;
+        while (std::getline(freq_file, line)) {
+            // Skip comments, headers, empty lines
+            if (line.empty() || line[0] == '#' || line[0] == '-' || line[0] == '=') continue;
+            if (line.find("FREQUENCY_DATA") != std::string::npos) continue;
+            if (line.find("freq_hz|") != std::string::npos) continue;
+            
+            // Parse frequency data: freq_hz|category|subcategory|description|modulation|carrier_khz
+            std::istringstream iss(line);
+            std::string token;
+            std::vector<std::string> tokens;
+            
+            while (std::getline(iss, token, '|')) {
+                tokens.push_back(token);
+            }
+            
+            if (tokens.size() >= 6) {
+                // Validate first token is numeric (frequency)
+                try {
+                    uint32_t freq = std::stoul(tokens[0]);
+                    
+                    FrequencyEntry entry;
+                    entry.frequency_hz = freq;
+                    entry.category = tokens[1];
+                    entry.subcategory = tokens[2];
+                    entry.description = tokens[3];
+                    entry.modulation = tokens[4];
+                    entry.carrier_khz = std::stoul(tokens[5]);
+                    
+                    // Extract disease name (before / separator)
+                    size_t slash_pos = entry.description.find('/');
+                    if (slash_pos != std::string::npos) {
+                        entry.disease_name = entry.description.substr(0, slash_pos);
+                        // Trim whitespace
+                        entry.disease_name.erase(0, entry.disease_name.find_first_not_of(" \t"));
+                        entry.disease_name.erase(entry.disease_name.find_last_not_of(" \t") + 1);
+                    } else {
+                        entry.disease_name = entry.description;
+                    }
+                    
+                    frequency_database.push_back(entry);
+                } catch (...) {
+                    // Not a valid frequency line, skip
+                    continue;
+                }
+            }
+        }
+        
+        freq_file.close();
+        addLog("Wczytano " + std::to_string(frequency_database.size()) + " programów terapii");
+    }
+    
 public:
     BioresonanceTUI(const std::string& ip, int port) 
         : selected_probe(1), current_menu(0), running(true), 

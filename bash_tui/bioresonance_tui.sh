@@ -84,9 +84,68 @@ LOG_COUNT=0
 # Probe mode
 PROBE_MODE="SINGLE"
 
+# Frequencies database loaded from frequencies.md
+declare -A FREQUENCIES_BY_DISEASE
+declare -a DISEASE_LIST
+declare -a FREQUENCY_DATA
+
 # ============================================================================
 # FUNKCJE POMOCNICZE
 # ============================================================================
+
+# Load frequencies from frequencies.md file
+load_frequencies() {
+    local freq_file="/workspace/frequencies.md"
+    
+    # Check if running from different directory
+    if [ ! -f "$freq_file" ]; then
+        freq_file="$(dirname "$0")/../frequencies.md"
+    fi
+    if [ ! -f "$freq_file" ]; then
+        freq_file="./frequencies.md"
+    fi
+    
+    if [ ! -f "$freq_file" ]; then
+        debug_log "Cannot find frequencies.md file"
+        return 1
+    fi
+    
+    debug_log "Loading frequencies from: $freq_file"
+    
+    # Parse frequencies.md - extract lines with format: freq_hz|category|subcategory|description|modulation|carrier_khz
+    local line_num=0
+    while IFS= read -r line; do
+        # Skip comments, headers, and empty lines
+        [[ "$line" =~ ^[[:space:]]*# ]] && continue
+        [[ "$line" =~ ^[[:space:]]*$ ]] && continue
+        [[ "$line" =~ ^--- ]] && continue
+        [[ "$line" =~ ^=== ]] && continue
+        [[ "$line" =~ ^FREQUENCY_DATA ]] && continue
+        [[ "$line" =~ ^freq_hz\| ]] && continue
+        
+        # Match frequency data lines (starting with number followed by |)
+        if [[ "$line" =~ ^([0-9]+)\|([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|([0-9]+) ]]; then
+            local freq="${BASH_REMATCH[1]}"
+            local category="${BASH_REMATCH[2]}"
+            local subcategory="${BASH_REMATCH[3]}"
+            local description="${BASH_REMATCH[4]}"
+            local modulation="${BASH_REMATCH[5]}"
+            local carrier="${BASH_REMATCH[6]}"
+            
+            # Extract disease name from description (before the / separator)
+            local disease_name=$(echo "$description" | cut -d'/' -f1 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+            
+            # Store in arrays
+            DISEASE_LIST+=("$disease_name ($freq Hz)")
+            FREQUENCY_DATA+=("$freq|$category|$subcategory|$description|$modulation|$carrier")
+            
+            ((line_num++))
+        fi
+    done < "$freq_file"
+    
+    debug_log "Loaded $line_num frequencies"
+    return 0
+}
 
 # Debug logging function - only outputs when DEBUG or VERBOSE is true
 debug_log() {
@@ -522,6 +581,7 @@ draw_help() {
     printf "  1-8 : Akcje szybkie\n"
     printf "  E   : Włącz/Wyłącz końcówkę\n"
     printf "  F   : Edycja częstotliwości\n"
+    printf "  P   : Wybierz program terapii (choroba)\n"
     printf "  I   : Edycja intensywności\n"
     printf "  M   : Zmiana modulacji\n"
     printf "  S   : Odśwież status\n"
@@ -531,6 +591,85 @@ draw_help() {
     move_cursor $((start_row + 14)) $start_col
     printf "${COLOR_CYAN}Naciśnij dowolny klawisz...${COLOR_RESET}"
     read -n 1 -s
+}
+
+# Select therapy program by disease from frequencies.md
+select_therapy_program() {
+    local channel=$SELECTED_PROBE
+    
+    if [ ${#DISEASE_LIST[@]} -eq 0 ]; then
+        log_message "Brak wczytanych programów terapii!"
+        return
+    fi
+    
+    # Enable the selected probe first
+    set_probe_field $channel enabled "true"
+    
+    local current_idx=0
+    local visible_count=15
+    local scroll_offset=0
+    
+    while true; do
+        clear_screen
+        move_cursor 2 2
+        printf "${COLOR_BOLD}${COLOR_BG_BLUE} --- WYBÓR PROGRAMU TERAPII --- ${COLOR_RESET}\n"
+        move_cursor 3 2
+        printf "${COLOR_CYAN}(Kanał %d) Strzałki: nawigacja, Enter: wybierz, Q: anuluj${COLOR_RESET}\n" "$channel"
+        
+        # Display list with scrolling
+        local display_idx=0
+        for ((i=scroll_offset; i<${#DISEASE_LIST[@]} && display_idx<visible_count; i++)); do
+            local row=$((5 + display_idx))
+            move_cursor $row 2
+            
+            if [ $i -eq $current_idx ]; then
+                printf "${COLOR_BOLD}${COLOR_GREEN}> %-70s${COLOR_RESET}" "${DISEASE_LIST[$i]}"
+            else
+                printf "  %-70s" "${DISEASE_LIST[$i]}"
+            fi
+            ((display_idx++))
+        done
+        
+        # Show position info
+        move_cursor $((5 + visible_count + 1)) 2
+        printf "${COLOR_YELLOW}Pozycja: %d / %d${COLOR_RESET}" $((current_idx + 1)) ${#DISEASE_LIST[@]}
+        
+        # Read input
+        read -s -n 1 key
+        case $key in
+            $'\x1b')
+                read -s -n 2 rest
+                case $rest in
+                    '[A') # Up
+                        ((current_idx--))
+                        [ $current_idx -lt 0 ] && current_idx=0
+                        [ $current_idx -lt $scroll_offset ] && scroll_offset=$current_idx
+                        ;;
+                    '[B') # Down
+                        ((current_idx++))
+                        [ $current_idx -ge ${#DISEASE_LIST[@]} ] && current_idx=$((${#DISEASE_LIST[@]} - 1))
+                        [ $current_idx -ge $((scroll_offset + visible_count)) ] && scroll_offset=$((current_idx - visible_count + 1))
+                        ;;
+                esac
+                ;;
+            '') # Enter
+                # Apply selected frequency to current channel
+                local freq_data="${FREQUENCY_DATA[$current_idx]}"
+                local freq=$(echo "$freq_data" | cut -d'|' -f1)
+                local modulation=$(echo "$freq_data" | cut -d'|' -f5)
+                
+                set_probe_field $channel freq "$freq"
+                set_probe_field $channel modulation "$modulation"
+                
+                log_message "Program: ${DISEASE_LIST[$current_idx]}"
+                send_probe_config $channel
+                break
+                ;;
+            q|Q)
+                break
+                ;;
+        esac
+    done
 }
 
 refresh_display() {
@@ -921,6 +1060,9 @@ handle_input() {
         'f'|'F')
             edit_frequency $SELECTED_PROBE
             ;;
+        'p'|'P')
+            select_therapy_program
+            ;;
         'i'|'I')
             edit_intensity $SELECTED_PROBE
             ;;
@@ -1092,12 +1234,20 @@ main() {
         echo "Verbose mode: ENABLED"
     fi
     echo ""
+    
+    # Load frequencies database
+    echo "Loading frequencies from frequencies.md..."
+    load_frequencies
+    echo "Loaded ${#DISEASE_LIST[@]} therapy programs"
+    echo ""
+    
     echo "Controls:"
     echo "  UP/DOWN   - Menu navigation"
     echo "  LEFT/RIGHT - Probe selection"
     echo "  1-8       - Quick actions"
     echo "  E         - Toggle probe"
     echo "  F         - Edit frequency"
+    echo "  P         - Select therapy program by disease"
     echo "  I         - Edit intensity"
     echo "  M         - Edit modulation"
     echo "  S         - Refresh status"
