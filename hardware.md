@@ -399,6 +399,557 @@ Sieć 230V AC → Zasilacz Medyczny → 5V DC
 
 ---
 
+### 8. 🧲 Cewka Helmholtza (Helmholtz Coil)
+
+**Funkcja**: Generator jednorodnego pola magnetycznego do precyzyjnych badań biologicznych i kalibracji sensorów.
+
+**Specyfikacja**:
+- **Indukcyjność**: 50-500 µH (zależnie od rozmiaru)
+- **Rezystancja DC**: 1-10 Ω
+- **Prąd Maksymalny**: 0.5-5 A
+- **Natężenie Pola**: 0.1-10 mT (regulowane)
+- **Częstotliwość**: 0.1 Hz - 500 kHz
+
+**Podłączenie Elektryczne**:
+```
+Arduino Nano                    MOSFET Driver                 Cewka Helmholtza
+┌──────────────┐               ┌──────────────────┐          ┌─────────────────┐
+│   D9 (PWM)   │──[100Ω]───▶│ Gate (IRF540N)   │          │   + (HOT)       │
+│   GND        │────────────│ Source           │──────────│   - (COLD)      │
+│              │             │                  │          │                 │
+│              │             │ Drain ───────────┼──────────│                 │
+│              │             │                  │          │                 │
+│              │         ┌───│ VCC (5V)         │          │                 │
+│              │         │   │                  │          │                 │
+│              │         │   └──[1N5822]◀───────┘ Flyback │                 │
+│              │         │      Diode                     │                 │
+│              │         └──[10kΩ]──┐                     │                 │
+│              │                    │                     │                 │
+│   A1         │◀───────────────────┴──[0.1Ω]──┐ Current │                 │
+│   (SENSE)    │                               │ Sense   │                 │
+│   D2         │◀──────────────────────────────┘ Detect  │                 │
+└──────────────┘                                         └─────────────────┘
+```
+
+**Piny Arduino**:
+| Pin | Funkcja | Opis |
+|-----|---------|------|
+| **D9 (OC1A)** | PWM_OUT | Sygnał sterujący MOSFET (Timer1) |
+| **A1** | SENSE | Pomiar prądu przez rezystor 0.1Ω |
+| **D2** | DETECT | Wykrywanie podłączenia cewki |
+
+**Komponenty**:
+- **Q1**: IRF540N lub IRLZ44N (N-channel MOSFET)
+- **R1**: 100Ω (Gate resistor)
+- **R2**: 10kΩ (Gate pull-down)
+- **D1**: 1N5822 lub 1N4007 (Flyback diode)
+- **R_sense**: 0.1Ω/5W (Current sense resistor)
+- **C1**: 100µF/25V (Filter capacitor)
+
+**Algorytm Wykrywania**:
+```cpp
+#define PIN_HELMHOLTZ_DETECT  2
+#define PIN_HELMHOLTZ_SENSE   A1
+#define HELMHOLTZ_CONNECTED_THRESHOLD  800
+
+bool detectHelmholtzCoil() {
+    analogWrite(PIN_PWM_OUTPUT, 128);
+    delayMicroseconds(1000);
+    int senseValue = analogRead(PIN_HELMHOLTZ_SENSE);
+    analogWrite(PIN_PWM_OUTPUT, 0);
+    
+    if (senseValue < HELMHOLTZ_CONNECTED_THRESHOLD) {
+        LOG_INFO("Cewka Helmholtza wykryta");
+        return true;
+    } else {
+        LOG_WARNING("Brak cewki Helmholtza");
+        return false;
+    }
+}
+```
+
+**Bezpieczeństwo**:
+- ⚠️ Przeciwwskazane dla osób z rozrusznikami serca
+- ⚠️ Monitorować temperaturę cewki (max 45°C)
+- ✅ Izolacja galwaniczna drivera
+- ✅ Ochrona przed przeciążeniem prądowym
+
+---
+
+### 9. 🦻 Aplikator Uszny (Otic Applicator)
+
+**Funkcja**: Wysokoczęstotliwościowy aplikator do terapii schorzeń uszu i głowy (szumy uszne, niedosłuch, migreny).
+
+**Specyfikacja**:
+- **Impedancja**: 8-32 Ω
+- **Pasmo przenoszenia**: 1 kHz - 500 kHz
+- **Napięcie wyjściowe**: 0-12 Vpp
+- **Prąd maksymalny**: 50 mA
+- **Częstotliwość**: 1 kHz - 500 kHz
+
+**Podłączenie Elektryczne**:
+```
+Arduino Nano                    Driver HF                     Aplikator Uszny
+┌──────────────┐               ┌──────────────────┐          ┌─────────────────┐
+│   D9 (PWM)   │────────────▶│ Input (OPA2134)  │          │   Tip (HOT)     │
+│   GND        │────────────│ GND              │──────────│   Ring (GND)    │
+│   D4         │────────────│ Enable           │          │                 │
+│              │             │                  │          │                 │
+│              │             │ Output ──[220Ω]──┼──────────│                 │
+│              │             │         ┌┴┐      │          │                 │
+│              │             │      [10µF]──────┘ DC Block│                 │
+│              │             │         └┬┐      │          │                 │
+│   A2         │◀───────────────────────┴───────┘ Impedance│                │
+│   (IMPEDANCE)│                              AC Coupling │                 │
+│   D5         │◀──────────────────────────────────────────┘ Detect         │
+└──────────────┘
+```
+
+**Piny Arduino**:
+| Pin | Funkcja | Opis |
+|-----|---------|------|
+| **D9 (OC1A)** | PWM_OUT | Sygnał główny (Timer1) |
+| **D4** | ENABLE | Włączanie drivera (HIGH = active) |
+| **A2** | IMPEDANCE | Pomiar impedancji (AC coupling) |
+| **D5** | DETECT | Wykrywanie podłączenia |
+
+**Komponenty**:
+- **U1**: OPA2134 lub LM4562 (Audio grade op-amp)
+- **Q1/Q2**: BC547/BC557 (Push-pull output)
+- **R1**: 220Ω (Current limit)
+- **C1**: 10µF bipolar (DC block)
+- **D1/D2**: 1N4148 (Voltage clamping)
+
+**Algorytm Wykrywania**:
+```cpp
+#define PIN_OTIC_DETECT     5
+#define PIN_OTIC_IMPEDANCE  A2
+#define OTIC_CONNECTED_MIN   100
+#define OTIC_CONNECTED_MAX   600
+
+bool detectOticApplicator() {
+    digitalWrite(PIN_OTIC_ENABLE, HIGH);
+    
+    // Test 10 kHz
+    pwm_set_frequency(10000 * 100);
+    analogWrite(PIN_PWM_OUTPUT, 64);
+    delayMicroseconds(5000);
+    
+    uint32_t sum = 0;
+    for (int i = 0; i < 10; i++) {
+        sum += analogRead(PIN_OTIC_IMPEDANCE);
+        delayMicroseconds(100);
+    }
+    int impedanceValue = sum / 10;
+    
+    analogWrite(PIN_PWM_OUTPUT, 0);
+    digitalWrite(PIN_OTIC_ENABLE, LOW);
+    
+    if (impedanceValue >= OTIC_CONNECTED_MIN && 
+        impedanceValue <= OTIC_CONNECTED_MAX) {
+        LOG_INFO("Aplikator uszny wykryty (Z=%d)", impedanceValue);
+        return true;
+    }
+    return false;
+}
+```
+
+**Bezpieczeństwo**:
+- ⚠️ Przeciwwskazane przy perforacji błony bębenkowej
+- ⚠️ Max napięcie: 12 Vpp
+- ✅ Jednorazowe nakładki silikonowe
+- ✅ Końcówki autoklawowalne (121°C, 15 min)
+
+---
+
+### 10. 🔌 Elektrody Kontaktowe (Contact Electrodes)
+
+**Funkcja**: Uniwersalne elektrody do bezpośredniej aplikacji sygnałów elektrycznych na skórę (TENS, EMS, ionoforeza).
+
+**Specyfikacja**:
+- **Impedancja skóry+elektrody**: 500 Ω - 50 kΩ
+- **Pasmo przenoszenia**: DC - 100 kHz
+- **Napięcie maksymalne**: 60 V DC / 120 V AC
+- **Prąd maksymalny**: 100 mA
+- **Gęstość prądu**: <10 mA/cm²
+
+**Podłączenie Elektryczne**:
+```
+Arduino Nano                    Driver Bipolar                Elektrody
+┌──────────────┐               ┌──────────────────┐          ┌─────────────────┐
+│   D9 (PWM)   │────────────▶│ Input (+) L298N  │──────────│   RED (+)       │
+│   D3 (PWM)   │────────────▶│ Input (-)        │──────────│   BLACK (-)     │
+│   GND        │────────────│ GND              │──────────│   COMMON        │
+│   D6         │────────────│ Enable           │          │                 │
+│              │             │                  │          │                 │
+│              │             │ Output ──[470µF]─┼──────────│ DC Block        │
+│              │             │         ┌┴┐      │          │                 │
+│   A3         │◀───────────────────────┴───────┘ Impedance│                │
+│   (IMPEDANCE)│                              Test        │                 │
+│   D7         │◀──────────────────────────────────────────┘ Detect         │
+└──────────────┘
+```
+
+**Piny Arduino**:
+| Pin | Funkcja | Opis |
+|-----|---------|------|
+| **D9 (OC1A)** | PWM_PLUS | Sygnał dodatni (Timer1 A) |
+| **D3 (OC2A)** | PWM_MINUS | Sygnał ujemny (Timer2 A) |
+| **D6** | ENABLE | Włączanie drivera |
+| **A3** | IMPEDANCE | Pomiar impedancji |
+| **D7** | DETECT | Wykrywanie podłączenia |
+
+**Komponenty**:
+- **U1**: L298N lub TB6612FNG (H-Bridge)
+- **R_sense**: 0.5Ω/5W (Current sense)
+- **C_out**: 470µF/100V (DC block capacitor)
+- **D_clamp**: P6KE6V8CA (TVS diode)
+
+**Algorytm Wykrywania**:
+```cpp
+#define PIN_ELECTRODE_DETECT    7
+#define PIN_ELECTRODE_IMPEDANCE A3
+#define ELECTRODE_CONNECTED_MIN   200
+#define ELECTRODE_CONNECTED_MAX   800
+
+typedef enum {
+    CONTACT_EXCELLENT = 0,
+    CONTACT_GOOD,
+    CONTACT_ACCEPTABLE,
+    CONTACT_POOR,
+    CONTACT_OPEN,
+    CONTACT_SHORT
+} ContactQuality_t;
+
+ContactQuality_t detectElectrodes() {
+    digitalWrite(PIN_ELECTRODE_ENABLE, HIGH);
+    
+    // Bipolar test pulse (1ms)
+    analogWrite(PIN_PWM_PLUS, 32);
+    analogWrite(PIN_PWM_MINUS, 0);
+    delayMicroseconds(500);
+    analogWrite(PIN_PWM_PLUS, 0);
+    analogWrite(PIN_PWM_MINUS, 32);
+    delayMicroseconds(500);
+    
+    // Measure impedance (16 samples average)
+    uint32_t sum = 0;
+    for (int i = 0; i < 16; i++) {
+        sum += analogRead(PIN_ELECTRODE_IMPEDANCE);
+        delayMicroseconds(50);
+    }
+    int impedanceValue = sum / 16;
+    
+    analogWrite(PIN_PWM_PLUS, 0);
+    analogWrite(PIN_PWM_MINUS, 0);
+    digitalWrite(PIN_ELECTRODE_ENABLE, LOW);
+    
+    if (impedanceValue < 100) {
+        LOG_ERROR("ZWARCIE elektrod!");
+        return CONTACT_SHORT;
+    } else if (impedanceValue >= 300 && impedanceValue <= 600) {
+        LOG_INFO("Doskonały kontakt (Z=%d)", impedanceValue);
+        return CONTACT_EXCELLENT;
+    } else if (impedanceValue > 950) {
+        LOG_WARNING("Brak elektrod!");
+        return CONTACT_OPEN;
+    }
+    return CONTACT_GOOD;
+}
+```
+
+**Bezpieczeństwo**:
+- ⚠️ Bezwzględne przeciwwskazanie dla rozruszników serca
+- ⚠️ Nie stosować poprzecznie przez klatkę piersiową
+- ✅ Izolacja galwaniczna 2500V RMS
+- ✅ Limit prądu 100 mA
+- ✅ Detekcja jakości kontaktu
+
+---
+
+### 11. 📡 Aplikator Okrężny (Wrap Applicator)
+
+**Funkcja**: Elastyczny aplikator do owijania wokół kończyn i tułowia dla równomiernej terapii (stawy, kręgosłup, mięśnie).
+
+**Specyfikacja**:
+- **Indukcyjność**: 20-100 µH
+- **Rezystancja DC**: 0.5-3 Ω
+- **Prąd maksymalny**: 1-3 A
+- **Natężenie pola**: 0.05-5 mT
+- **Temperatura pracy**: 0-45°C
+
+**Podłączenie Elektryczne**:
+```
+Arduino Nano                    Driver Prądu Stałego         Aplikator Okrężny
+┌──────────────┐               ┌──────────────────┐          ┌─────────────────┐
+│   D9 (PWM)   │────────────▶│ Control Input    │          │   Coil IN       │
+│   GND        │────────────│ GND              │──────────│   Coil OUT      │
+│   D8         │────────────│ Enable           │          │                 │
+│              │             │                  │          │                 │
+│              │             │ Output ──────────┼──────────│                 │
+│              │             │                  │          │                 │
+│   A4         │◀──────────────────────────────────────────┘ NTC Temp        │
+│   (TEMP)     │                              Temperature │                 │
+│   A5         │◀──────────────────────────────────────────┘ Current Sense  │
+│   (CURRENT)  │                                          │                 │
+│   D10        │◀──────────────────────────────────────────┘ Detect         │
+└──────────────┘
+```
+
+**Piny Arduino**:
+| Pin | Funkcja | Opis |
+|-----|---------|------|
+| **D9 (OC1A)** | PWM_CTRL | Sygnał sterujący (Timer1) |
+| **D8** | ENABLE | Włączanie drivera prądu |
+| **A4** | TEMP | Pomiar temperatury (NTC 10kΩ) |
+| **A5** | CURRENT | Pomiar prądu |
+| **D10** | DETECT | Wykrywanie podłączenia |
+
+**Komponenty**:
+- **U1**: LM317T lub LT3080 (Current regulator)
+- **Q1**: IRF540N (MOSFET switching element)
+- **R_sense**: 0.33Ω/10W (Current sense + limit)
+- **L1**: 100µH/3A (Smoothing inductor)
+- **NTC**: 10kΩ @ 25°C (Temperature sensor)
+
+**Algorytm Wykrywania**:
+```cpp
+#define PIN_WRAP_DETECT     10
+#define PIN_WRAP_CURRENT    A5
+#define PIN_WRAP_TEMP       A4
+#define WRAP_CONNECTED_MIN    50
+#define WRAP_CONNECTED_MAX    400
+#define WRAP_TEMP_MAX         45
+
+typedef enum {
+    WRAP_READY = 0,
+    WRAP_CONNECTED,
+    WRAP_OPEN,
+    WRAP_SHORT,
+    WRAP_OVERTEMP
+} WrapStatus_t;
+
+WrapStatus_t detectWrapApplicator() {
+    // Measure DC resistance
+    digitalWrite(PIN_WRAP_ENABLE, LOW);
+    delayMicroseconds(100);
+    int resistanceValue = analogRead(PIN_WRAP_CURRENT);
+    
+    // Short test pulse
+    digitalWrite(PIN_WRAP_ENABLE, HIGH);
+    analogWrite(PIN_PWM_CTRL, 64);
+    delayMicroseconds(500);
+    int impedanceValue = analogRead(PIN_WRAP_CURRENT);
+    analogWrite(PIN_PWM_CTRL, 0);
+    digitalWrite(PIN_WRAP_ENABLE, LOW);
+    
+    // Temperature check
+    int tempRaw = analogRead(PIN_WRAP_TEMP);
+    float temperature = 50.0 - (tempRaw * 50.0 / 1024.0);
+    
+    if (temperature > WRAP_TEMP_MAX) {
+        LOG_ERROR("Przegrzanie! T=%.1f°C", temperature);
+        return WRAP_OVERTEMP;
+    }
+    
+    if (resistanceValue < 20) {
+        LOG_ERROR("Zwarcie aplikatora!");
+        return WRAP_SHORT;
+    } else if (resistanceValue >= WRAP_CONNECTED_MIN && 
+               resistanceValue <= WRAP_CONNECTED_MAX) {
+        LOG_INFO("Aplikator wykryty (R=%d, T=%.1f°C)", 
+                 resistanceValue, temperature);
+        return WRAP_READY;
+    } else if (resistanceValue > 900) {
+        LOG_WARNING("Przerwana cewka!");
+        return WRAP_OPEN;
+    }
+    return WRAP_CONNECTED;
+}
+```
+
+**Bezpieczeństwo**:
+- ⚠️ Monitorować temperaturę (auto-stop >45°C)
+- ⚠️ Nie zaciskać zbyt mocno
+- ✅ Detekcja przerwy w obwodzie
+- ✅ Limit prądu stałego
+
+---
+
+### 12. 📊 Sensor Biofeedback (GSR, HRV, Temperatura)
+
+**Funkcja**: Wieloparametrowy sensor biofeedbacku monitorujący parametry fizjologiczne pacjenta w czasie rzeczywistym (GSR, HRV, temperatura) z automatyczną adaptacją terapii.
+
+**Specyfikacja**:
+- **GSR (Galvanic Skin Response)**: 0.1-100 µS, dokładność ±5%
+- **HRV (Heart Rate Variability)**: 30-200 BPM, dokładność ±2 BPM
+- **Temperatura**: 20-40°C, dokładność ±0.3°C
+- **Częstotliwość próbkowania**: 100-1000 Hz
+- **Izolacja**: 2500V RMS
+
+**Podłączenie Elektryczne**:
+```
+Arduino Nano                    Interface Board              Sensory
+┌──────────────┐               ┌──────────────────┐          ┌─────────────────┐
+│   A4 (SDA)   │◀────────────▶│ SDA (I2C)        │──────────│   GSR Sensor    │
+│   A5 (SCL)   │◀────────────▶│ SCL (I2C)        │          │   (0x48)        │
+│              │               │                  │          │                 │
+│   D11 (MOSI) │◀────────────▶│ MOSI (SPI)       │──────────│   PPG Sensor    │
+│   D12 (MISO) │◀────────────▶│ MISO (SPI)       │          │   (MAX30102)    │
+│   D13 (SCK)  │◀────────────▶│ SCK (SPI)        │          │                 │
+│   3.3V       │────────────▶│ VCC              │          │                 │
+│   GND        │────────────▶│ GND              │──────────│   COMMON        │
+│   D5         │◀────────────│ INT (PPG)        │          │                 │
+│   D6         │◀────────────│ DRDY (GSR)       │          │                 │
+│   A0         │◀────────────│ ADC (Temp NTC)   │──────────│   NTC 10k       │
+│   D7         │◀────────────│ DETECT           │          │                 │
+└──────────────┘               └──────────────────┘          └─────────────────┘
+```
+
+**Piny Arduino**:
+| Pin | Funkcja | Sensor | Opis |
+|-----|---------|--------|------|
+| **A4 (SDA)** | I2C Data | GSR, Temp | Dwukierunkowa linia danych |
+| **A5 (SCL)** | I2C Clock | GSR, Temp | Sygnał zegarowy |
+| **D11 (MOSI)** | SPI Out | PPG | Dane do PPG |
+| **D12 (MISO)** | SPI In | PPG | Dane z PPG |
+| **D13 (SCK)** | SPI Clock | PPG | Zegar SPI |
+| **D5** | INT | PPG | Interrupt nowy sample |
+| **D6** | DRDY | GSR | Data ready |
+| **A0** | ADC | NTC | Pomiar temperatury |
+| **D7** | DETECT | All | Wykrywanie podłączenia |
+
+**Komponenty**:
+- **U1**: MAX30102 (PPG + SpO2 sensor)
+- **U2**: Custom ASIC (GSR transimpedance amplifier)
+- **R_NTC**: 10kΩ @ 25°C (Thermistor)
+- **ISO**: ISO1540 (I2C/SPI isolator)
+- **Electrodes**: Ag/AgCl (Disposable electrodes)
+
+**Adresy I2C**:
+| Sensor | Adres I2C |
+|--------|-----------|
+| **GSR** | 0x48 |
+| **Temperature** | 0x4A |
+| **PPG SPI CS** | D10 |
+
+**Algorytm Wykrywania**:
+```cpp
+#define PIN_BIO_DETECT      7
+#define PIN_PPG_INT         5
+#define PIN_GSR_DRDY        6
+#define GSR_I2C_ADDRESS     0x48
+#define TEMP_I2C_ADDRESS    0x4A
+#define PPG_SPI_CS          10
+
+typedef enum {
+    BIO_READY = 0,
+    BIO_PARTIAL,
+    BIO_GSR_MISSING,
+    BIO_PPG_MISSING,
+    BIO_TEMP_MISSING,
+    BIO_ERROR
+} BioStatus_t;
+
+typedef struct {
+    bool gsrConnected;
+    bool ppgConnected;
+    bool tempConnected;
+    float gsrQuality;
+    float ppgQuality;
+    float confidence;
+} BioSensorStatus_t;
+
+BioStatus_t detectBiofeedbackSensors(BioSensorStatus_t* status) {
+    Wire.begin();
+    
+    // Test GSR (I2C)
+    Wire.beginTransmission(GSR_I2C_ADDRESS);
+    status->gsrConnected = (Wire.endTransmission() == 0);
+    
+    // Test PPG (SPI)
+    digitalWrite(PPG_SPI_CS, LOW);
+    delayMicroseconds(10);
+    uint8_t ppgId = SPI.transfer(0x00);  // Read ID register
+    digitalWrite(PPG_SPI_CS, HIGH);
+    status->ppgConnected = (ppgId == 0x15);  // MAX30102 ID
+    
+    // Test Temp (I2C)
+    Wire.beginTransmission(TEMP_I2C_ADDRESS);
+    status->tempConnected = (Wire.endTransmission() == 0);
+    
+    // Quality check (3 seconds)
+    if (status->gsrConnected) {
+        status->gsrQuality = evaluateGSRQuality();
+    }
+    if (status->ppgConnected) {
+        status->ppgQuality = evaluatePPGQuality();
+    }
+    
+    int sensorsOk = (status->gsrConnected ? 1 : 0) +
+                    (status->ppgConnected ? 1 : 0) +
+                    (status->tempConnected ? 1 : 0);
+    
+    status->confidence = (sensorsOk / 3.0) * 
+                         ((status->gsrQuality + status->ppgQuality) / 2.0);
+    
+    if (sensorsOk == 3 && status->confidence > 0.7) {
+        LOG_INFO("Biofeedback: wszystkie sensory gotowe");
+        return BIO_READY;
+    } else if (sensorsOk >= 2) {
+        LOG_WARNING("Biofeedback: tryb częściowy (%d/3)", sensorsOk);
+        return BIO_PARTIAL;
+    } else if (!status->gsrConnected) {
+        return BIO_GSR_MISSING;
+    } else if (!status->ppgConnected) {
+        return BIO_PPG_MISSING;
+    } else {
+        return BIO_ERROR;
+    }
+}
+```
+
+**Algorytmy Adaptacji Terapii**:
+```cpp
+void adaptBasedOnGSR(float gsrValue) {
+    // GSR in µS
+    if (gsrValue > 30.0) {
+        // High stress - increase relaxation
+        therapyParams.frequency = 10.0;  // Alpha Hz
+        therapyParams.intensity = 0.6;
+        therapyParams.duration += 300000;  // +5 minutes
+        LOG_INFO("Wysoki stres - adaptacja: relaksacja");
+    } else if (gsrValue < 5.0) {
+        // Very relaxed - maintain state
+        therapyParams.frequency = 7.83;  // Schumann
+        therapyParams.intensity = 0.4;
+        LOG_INFO("Głęboki relaks - utrzymanie");
+    }
+}
+
+void adaptBasedOnHRV(float hrvScore, float lfHfRatio) {
+    if (hrvScore < 30 && lfHfRatio > 2.0) {
+        // Low HRV, sympathetic dominance - stress
+        therapyParams.frequency = 6.0;  // Theta
+        therapyParams.modulation = MODULATION_AM;
+        LOG_INFO("Stres (niska HRV) - theta stimulation");
+    } else if (hrvScore > 70 && lfHfRatio < 1.0) {
+        // Good HRV, parasympathetic dominance - relaxation
+        therapyParams.frequency = 10.0;  // Alpha
+        LOG_INFO("Dobra HRV - maintenance alpha");
+    }
+}
+```
+
+**Bezpieczeństwo**:
+- ✅ Izolacja galwaniczna 2500V RMS
+- ✅ Elektrody jednorazowe Ag/AgCl
+- ✅ Monitoring jakości sygnału w czasie rzeczywistym
+- ✅ Auto-adaptacja parametrów terapii
+- ⚠️ Kalibracja przed pierwszym użyciem
+
+---
+
 ## 🔌 Szczegółowe Połączenia Pinów
 
 ### Połączenia SPI: Arduino ↔ ENC28J60
