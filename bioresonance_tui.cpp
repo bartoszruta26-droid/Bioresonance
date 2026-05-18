@@ -354,6 +354,15 @@ public:
             return false;
         }
         
+        // Check for connection errors using SO_ERROR
+        int so_error = 0;
+        socklen_t len = sizeof(so_error);
+        if (getsockopt(socket_fd, SOL_SOCKET, SO_ERROR, &so_error, &len) < 0 || so_error != 0) {
+            close(socket_fd);
+            socket_fd = -1;
+            return false;
+        }
+        
         // Set blocking mode
         fcntl(socket_fd, F_SETFL, flags);
         
@@ -550,7 +559,10 @@ public:
         
         while (std::getline(iss, line)) {
             if (line.find("Uptime:") != std::string::npos) {
-                sscanf(line.c_str(), "Uptime: %lus", &status.uptime_seconds);
+                unsigned long uptime_tmp;
+                if (sscanf(line.c_str(), "Uptime: %lu", &uptime_tmp) == 1) {
+                    status.uptime_seconds = static_cast<uint32_t>(uptime_tmp);
+                }
             } else if (line.find("Free Memory:") != std::string::npos) {
                 sscanf(line.c_str(), "Free Memory: %hu bytes", &status.free_memory);
             } else if (line.find("Temperature:") != std::string::npos) {
@@ -562,7 +574,10 @@ public:
             } else if (line.find("Network:") != std::string::npos) {
                 status.connected = (line.find("CONNECTED") != std::string::npos);
             } else if (line.find("Safety State:") != std::string::npos) {
-                sscanf(line.c_str(), "Safety State: %s", &status.safety_state[0]);
+                char safety_buf[64];
+                if (sscanf(line.c_str(), "Safety State: %63s", safety_buf) == 1) {
+                    status.safety_state = safety_buf;
+                }
             }
         }
     }
