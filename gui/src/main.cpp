@@ -26,24 +26,19 @@ static GuiApp* g_app = nullptr;
 static std::atomic<bool> g_shutdown_requested{false};
 
 /**
- * @brief Handler sygnałów systemowych
+ * @brief Handler sygnałów systemowych - tylko ustawia flagę atomową
  */
 void signal_handler(int signum) {
-    const char* signame = "UNKNOWN";
-    switch (signum) {
-        case SIGINT: signame = "SIGINT"; break;
-        case SIGTERM: signame = "SIGTERM"; break;
-#ifdef SIGQUIT
-        case SIGQUIT: signame = "SIGQUIT"; break;
-#endif
-    }
-    
     // Only set atomic flag - avoid non-async-signal-safe functions in handler
     g_shutdown_requested = true;
-    
-    // Schedule cleanup for main thread via event
-    if (g_app) {
-        g_app->stop();
+}
+
+/**
+ * @brief Bezpieczne wywołanie cleanup z głównego wątku
+ */
+void schedule_cleanup(GuiApp* app) {
+    if (app) {
+        app->stop();
     }
 }
 
@@ -254,8 +249,17 @@ int main(int argc, char* argv[]) {
         LOG_INFO("Aplikacja uruchomiona pomyślnie");
         std::cout << "Aplikacja uruchomiona pomyślnie.\n";
         
-        // Run the application
-        app.run();
+        // Run the application with signal monitoring
+        while (app.isRunning()) {
+            app.run();
+            
+            // Check for shutdown request from signal handler
+            if (g_shutdown_requested.load()) {
+                LOG_INFO("Otrzymano sygnał zakończenia pracy");
+                schedule_cleanup(&app);
+                break;
+            }
+        }
         
         // Publikuj zdarzenie zatrzymania
         PUBLISH_EVENT(EventType::APP_STOP, "main", "Application shutdown");

@@ -4,12 +4,15 @@
  */
 
 #include "network_client.h"
+#include "error_handler.h"
 #include <cstring>
 #include <chrono>
 #include <thread>
 
 #ifdef _WIN32
     static bool ws_initialized = false;
+#else
+    #include <cerrno>
 #endif
 
 NetworkClient::NetworkClient() : socket_fd(INVALID_SOCKET_VALUE), connected(false) {
@@ -123,19 +126,37 @@ bool NetworkClient::isConnected() const {
 }
 
 bool NetworkClient::sendTherapyPacket(const TherapyPacket& packet) {
-    if (!isConnected()) return false;
+    if (!isConnected()) {
+        REPORT_ERROR(ErrorCode::ERR_NETWORK_DISCONNECTED, ErrorCategory::NETWORK, 
+                    "Cannot send therapy packet - not connected");
+        return false;
+    }
     
     std::lock_guard<std::mutex> lock(tx_mutex);
     
     ssize_t sent = send(socket_fd, (const char*)&packet, sizeof(packet), 0);
-    return (sent == sizeof(packet));
+    if (sent < 0) {
+        REPORT_ERROR(ErrorCode::ERR_NETWORK_SEND_FAILED, ErrorCategory::NETWORK,
+                    "Failed to send therapy packet");
+        return false;
+    }
+    return (static_cast<size_t>(sent) == sizeof(packet));
 }
 
 bool NetworkClient::sendCommand(const std::string& cmd) {
-    if (!isConnected()) return false;
+    if (!isConnected()) {
+        REPORT_ERROR(ErrorCode::ERR_NETWORK_DISCONNECTED, ErrorCategory::NETWORK,
+                    "Cannot send command - not connected");
+        return false;
+    }
     
     std::lock_guard<std::mutex> lock(tx_mutex);
     ssize_t sent = send(socket_fd, cmd.c_str(), cmd.length(), 0);
+    if (sent < 0) {
+        REPORT_ERROR(ErrorCode::ERR_NETWORK_SEND_FAILED, ErrorCategory::NETWORK,
+                    "Failed to send command");
+        return false;
+    }
     return (sent > 0);
 }
 
@@ -155,9 +176,24 @@ std::string NetworkClient::receiveData(int timeout_ms) {
     
     char buffer[1024];
     ssize_t received = recv(socket_fd, buffer, sizeof(buffer) - 1, 0);
+    if (received < 0) {
+#ifdef _WIN32
+        int err = WSAGetLastError();
+        if (err != WSAEWOULDBLOCK) {
+            REPORT_ERROR(ErrorCode::ERR_NETWORK_RECV_FAILED, ErrorCategory::NETWORK,
+                        "Failed to receive data");
+        }
+#else
+        if (errno != EAGAIN && errno != EWOULDBLOCK) {
+            REPORT_ERROR(ErrorCode::ERR_NETWORK_RECV_FAILED, ErrorCategory::NETWORK,
+                        "Failed to receive data");
+        }
+#endif
+        return "";
+    }
     if (received > 0) {
         buffer[received] = '\0';
-        return std::string(buffer, received);
+        return std::string(buffer, static_cast<size_t>(received));
     }
     
     return "";
