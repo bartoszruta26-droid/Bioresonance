@@ -16,7 +16,7 @@
 // KONFIGURACJA IR LED STRIP (Zgodne z hardware.md)
 // ============================================================================
 
-#define IR_LED_PIN            5   // Timer0/Timer2 - Carrier 38kHz
+#define IR_LED_PIN            3   // Timer2 OC2B - Carrier 38kHz
 #define IR_MODULATION_PIN     6   // Modulacja terapeutyczna AM/FM/Burst
 
 #define IR_CARRIER_FREQ_HZ    38000  // Standardowa częstotliwość IR 38kHz

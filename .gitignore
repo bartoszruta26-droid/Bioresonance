@@ -6,32 +6,14 @@
 *.map
 *.d
 *.o
-*.a
-*.so
-*.dylib
-*.dll
-
-# Arduino IDE specific
-build/
-Build/
-core/
-libraries/
-
-# PlatformIO
-.platformio/
-.piolibdeps/
-
-# Arduino CLI
-.cache/
+*.obj
+*.out
 
 # Dependencies
-node_modules/
-venv/
-.venv/
-__pycache__/
-*.egg-info/
-dist/
-build/
+*.a
+*.so
+*.dll
+*.exe
 
 # Logs and temp files
 *.log
