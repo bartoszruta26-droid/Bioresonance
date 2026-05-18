@@ -2,7 +2,7 @@
 
 # Skrypt instalacyjny z menu
 # Autor: Assistant
-# Wersja: 1.0
+# Wersja: 2.0 - Z aktualizacją GitHub i poprawioną instalacją
 
 # Kolory dla wyjścia
 RED='\033[0;31m'
@@ -11,6 +11,11 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
+
+# Konfiguracja GitHub
+GITHUB_REPO="https://github.com/bartoszruta26-droid/Bioresonance"
+GITHUB_BRANCH="main"
+INSTALL_DIR="/opt/bioresonance"
 
 # Funkcja do czyszczenia ekranu
 clear_screen() {
@@ -21,6 +26,7 @@ clear_screen() {
 show_header() {
     echo -e "${CYAN}========================================${NC}"
     echo -e "${CYAN}       Skrypt Instalacyjny${NC}"
+    echo -e "${CYAN}       Bioresonance v2.0${NC}"
     echo -e "${CYAN}========================================${NC}"
     echo ""
 }
@@ -31,49 +37,109 @@ show_menu() {
     show_header
     echo -e "${YELLOW}Wybierz opcję:${NC}"
     echo ""
-    echo -e "  ${GREEN}1)${NC} Instalacja zależności"
-    echo -e "  ${GREEN}2)${NC} Instrukcja Bashtui"
-    echo -e "  ${GREEN}3)${NC} Instrukcja Cpptui"
-    echo -e "  ${GREEN}4)${NC} Instalacja GUI"
-    echo -e "  ${GREEN}5)${NC} Instalacja WebUI"
-    echo -e "  ${GREEN}6)${NC} Instalacja AndroidApp"
-    echo -e "  ${GREEN}7)${NC} Weryfikacja instalacji"
-    echo -e "  ${GREEN}8)${NC} Wyjście"
+    echo -e "  ${GREEN}1)${NC} Instalacja zależności systemowych"
+    echo -e "  ${GREEN}2)${NC} Pobierz projekt z GitHub"
+    echo -e "  ${GREEN}3)${NC} Instrukcja Bashtui"
+    echo -e "  ${GREEN}4)${NC} Instrukcja Cpptui"
+    echo -e "  ${GREEN}5)${NC} Instalacja i kompilacja GUI"
+    echo -e "  ${GREEN}6)${NC} Instalacja WebUI (Apache + PHP)"
+    echo -e "  ${GREEN}7)${NC} Instalacja AndroidApp"
+    echo -e "  ${GREEN}8)${NC} Weryfikacja instalacji"
+    echo -e "  ${GREEN}9)${NC} Wyjście"
     echo ""
-    echo -n -e "${BLUE}Podaj numer opcji [1-8]: ${NC}"
+    echo -n -e "${BLUE}Podaj numer opcji [1-9]: ${NC}"
 }
 
 # Funkcja do instalacji zależności
 install_dependencies() {
     clear_screen
     show_header
-    echo -e "${YELLOW}Instalacja zależności...${NC}"
+    echo -e "${YELLOW}Instalacja zależności systemowych...${NC}"
     echo ""
     
     # Sprawdzenie menedżera pakietów
     if command -v apt &> /dev/null; then
         echo -e "${BLUE}Wykryto apt. Instalowanie zależności...${NC}"
         sudo apt update
-        sudo apt install -y build-essential git curl wget nodejs npm python3 python3-pip
+        sudo apt install -y build-essential git curl wget nodejs npm python3 python3-pip \
+            apache2 php php-sockets php-curl libsdl2-dev cmake xorg-dev
     elif command -v yum &> /dev/null; then
         echo -e "${BLUE}Wykryto yum. Instalowanie zależności...${NC}"
         sudo yum update -y
-        sudo yum install -y gcc gcc-c++ git curl wget nodejs npm python3 python3-pip
+        sudo yum install -y gcc gcc-c++ git curl wget nodejs npm python3 python3-pip \
+            httpd php php-sockets php-curl SDL2-devel cmake
     elif command -v dnf &> /dev/null; then
         echo -e "${BLUE}Wykryto dnf. Instalowanie zależności...${NC}"
         sudo dnf update -y
-        sudo dnf install -y gcc gcc-c++ git curl wget nodejs npm python3 python3-pip
+        sudo dnf install -y gcc gcc-c++ git curl wget nodejs npm python3 python3-pip \
+            httpd php php-sockets php-curl SDL2-devel cmake
     elif command -v pacman &> /dev/null; then
         echo -e "${BLUE}Wykryto pacman. Instalowanie zależności...${NC}"
         sudo pacman -Syu --noconfirm
-        sudo pacman -S --noconfirm base-devel git curl wget nodejs npm python python-pip
+        sudo pacman -S --noconfirm base-devel git curl wget nodejs npm python python-pip \
+            apache php sdl2 cmake
     else
         echo -e "${RED}Nie wykryto znanego menedżera pakietów.${NC}"
         echo "Proszę ręcznie zainstalować niezbędne zależności."
     fi
     
     echo ""
-    echo -e "${GREEN}Zakończono instalację zależności.${NC}"
+    echo -e "${GREEN}Zakończono instalację zależności systemowych.${NC}"
+    echo -n "Naciśnij Enter, aby kontynuować..."
+    read
+}
+
+# Funkcja do pobierania projektu z GitHub
+download_from_github() {
+    clear_screen
+    show_header
+    echo -e "${YELLOW}Pobieranie projektu z GitHub...${NC}"
+    echo ""
+    echo -e "${CYAN}Repozytorium: ${GITHUB_REPO}${NC}"
+    echo -e "${CYAN}Gałąź: ${GITHUB_BRANCH}${NC}"
+    echo -e "${CYAN}Katalog instalacji: ${INSTALL_DIR}${NC}"
+    echo ""
+    
+    # Sprawdź czy katalog istnieje
+    if [ -d "$INSTALL_DIR" ]; then
+        echo -e "${YELLOW}Katalog ${INSTALL_DIR} już istnieje.${NC}"
+        echo -n "Czy chcesz go usunąć i pobrać projekt ponownie? (t/n): "
+        read -r response
+        if [[ "$response" =~ ^[Tt]$ ]]; then
+            sudo rm -rf "$INSTALL_DIR"
+        else
+            echo -e "${BLUE}Przechodzenie do istniejącego katalogu...${NC}"
+            cd "$INSTALL_DIR" || return
+            echo -e "${GREEN}Projekt jest już dostępny w ${INSTALL_DIR}${NC}"
+            echo -n "Naciśnij Enter, aby kontynuować..."
+            read
+            return
+        fi
+    fi
+    
+    # Pobierz projekt
+    echo -e "${BLUE}Klonowanie repozytorium...${NC}"
+    if sudo git clone "$GITHUB_REPO" "$INSTALL_DIR"; then
+        echo ""
+        echo -e "${GREEN}Pomyślnie pobrano projekt z GitHub!${NC}"
+        echo ""
+        echo -e "${CYAN}Struktura projektu:${NC}"
+        ls -la "$INSTALL_DIR"
+        echo ""
+        echo -e "${BLUE}Dostępne komponenty:${NC}"
+        echo "  - gui/          : Aplikacja GUI (C++/SDL2/ImGui)"
+        echo "  - webui/        : Interfejs Web (PHP/Apache)"
+        echo "  - android_app/  : Aplikacja Android (Kotlin)"
+        echo "  - bash_tui/     : Interfejs TUI (Bash)"
+        echo "  - tui/          : Interfejs TUI (C++)"
+        echo "  - ResoNet_Nano/ : Firmware Arduino"
+    else
+        echo -e "${RED}Błąd podczas pobierania projektu z GitHub!${NC}"
+        echo "Sprawdź połączenie z internetem i upewnij się, że repozytorium jest dostępne."
+        return 1
+    fi
+    
+    echo ""
     echo -n "Naciśnij Enter, aby kontynuować..."
     read
 }
@@ -147,99 +213,431 @@ instruction_cpptui() {
     read
 }
 
-# Funkcja do instalacji GUI
+# Funkcja do instalacji GUI - kompilacja z plików GitHub
 install_gui() {
     clear_screen
     show_header
-    echo -e "${YELLOW}Instalacja GUI...${NC}"
+    echo -e "${YELLOW}Instalacja i kompilacja GUI...${NC}"
     echo ""
     
-    echo -e "${BLUE}Instalowanie zależności dla GUI...${NC}"
+    # Sprawdź czy katalog z projektem istnieje
+    if [ ! -d "$INSTALL_DIR" ]; then
+        echo -e "${RED}Projekt nie został pobrany! Najpierw wybierz opcję 2 (Pobierz projekt z GitHub).${NC}"
+        echo ""
+        echo -n "Czy chcesz pobrać projekt teraz? (t/n): "
+        read -r response
+        if [[ "$response" =~ ^[Tt]$ ]]; then
+            download_from_github
+        else
+            echo -e "${YELLOW}Anulowano instalację GUI.${NC}"
+            echo -n "Naciśnij Enter, aby kontynuować..."
+            read
+            return
+        fi
+    fi
     
-    if command -v apt &> /dev/null; then
-        sudo apt update
-        sudo apt install -y python3-tk qtbase5-dev qtchooser qt5-qmake qtbase5-dev-tools
-    elif command -v yum &> /dev/null; then
-        sudo yum install -y python3-tkinter qt5-qtbase-devel
-    elif command -v dnf &> /dev/null; then
-        sudo dnf install -y python3-tkinter qt5-qtbase-devel
-    elif command -v pacman &> /dev/null; then
-        sudo pacman -S --noconfirm tk qt5-base
-    else
-        echo -e "${RED}Nie wykryto znanego menedżera pakietów.${NC}"
+    cd "$INSTALL_DIR/gui" || return
+    
+    echo -e "${BLUE}Sprawdzanie zależności dla GUI...${NC}"
+    
+    # Sprawdź czy SDL2 jest zainstalowany
+    if ! pkg-config --exists sdl2 2>/dev/null; then
+        echo -e "${YELLOW}SDL2 nie jest zainstalowane. Instalowanie...${NC}"
+        if command -v apt &> /dev/null; then
+            sudo apt update && sudo apt install -y libsdl2-dev cmake xorg-dev
+        elif command -v yum &> /dev/null; then
+            sudo yum install -y SDL2-devel cmake
+        elif command -v dnf &> /dev/null; then
+            sudo dnf install -y SDL2-devel cmake
+        elif command -v pacman &> /dev/null; then
+            sudo pacman -S --noconfirm sdl2 cmake
+        fi
     fi
     
     echo ""
-    echo -e "${GREEN}Zakończono instalację GUI.${NC}"
+    echo -e "${BLUE}Kompilowanie GUI z plików GitHub...${NC}"
+    echo ""
+    
+    # Utwórz katalog build
+    mkdir -p build
+    cd build || return
+    
+    # Uruchom cmake i make
+    echo -e "${CYAN}Uruchamianie cmake...${NC}"
+    if cmake ..; then
+        echo -e "${CYAN}Kompilowanie...${NC}"
+        if cmake --build . -j$(nproc); then
+            echo ""
+            echo -e "${GREEN}Pomyślnie skompilowano aplikację GUI!${NC}"
+            echo ""
+            echo -e "${CYAN}Lokalizacja pliku wykonywalnego:${NC}"
+            echo "  $INSTALL_DIR/gui/build/bioresonance_gui"
+            echo ""
+            echo -e "${BLUE}Aby uruchomić:${NC}"
+            echo "  cd $INSTALL_DIR/gui/build"
+            echo "  ./bioresonance_gui"
+        else
+            echo -e "${RED}Błąd podczas kompilacji!${NC}"
+            echo "Sprawdź logi powyżej, aby uzyskać więcej informacji."
+            echo -n "Naciśnij Enter, aby kontynuować..."
+            read
+            return 1
+        fi
+    else
+        echo -e "${RED}Błąd podczas konfiguracji cmake!${NC}"
+        echo "Sprawdź logi powyżej, aby uzyskać więcej informacji."
+        echo -n "Naciśnij Enter, aby kontynuować..."
+        read
+        return 1
+    fi
+    
+    echo ""
     echo -n "Naciśnij Enter, aby kontynuować..."
     read
 }
 
-# Funkcja do instalacji WebUI
+# Funkcja do instalacji WebUI - Apache + PHP na bazie plików GitHub
 install_webui() {
     clear_screen
     show_header
-    echo -e "${YELLOW}Instalacja WebUI...${NC}"
+    echo -e "${YELLOW}Instalacja WebUI (Apache + PHP)...${NC}"
     echo ""
     
-    echo -e "${BLUE}Instalowanie zależności dla WebUI...${NC}"
-    
-    if command -v npm &> /dev/null; then
-        echo "Instalowanie Node.js dependencies..."
-        npm install -g express react-cli vue-cli
-    else
-        echo -e "${RED}npm nie jest zainstalowane. Najpierw zainstaluj Node.js.${NC}"
+    # Sprawdź czy katalog z projektem istnieje
+    if [ ! -d "$INSTALL_DIR" ]; then
+        echo -e "${RED}Projekt nie został pobrany! Najpierw wybierz opcję 2 (Pobierz projekt z GitHub).${NC}"
+        echo ""
+        echo -n "Czy chcesz pobrać projekt teraz? (t/n): "
+        read -r response
+        if [[ "$response" =~ ^[Tt]$ ]]; then
+            download_from_github
+        else
+            echo -e "${YELLOW}Anulowano instalację WebUI.${NC}"
+            echo -n "Naciśnij Enter, aby kontynuować..."
+            read
+            return
+        fi
     fi
     
-    if command -v pip3 &> /dev/null; then
-        echo "Instalowanie Python dependencies..."
-        pip3 install flask django
+    echo -e "${BLUE}Instalowanie Apache i PHP z wymaganymi rozszerzeniami...${NC}"
+    echo ""
+    
+    # Instalacja Apache i PHP w zależności od dystrybucji
+    if command -v apt &> /dev/null; then
+        echo -e "${CYAN}Wykryto apt. Instalowanie Apache2 i PHP...${NC}"
+        sudo apt update
+        if ! sudo apt install -y apache2 php php-sockets php-curl libapache2-mod-php; then
+            echo -e "${RED}Błąd podczas instalacji Apache/PHP!${NC}"
+            echo -n "Naciśnij Enter, aby kontynuować..."
+            read
+            return 1
+        fi
+    elif command -v yum &> /dev/null; then
+        echo -e "${CYAN}Wykryto yum. Instalowanie HTTPD i PHP...${NC}"
+        sudo yum install -y httpd php php-sockets php-curl
+    elif command -v dnf &> /dev/null; then
+        echo -e "${CYAN}Wykryto dnf. Instalowanie HTTPD i PHP...${NC}"
+        sudo dnf install -y httpd php php-sockets php-curl
+    elif command -v pacman &> /dev/null; then
+        echo -e "${CYAN}Wykryto pacman. Instalowanie Apache i PHP...${NC}"
+        sudo pacman -S --noconfirm apache php
     else
-        echo -e "${RED}pip3 nie jest zainstalowane.${NC}"
+        echo -e "${RED}Nie wykryto znanego menedżera pakietów.${NC}"
+        echo "Proszę ręcznie zainstalować Apache i PHP."
+        echo -n "Naciśnij Enter, aby kontynuować..."
+        read
+        return
     fi
     
     echo ""
-    echo -e "${GREEN}Zakończono instalację WebUI.${NC}"
+    echo -e "${BLUE}Konfigurowanie WebUI z plików GitHub...${NC}"
+    echo ""
+    
+    # Skopiuj pliki WebUI do katalogu Apache
+    WEBUI_SRC="$INSTALL_DIR/webui"
+    if [ -d "$WEBUI_SRC" ]; then
+        echo -e "${CYAN}Kopiowanie plików WebUI do katalogu serwera...${NC}"
+        
+        if command -v apt &> /dev/null; then
+            APACHE_DIR="/var/www/html"
+        else
+            APACHE_DIR="/var/www/html"
+        fi
+        
+        sudo mkdir -p "$APACHE_DIR/bioresonance"
+        sudo cp -r "$WEBUI_SRC"/* "$APACHE_DIR/bioresonance/"
+        sudo chown -R www-data:www-data "$APACHE_DIR/bioresonance" 2>/dev/null || \
+            sudo chown -R apache:apache "$APACHE_DIR/bioresonance" 2>/dev/null || true
+        sudo chmod -R 755 "$APACHE_DIR/bioresonance"
+        
+        echo -e "${GREEN}Pliki WebUI skopiowane do: $APACHE_DIR/bioresonance${NC}"
+    else
+        echo -e "${RED}Katalog webui nie znaleziony w projekcie!${NC}"
+        echo -n "Naciśnij Enter, aby kontynuować..."
+        read
+        return 1
+    fi
+    
+    # Sprawdź czy PHP sockets są włączone
+    echo -e "${CYAN}Sprawdzanie rozszerzenia php-sockets...${NC}"
+    if php -m | grep -q sockets; then
+        echo -e "${GREEN}Rozszerzenie sockets jest włączone.${NC}"
+    else
+        echo -e "${YELLOW}Rozszerzenie sockets nie jest włączone. Spróbuj zainstalować php-sockets.${NC}"
+    fi
+    
+    # Restart Apache
+    echo -e "${CYAN}Restartowanie serwera Apache...${NC}"
+    if command -v systemctl &> /dev/null; then
+        sudo systemctl restart apache2 2>/dev/null || sudo systemctl restart httpd 2>/dev/null || true
+        sudo systemctl enable apache2 2>/dev/null || sudo systemctl enable httpd 2>/dev/null || true
+    fi
+    
+    echo ""
+    echo -e "${GREEN}Zakończono instalację WebUI!${NC}"
+    echo ""
+    echo -e "${CYAN}WebUI jest dostępny pod adresem:${NC}"
+    echo "  http://localhost/bioresonance/"
+    echo ""
+    echo -e "${BLUE}Pliki źródłowe pochodzą z:${NC}"
+    echo "  $GITHUB_REPO"
+    echo ""
     echo -n "Naciśnij Enter, aby kontynuować..."
     read
 }
 
-# Funkcja do instalacji AndroidApp
+# Funkcja do instalacji AndroidApp - na bazie plików GitHub z automatyczną kompilacją
 install_androidapp() {
     clear_screen
     show_header
-    echo -e "${YELLOW}Instalacja AndroidApp...${NC}"
+    echo -e "${YELLOW}Instalacja AndroidApp (na bazie plików GitHub)...${NC}"
     echo ""
     
-    echo -e "${BLUE}Instalowanie narzędzi dla Android...${NC}"
+    # Sprawdź czy katalog z projektem istnieje
+    if [ ! -d "$INSTALL_DIR" ]; then
+        echo -e "${RED}Projekt nie został pobrany! Najpierw wybierz opcję 2 (Pobierz projekt z GitHub).${NC}"
+        echo ""
+        echo -n "Czy chcesz pobrać projekt teraz? (t/n): "
+        read -r response
+        if [[ "$response" =~ ^[Tt]$ ]]; then
+            download_from_github
+        else
+            echo -e "${YELLOW}Anulowano instalację AndroidApp.${NC}"
+            echo -n "Naciśnij Enter, aby kontynuować..."
+            read
+            return
+        fi
+    fi
+    
+    echo -e "${BLUE}Konfigurowanie środowiska dla Android App...${NC}"
+    echo ""
     
     # Sprawdzenie czy JAVA jest zainstalowana
     if ! command -v java &> /dev/null; then
         echo -e "${YELLOW}Java nie jest zainstalowana. Instalowanie...${NC}"
         if command -v apt &> /dev/null; then
-            sudo apt install -y openjdk-11-jdk
+            sudo apt install -y openjdk-17-jdk
         elif command -v yum &> /dev/null; then
-            sudo yum install -y java-11-openjdk-devel
+            sudo yum install -y java-17-openjdk-devel
         elif command -v dnf &> /dev/null; then
-            sudo dnf install -y java-11-openjdk-devel
+            sudo dnf install -y java-17-openjdk-devel
         elif command -v pacman &> /dev/null; then
-            sudo pacman -S --noconfirm jdk11-openjdk
+            sudo pacman -S --noconfirm jdk17-openjdk
+        fi
+    else
+        echo -e "${GREEN}Java jest już zainstalowana: $(java -version 2>&1 | head -n 1)${NC}"
+    fi
+    
+    echo ""
+    echo -e "${CYAN}Projekt Android App znajduje się w:${NC}"
+    echo "  $INSTALL_DIR/android_app/"
+    echo ""
+    
+    # Sprawdź czy ANDROID_HOME lub ANDROID_SDK_ROOT jest ustawione
+    if [ -z "$ANDROID_HOME" ] && [ -z "$ANDROID_SDK_ROOT" ]; then
+        echo -e "${YELLOW}Zmienne środowiskowe Android SDK nie są ustawione.${NC}"
+        echo ""
+        echo -e "${BLUE}Aby zbudować aplikację Android, musisz mieć zainstalowane Android SDK.${NC}"
+        echo ""
+        echo "Opcje:"
+        echo "  1. Zainstaluj Android Studio (zalecane)"
+        echo "     https://developer.android.com/studio"
+        echo ""
+        echo "  2. Zainstaluj cmdline-tools ręcznie:"
+        echo "     mkdir -p ~/Android/Sdk/cmdline-tools"
+        echo "     cd ~/Android/Sdk/cmdline-tools"
+        echo "     wget https://dl.google.com/android/repository/commandlinetools-linux-*.zip"
+        echo "     unzip commandlinetools-linux-*.zip"
+        echo "     mv cmdline-tools latest"
+        echo ""
+        echo "  3. Dodaj do ~/.bashrc:"
+        echo "     export ANDROID_HOME=\$HOME/Android/Sdk"
+        echo "     export PATH=\$PATH:\$ANDROID_HOME/cmdline-tools/latest/bin"
+        echo "     export PATH=\$PATH:\$ANDROID_HOME/platform-tools"
+        echo "     export PATH=\$PATH:\$ANDROID_HOME/build-tools/34.0.0"
+        echo ""
+        
+        # Spróbuj wykryć typową lokalizację Android SDK
+        if [ -d "$HOME/Android/Sdk" ]; then
+            echo -e "${GREEN}Wykryto Android SDK w: $HOME/Android/Sdk${NC}"
+            export ANDROID_HOME="$HOME/Android/Sdk"
+            export PATH="$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools"
+        elif [ -d "/opt/android-sdk" ]; then
+            echo -e "${GREEN}Wykryto Android SDK w: /opt/android-sdk${NC}"
+            export ANDROID_HOME="/opt/android-sdk"
+            export PATH="$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools"
+        else
+            echo -e "${YELLOW}Nie wykryto Android SDK. Kontynuowanie bez automatycznej kompilacji.${NC}"
+            echo ""
+            echo -e "${BLUE}Możesz ręcznie zbudować aplikację po skonfigurowaniu SDK:${NC}"
+            echo "  cd $INSTALL_DIR/android_app/"
+            echo "  ./gradlew assembleDebug"
+            echo ""
+            echo -n "Naciśnij Enter, aby kontynuować..."
+            read
+            return
+        fi
+    fi
+    
+    # Sprawdź czy gradlew istnieje, jeśli nie - utwórz wrapper
+    ANDROID_DIR="$INSTALL_DIR/android_app"
+    cd "$ANDROID_DIR" || return
+    
+    if [ ! -f "gradlew" ]; then
+        echo -e "${CYAN}Tworzenie Gradle Wrapper...${NC}"
+        
+        # Sprawdź czy gradle jest zainstalowane systemowo
+        if command -v gradle &> /dev/null; then
+            echo -e "${BLUE}Wykryto systemowe Gradle. Generowanie wrapper...${NC}"
+            gradle wrapper --gradle-version 8.0
+        else
+            echo -e "${YELLOW}Gradle nie jest zainstalowane. Pobieranie Gradle Wrapper...${NC}"
+            
+            # Pobierz gradle-wrapper.jar
+            mkdir -p gradle/wrapper
+            if ! curl -L -o gradle/wrapper/gradle-wrapper.jar \
+                "https://raw.githubusercontent.com/gradle/gradle/master/gradle/wrapper/gradle-wrapper.jar" 2>/dev/null; then
+                echo -e "${RED}Nie udało się pobrać gradle-wrapper.jar.${NC}"
+                echo "Spróbuj ręcznie zainstalować Gradle lub Android Studio."
+                echo ""
+                echo -e "${BLUE}Alternatywnie możesz otworzyć projekt w Android Studio:${NC}"
+                echo "  1. Otwórz Android Studio"
+                echo "  2. Wybierz 'Open an Existing Project'"
+                echo "  3. Wskaż katalog: $ANDROID_DIR"
+                echo ""
+                echo -n "Naciśnij Enter, aby kontynuować..."
+                read
+                return
+            fi
+            
+            # Utwórz gradlew script
+            cat > gradlew << 'GRADLEW_SCRIPT'
+#!/bin/bash
+##############################################################################
+## Gradle start up script for UN*X
+##############################################################################
+
+APP_NAME="Gradle"
+APP_BASE_NAME=`basename "$0"`
+DIRNAME=`dirname "$0"`
+APP_HOME=`cd "$DIRNAME" > /dev/null; pwd`
+
+CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
+
+DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
+JAVA_OPTS=""
+
+CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
+
+exec java $JAVA_OPTS $DEFAULT_JVM_OPTS -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"
+GRADLEW_SCRIPT
+            chmod +x gradlew
+            
+            # Utwórz gradle-wrapper.properties
+            cat > gradle/wrapper/gradle-wrapper.properties << 'PROPS'
+distributionBase=GRADLE_USER_HOME
+distributionPath=wrapper/dists
+distributionUrl=https\://services.gradle.org/distributions/gradle-8.0-bin.zip
+zipStoreBase=GRADLE_USER_HOME
+zipStorePath=wrapper/dists
+PROPS
         fi
     fi
     
     echo ""
-    echo "Aby skonfigurować Android SDK:"
-    echo "  1. Pobierz Android Command Line Tools z: https://developer.android.com/studio"
-    echo "  2. Rozpakuj do ~/Android/Sdk"
-    echo "  3. Dodaj do ~/.bashrc:"
-    echo "     export ANDROID_HOME=\$HOME/Android/Sdk"
-    echo "     export PATH=\$PATH:\$ANDROID_HOME/tools"
-    echo "     export PATH=\$PATH:\$ANDROID_HOME/platform-tools"
+    echo -e "${BLUE}Rozpoczynanie kompilacji aplikacji Android...${NC}"
     echo ""
-    echo "  4. Zainstaluj wymagane komponenty:"
-    echo "     sdkmanager \"platform-tools\" \"platforms;android-30\""
+    
+    # Akceptuj licencje Android SDK (automatycznie)
+    if [ -n "$ANDROID_HOME" ] && [ -d "$ANDROID_HOME/licenses" ]; then
+        echo -e "${CYAN}Akceptowanie licencji Android SDK...${NC}"
+        yes | sdkmanager --licenses > /dev/null 2>&1 || true
+    fi
+    
+    # Sprawdź czy potrzebne komponenty SDK są zainstalowane
+    if command -v sdkmanager &> /dev/null; then
+        echo -e "${CYAN}Sprawdzanie wymaganych komponentów SDK...${NC}"
+        sdkmanager --list 2>/dev/null | grep -E "build-tools;34.0.0|platforms;android-34" || true
+    fi
+    
+    # Uruchom kompilację
+    echo -e "${CYAN}Uruchamianie Gradle build...${NC}"
     echo ""
-    echo -e "${GREEN}Zakończono konfigurację AndroidApp.${NC}"
+    
+    if ./gradlew assembleDebug --stacktrace; then
+        echo ""
+        echo -e "${GREEN}========================================${NC}"
+        echo -e "${GREEN}Pomyślnie zbudowano aplikację Android!${NC}"
+        echo -e "${GREEN}========================================${NC}"
+        echo ""
+        
+        # Znajdź wygenerowany plik APK
+        APK_FILE=$(find "$ANDROID_DIR" -name "*.apk" -path "*/build/outputs/apk/*" -type f 2>/dev/null | head -n 1)
+        
+        if [ -n "$APK_FILE" ]; then
+            echo -e "${CYAN}Plik APK znajduje się w:${NC}"
+            echo "  $APK_FILE"
+            echo ""
+            echo -e "${BLUE}Aby zainstalować na urządzeniu:${NC}"
+            echo "  adb install $APK_FILE"
+            echo ""
+            echo -e "${BLUE}Lub skopiuj plik na urządzenie i zainstaluj ręcznie.${NC}"
+        else
+            echo -e "${YELLOW}Nie znaleziono pliku APK w oczekiwanym miejscu.${NC}"
+            echo "Sprawdź katalog build/outputs/apk/ w projekcie."
+        fi
+    else
+        echo ""
+        echo -e "${RED}========================================${NC}"
+        echo -e "${RED}Błąd podczas kompilacji aplikacji Android!${NC}"
+        echo -e "${RED}========================================${NC}"
+        echo ""
+        echo -e "${YELLOW}Możliwe przyczyny:${NC}"
+        echo "  - Brak Android SDK lub niepoprawnie skonfigurowane"
+        echo "  - Brak wymaganych komponentów (build-tools, platform)"
+        echo "  - Błędy w kodzie źródłowym"
+        echo "  - Problemy z siecią podczas pobierania zależności"
+        echo ""
+        echo -e "${BLUE}Rozwiązania:${NC}"
+        echo "  1. Upewnij się, że ANDROID_HOME jest poprawnie ustawione"
+        echo "  2. Zainstaluj brakujące komponenty przez sdkmanager:"
+        echo "     sdkmanager \"platform-tools\" \"platforms;android-34\" \"build-tools;34.0.0\""
+        echo "  3. Spróbuj otworzyć projekt w Android Studio"
+        echo ""
+        echo -e "${CYAN}Możesz też ręcznie uruchomić kompilację:${NC}"
+        echo "  cd $ANDROID_DIR"
+        echo "  ./gradlew assembleDebug"
+        echo ""
+        echo -n "Naciśnij Enter, aby kontynuować..."
+        read
+        return 1
+    fi
+    
+    echo ""
+    echo -e "${CYAN}Pliki źródłowe pochodzą z:${NC}"
+    echo "  $GITHUB_REPO"
+    echo ""
+    echo -e "${GREEN}Zakończono instalację i kompilację AndroidApp.${NC}"
     echo -n "Naciśnij Enter, aby kontynuować..."
     read
 }
@@ -305,6 +703,18 @@ verify_installation() {
         ((errors++))
     fi
     
+    if command -v php &> /dev/null; then
+        echo -e "  ${GREEN}✓${NC} php jest zainstalowany ($(php --version | head -n 1))"
+    else
+        echo -e "  ${YELLOW}!${NC} php nie jest zainstalowany (wymagany dla WebUI)"
+    fi
+    
+    if command -v apache2ctl &> /dev/null || command -v httpd &> /dev/null; then
+        echo -e "  ${GREEN}✓${NC} Apache jest zainstalowany"
+    else
+        echo -e "  ${YELLOW}!${NC} Apache nie jest zainstalowany (wymagany dla WebUI)"
+    fi
+    
     if command -v java &> /dev/null; then
         echo -e "  ${GREEN}✓${NC} java jest zainstalowana ($(java -version 2>&1 | head -n 1))"
     else
@@ -316,6 +726,29 @@ verify_installation() {
     else
         echo -e "  ${RED}✗${NC} gcc nie jest zainstalowany"
         ((errors++))
+    fi
+    
+    if command -v cmake &> /dev/null; then
+        echo -e "  ${GREEN}✓${NC} cmake jest zainstalowany ($(cmake --version | head -n 1))"
+    else
+        echo -e "  ${YELLOW}!${NC} cmake nie jest zainstalowany (wymagany dla GUI)"
+    fi
+    
+    # Sprawdzenie czy projekt został pobrany
+    echo ""
+    echo "Sprawdzanie projektu Bioresonance:"
+    if [ -d "$INSTALL_DIR" ]; then
+        echo -e "  ${GREEN}✓${NC} Projekt pobrany do: $INSTALL_DIR"
+        
+        # Sprawdź podkatalogi
+        [ -d "$INSTALL_DIR/gui" ] && echo -e "  ${GREEN}✓${NC} gui/ - dostępny" || echo -e "  ${YELLOW}!${NC} gui/ - brak"
+        [ -d "$INSTALL_DIR/webui" ] && echo -e "  ${GREEN}✓${NC} webui/ - dostępny" || echo -e "  ${YELLOW}!${NC} webui/ - brak"
+        [ -d "$INSTALL_DIR/android_app" ] && echo -e "  ${GREEN}✓${NC} android_app/ - dostępny" || echo -e "  ${YELLOW}!${NC} android_app/ - brak"
+        [ -d "$INSTALL_DIR/bash_tui" ] && echo -e "  ${GREEN}✓${NC} bash_tui/ - dostępny" || echo -e "  ${YELLOW}!${NC} bash_tui/ - brak"
+        [ -d "$INSTALL_DIR/tui" ] && echo -e "  ${GREEN}✓${NC} tui/ - dostępny" || echo -e "  ${YELLOW}!${NC} tui/ - brak"
+        [ -d "$INSTALL_DIR/ResoNet_Nano" ] && echo -e "  ${GREEN}✓${NC} ResoNet_Nano/ - dostępny" || echo -e "  ${YELLOW}!${NC} ResoNet_Nano/ - brak"
+    else
+        echo -e "  ${RED}✗${NC} Projekt nie został pobrany - użyj opcji 2"
     fi
     
     echo ""
@@ -342,24 +775,27 @@ main() {
                 install_dependencies
                 ;;
             2)
-                instruction_bashtui
+                download_from_github
                 ;;
             3)
-                instruction_cpptui
+                instruction_bashtui
                 ;;
             4)
-                install_gui
+                instruction_cpptui
                 ;;
             5)
-                install_webui
+                install_gui
                 ;;
             6)
-                install_androidapp
+                install_webui
                 ;;
             7)
-                verify_installation
+                install_androidapp
                 ;;
             8)
+                verify_installation
+                ;;
+            9)
                 clear_screen
                 show_header
                 echo -e "${GREEN}Dziękujemy za korzystanie ze skryptu instalacyjnego!${NC}"
