@@ -33,6 +33,7 @@
 #include "event_system.h"
 #include "pwm_engine.h"
 #include "network_system.h"
+#include "ir_led_engine.h"  // Nowy moduł: IR LED Strip
 
 // ============================================================================
 // KONFIGURACJA SYSTEMU
@@ -46,6 +47,7 @@
 #define TASK_LOGGING_INTERVAL     100   // Co 100ms
 #define TASK_EVENT_INTERVAL       50    // Co 50ms
 #define TASK_PWM_INTERVAL         10    // Co 10ms
+#define TASK_IR_LED_INTERVAL      10    // Co 10ms (IR LED Strip)
 #define TASK_NETWORK_INTERVAL     100   // Co 100ms
 #define TASK_STATS_INTERVAL       10000 // Co 10s
 
@@ -66,6 +68,7 @@ static TaskControl task_safety = {0, TASK_SAFETY_INTERVAL, 0, 0, true};
 static TaskControl task_logging = {0, TASK_LOGGING_INTERVAL, 0, 0, true};
 static TaskControl task_events = {0, TASK_EVENT_INTERVAL, 0, 0, true};
 static TaskControl task_pwm = {0, TASK_PWM_INTERVAL, 0, 0, true};
+static TaskControl task_ir_led = {0, TASK_IR_LED_INTERVAL, 0, 0, true};  // IR LED Strip
 static TaskControl task_network = {0, TASK_NETWORK_INTERVAL, 0, 0, true};
 static TaskControl task_stats = {0, TASK_STATS_INTERVAL, 0, 0, true};
 
@@ -174,6 +177,22 @@ static void task_pwm_run() {
     }
     
     measure_task_end(&task_pwm, start);
+}
+
+/**
+ * @brief Zadanie silnika IR LED Strip
+ */
+static void task_ir_led_run() {
+    uint32_t start = measure_task_start();
+    
+    ir_led_loop();
+    
+    // Feed watchdog dla warstwy terapii jeśli IR LED działa
+    if (ir_led_is_running()) {
+        safety_feed(WDT_LAYER_THERAPY);
+    }
+    
+    measure_task_end(&task_ir_led, start);
 }
 
 /**
@@ -317,6 +336,12 @@ void loop() {
     // Zadanie PWM - wysoki priorytet (timing krytyczny)
     if (should_run_task(&task_pwm, now)) {
         task_pwm_run();
+        stats.total_tasks_executed++;
+    }
+    
+    // Zadanie IR LED Strip - wysoki priorytet (timing krytyczny)
+    if (should_run_task(&task_ir_led, now)) {
+        task_ir_led_run();
         stats.total_tasks_executed++;
     }
     

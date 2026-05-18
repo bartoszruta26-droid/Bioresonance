@@ -25,18 +25,11 @@ dist/
 # Editors
 .vscode/
 .idea/
+*.swp
+*.swo
 
-# Coverage
-coverage/
-htmlcov/
-.coverage
-
-# C/C++ specific
-*.i
-*.ii
-*.s
-*.su
-*.gcda
-*.gcno
-*.gcov
+# Build outputs
+build/
+dist/
+output/
 ```
