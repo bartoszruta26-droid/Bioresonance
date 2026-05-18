@@ -406,7 +406,7 @@ install_webui() {
     read
 }
 
-# Funkcja do instalacji AndroidApp - na bazie plików GitHub
+# Funkcja do instalacji AndroidApp - na bazie plików GitHub z automatyczną kompilacją
 install_androidapp() {
     clear_screen
     show_header
@@ -452,29 +452,192 @@ install_androidapp() {
     echo -e "${CYAN}Projekt Android App znajduje się w:${NC}"
     echo "  $INSTALL_DIR/android_app/"
     echo ""
-    echo -e "${BLUE}Aby zbudować aplikację Android, wykonaj następujące kroki:${NC}"
+    
+    # Sprawdź czy ANDROID_HOME lub ANDROID_SDK_ROOT jest ustawione
+    if [ -z "$ANDROID_HOME" ] && [ -z "$ANDROID_SDK_ROOT" ]; then
+        echo -e "${YELLOW}Zmienne środowiskowe Android SDK nie są ustawione.${NC}"
+        echo ""
+        echo -e "${BLUE}Aby zbudować aplikację Android, musisz mieć zainstalowane Android SDK.${NC}"
+        echo ""
+        echo "Opcje:"
+        echo "  1. Zainstaluj Android Studio (zalecane)"
+        echo "     https://developer.android.com/studio"
+        echo ""
+        echo "  2. Zainstaluj cmdline-tools ręcznie:"
+        echo "     mkdir -p ~/Android/Sdk/cmdline-tools"
+        echo "     cd ~/Android/Sdk/cmdline-tools"
+        echo "     wget https://dl.google.com/android/repository/commandlinetools-linux-*.zip"
+        echo "     unzip commandlinetools-linux-*.zip"
+        echo "     mv cmdline-tools latest"
+        echo ""
+        echo "  3. Dodaj do ~/.bashrc:"
+        echo "     export ANDROID_HOME=\$HOME/Android/Sdk"
+        echo "     export PATH=\$PATH:\$ANDROID_HOME/cmdline-tools/latest/bin"
+        echo "     export PATH=\$PATH:\$ANDROID_HOME/platform-tools"
+        echo "     export PATH=\$PATH:\$ANDROID_HOME/build-tools/34.0.0"
+        echo ""
+        
+        # Spróbuj wykryć typową lokalizację Android SDK
+        if [ -d "$HOME/Android/Sdk" ]; then
+            echo -e "${GREEN}Wykryto Android SDK w: $HOME/Android/Sdk${NC}"
+            export ANDROID_HOME="$HOME/Android/Sdk"
+            export PATH="$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools"
+        elif [ -d "/opt/android-sdk" ]; then
+            echo -e "${GREEN}Wykryto Android SDK w: /opt/android-sdk${NC}"
+            export ANDROID_HOME="/opt/android-sdk"
+            export PATH="$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools"
+        else
+            echo -e "${YELLOW}Nie wykryto Android SDK. Kontynuowanie bez automatycznej kompilacji.${NC}"
+            echo ""
+            echo -e "${BLUE}Możesz ręcznie zbudować aplikację po skonfigurowaniu SDK:${NC}"
+            echo "  cd $INSTALL_DIR/android_app/"
+            echo "  ./gradlew assembleDebug"
+            echo ""
+            echo -n "Naciśnij Enter, aby kontynuować..."
+            read
+            return
+        fi
+    fi
+    
+    # Sprawdź czy gradlew istnieje, jeśli nie - utwórz wrapper
+    ANDROID_DIR="$INSTALL_DIR/android_app"
+    cd "$ANDROID_DIR" || return
+    
+    if [ ! -f "gradlew" ]; then
+        echo -e "${CYAN}Tworzenie Gradle Wrapper...${NC}"
+        
+        # Sprawdź czy gradle jest zainstalowane systemowo
+        if command -v gradle &> /dev/null; then
+            echo -e "${BLUE}Wykryto systemowe Gradle. Generowanie wrapper...${NC}"
+            gradle wrapper --gradle-version 8.0
+        else
+            echo -e "${YELLOW}Gradle nie jest zainstalowane. Pobieranie Gradle Wrapper...${NC}"
+            
+            # Pobierz gradle-wrapper.jar
+            mkdir -p gradle/wrapper
+            if ! curl -L -o gradle/wrapper/gradle-wrapper.jar \
+                "https://raw.githubusercontent.com/gradle/gradle/master/gradle/wrapper/gradle-wrapper.jar" 2>/dev/null; then
+                echo -e "${RED}Nie udało się pobrać gradle-wrapper.jar.${NC}"
+                echo "Spróbuj ręcznie zainstalować Gradle lub Android Studio."
+                echo ""
+                echo -e "${BLUE}Alternatywnie możesz otworzyć projekt w Android Studio:${NC}"
+                echo "  1. Otwórz Android Studio"
+                echo "  2. Wybierz 'Open an Existing Project'"
+                echo "  3. Wskaż katalog: $ANDROID_DIR"
+                echo ""
+                echo -n "Naciśnij Enter, aby kontynuować..."
+                read
+                return
+            fi
+            
+            # Utwórz gradlew script
+            cat > gradlew << 'GRADLEW_SCRIPT'
+#!/bin/bash
+##############################################################################
+## Gradle start up script for UN*X
+##############################################################################
+
+APP_NAME="Gradle"
+APP_BASE_NAME=`basename "$0"`
+DIRNAME=`dirname "$0"`
+APP_HOME=`cd "$DIRNAME" > /dev/null; pwd`
+
+CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
+
+DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
+JAVA_OPTS=""
+
+CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
+
+exec java $JAVA_OPTS $DEFAULT_JVM_OPTS -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"
+GRADLEW_SCRIPT
+            chmod +x gradlew
+            
+            # Utwórz gradle-wrapper.properties
+            cat > gradle/wrapper/gradle-wrapper.properties << 'PROPS'
+distributionBase=GRADLE_USER_HOME
+distributionPath=wrapper/dists
+distributionUrl=https\://services.gradle.org/distributions/gradle-8.0-bin.zip
+zipStoreBase=GRADLE_USER_HOME
+zipStorePath=wrapper/dists
+PROPS
+        fi
+    fi
+    
     echo ""
-    echo "  1. Otwórz Android Studio"
-    echo "  2. Wybierz 'Open an Existing Project'"
-    echo "  3. Wskaż katalog: $INSTALL_DIR/android_app/"
-    echo "  4. Poczekaj na synchronizację Gradle"
-    echo "  5. Podłącz urządzenie Android lub uruchom emulator"
-    echo "  6. Kliknij 'Run' (zielony trójkąt)"
+    echo -e "${BLUE}Rozpoczynanie kompilacji aplikacji Android...${NC}"
     echo ""
-    echo -e "${YELLOW}Lub z linii poleceń:${NC}"
-    echo "  cd $INSTALL_DIR/android_app/"
-    echo "  ./gradlew assembleDebug"
+    
+    # Akceptuj licencje Android SDK (automatycznie)
+    if [ -n "$ANDROID_HOME" ] && [ -d "$ANDROID_HOME/licenses" ]; then
+        echo -e "${CYAN}Akceptowanie licencji Android SDK...${NC}"
+        yes | sdkmanager --licenses > /dev/null 2>&1 || true
+    fi
+    
+    # Sprawdź czy potrzebne komponenty SDK są zainstalowane
+    if command -v sdkmanager &> /dev/null; then
+        echo -e "${CYAN}Sprawdzanie wymaganych komponentów SDK...${NC}"
+        sdkmanager --list 2>/dev/null | grep -E "build-tools;34.0.0|platforms;android-34" || true
+    fi
+    
+    # Uruchom kompilację
+    echo -e "${CYAN}Uruchamianie Gradle build...${NC}"
     echo ""
-    echo -e "${BLUE}Wymagania:${NC}"
-    echo "  - Android Studio Arctic Fox lub nowszy"
-    echo "  - Android SDK API 30+"
-    echo "  - Gradle 7.0+"
-    echo "  - Kotlin 1.5+"
+    
+    if ./gradlew assembleDebug --stacktrace; then
+        echo ""
+        echo -e "${GREEN}========================================${NC}"
+        echo -e "${GREEN}Pomyślnie zbudowano aplikację Android!${NC}"
+        echo -e "${GREEN}========================================${NC}"
+        echo ""
+        
+        # Znajdź wygenerowany plik APK
+        APK_FILE=$(find "$ANDROID_DIR" -name "*.apk" -path "*/build/outputs/apk/*" -type f 2>/dev/null | head -n 1)
+        
+        if [ -n "$APK_FILE" ]; then
+            echo -e "${CYAN}Plik APK znajduje się w:${NC}"
+            echo "  $APK_FILE"
+            echo ""
+            echo -e "${BLUE}Aby zainstalować na urządzeniu:${NC}"
+            echo "  adb install $APK_FILE"
+            echo ""
+            echo -e "${BLUE}Lub skopiuj plik na urządzenie i zainstaluj ręcznie.${NC}"
+        else
+            echo -e "${YELLOW}Nie znaleziono pliku APK w oczekiwanym miejscu.${NC}"
+            echo "Sprawdź katalog build/outputs/apk/ w projekcie."
+        fi
+    else
+        echo ""
+        echo -e "${RED}========================================${NC}"
+        echo -e "${RED}Błąd podczas kompilacji aplikacji Android!${NC}"
+        echo -e "${RED}========================================${NC}"
+        echo ""
+        echo -e "${YELLOW}Możliwe przyczyny:${NC}"
+        echo "  - Brak Android SDK lub niepoprawnie skonfigurowane"
+        echo "  - Brak wymaganych komponentów (build-tools, platform)"
+        echo "  - Błędy w kodzie źródłowym"
+        echo "  - Problemy z siecią podczas pobierania zależności"
+        echo ""
+        echo -e "${BLUE}Rozwiązania:${NC}"
+        echo "  1. Upewnij się, że ANDROID_HOME jest poprawnie ustawione"
+        echo "  2. Zainstaluj brakujące komponenty przez sdkmanager:"
+        echo "     sdkmanager \"platform-tools\" \"platforms;android-34\" \"build-tools;34.0.0\""
+        echo "  3. Spróbuj otworzyć projekt w Android Studio"
+        echo ""
+        echo -e "${CYAN}Możesz też ręcznie uruchomić kompilację:${NC}"
+        echo "  cd $ANDROID_DIR"
+        echo "  ./gradlew assembleDebug"
+        echo ""
+        echo -n "Naciśnij Enter, aby kontynuować..."
+        read
+        return 1
+    fi
+    
     echo ""
     echo -e "${CYAN}Pliki źródłowe pochodzą z:${NC}"
     echo "  $GITHUB_REPO"
     echo ""
-    echo -e "${GREEN}Zakończono konfigurację AndroidApp.${NC}"
+    echo -e "${GREEN}Zakończono instalację i kompilację AndroidApp.${NC}"
     echo -n "Naciśnij Enter, aby kontynuować..."
     read
 }
