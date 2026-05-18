@@ -27,6 +27,14 @@
 #define PIN_EMERGENCY_STOP  3   // Wejście fizyczne E-Stop (LOW = aktywne)
 #define LED_BUILTIN_PIN     13
 
+// --- Głośniki Audio i Wibratory Piezo ---
+#define PIN_PIEZO_ENABLE    7   // Enable drivera piezo/speaker
+#define PIN_PIEZO_PWM       5   // PWM dla głośności (Timer0)
+#define PIN_PIEZO_FREQ      6   // PWM dla częstotliwości audio
+#define PIN_VIBRATOR_ENABLE 4   // Enable wibratora
+#define PIN_VIBRATOR_PWM    8   // PWM dla intensywności wibracji
+#define PIN_AUDIO_DETECT    A7  // Detekcja podłączenia głośnika
+
 // --- Stałe Systemowe (Zgodne z README.md i hardware.md) ---
 #define FREQ_MIN_HZ         0.1f
 #define FREQ_MAX_HZ         500000.0f

@@ -444,6 +444,8 @@ void loop() {
                     case EFFECTOR_CONTACT: Serial.println(F("Contact Electrodes")); break;
                     case EFFECTOR_WRAP: Serial.println(F("Wrap Applicator")); break;
                     case EFFECTOR_IR_LED_STRIP: Serial.println(F("IR LED Strip")); break;
+                    case EFFECTOR_PIEZO_SPEAKER: Serial.println(F("Piezo Speaker/Audio")); break;
+                    case EFFECTOR_VIBRATOR: Serial.println(F("Vibrator")); break;
                     default: Serial.println(F("None")); break;
                 }
                 Serial.print(F("Connected: "));
@@ -506,6 +508,8 @@ void loop() {
                         case EFFECTOR_CONTACT: Serial.println(F("Contact Electrodes")); break;
                         case EFFECTOR_WRAP: Serial.println(F("Wrap Applicator")); break;
                         case EFFECTOR_IR_LED_STRIP: Serial.println(F("IR LED Strip")); break;
+                        case EFFECTOR_PIEZO_SPEAKER: Serial.println(F("Piezo Speaker/Audio")); break;
+                        case EFFECTOR_VIBRATOR: Serial.println(F("Vibrator")); break;
                         default: Serial.println(F("None")); break;
                     }
                     

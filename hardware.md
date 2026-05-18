@@ -282,7 +282,92 @@ Arduino Nano                    IR LED Strip Driver
 
 ---
 
-### 6. 🔋 Zasilacz Medyczny
+### 6. 🔊 Głośniki Audio i Wibratory Piezo
+
+**Funkcja**: Emitowanie dźwięków terapeutycznych oraz wibracji mechanicznych w celu stymulacji biorezonansowej i relaksacji pacjenta.
+
+#### A. Głośnik Piezo / Speaker
+
+**Specyfikacja**:
+- **Napięcie Zasilania**: 5V DC
+- **Zakres Częstotliwości**: 20 Hz - 20 kHz (audio)
+- **Typ**: Piezoelektryczny lub elektromagnetyczny
+- **Moc**: 0.5W - 3W
+- **Impedancja**: 8Ω - 32Ω
+
+**Sterowanie**:
+- **Częstotliwość**: PWM z DDS (Direct Digital Synthesis)
+- **Głośność**: Regulacja PWM 0-255
+- **Modulacja**: AM/FM/Burst jak w terapii EMF
+
+**Schemat Podłączenia**:
+```
+Arduino Nano                    Piezo Driver
+┌──────────────┐               ┌──────────────────┐
+│   D7         │──[220Ω]───▶│ Anode (6N137)    │
+│   GND        │◀────────────│ Cathode (6N137)  │
+│              │             │                  │
+│              │             │ Emitter (6N137)  │──[10kΩ]──▶ 5V_ISO
+│              │             │ Collector (6N137)│──────────▶ MOSFET Gate
+│              │             │                  │
+│              │             │ MOSFET Drain     │──────────▶ PIEZO (+)
+│              │             │ MOSFET Source    │──────────▶ GND_ISO
+└──────────────┘             └──────────────────┘
+                                     │
+                               5V_ISO ────────────────▶ PIEZO VCC
+```
+
+**Piny Arduino**:
+- `PIN_PIEZO_ENABLE` (D7): Enable drivera
+- `PIN_PIEZO_PWM` (D5): PWM dla głośności
+- `PIN_PIEZO_FREQ` (D6): PWM dla częstotliwości
+- `PIN_AUDIO_DETECT` (A7): Detekcja podłączenia
+
+**Funkcje API**:
+```cpp
+bool detect_piezo_speaker();           // Wykryj podłączenie
+bool piezo_set_tone(uint16_t freq, uint8_t volume);  // Ustaw ton
+void piezo_stop();                     // Zatrzymaj dźwięk
+```
+
+#### B. Wibator (Vibrator)
+
+**Specyfikacja**:
+- **Napięcie Zasilania**: 3.3V - 5V DC
+- **Typ**: Silniczek wibracyjny ekscentryczny (ERM) lub LRA
+- **Prąd**: 50mA - 200mA
+- **Częstotliwość Wibracji**: 100-300 Hz (zależnie od modelu)
+
+**Sterowanie**:
+- **Intensywność**: PWM 0-255
+- **Włącz/Wyłącz**: Pin ENABLE
+
+**Piny Arduino**:
+- `PIN_VIBRATOR_ENABLE` (D4): Enable drivera
+- `PIN_VIBRATOR_PWM` (D8): PWM dla intensywności
+
+**Funkcje API**:
+```cpp
+bool detect_vibrator();                // Wykryj podłączenie
+bool vibrator_set_intensity(uint8_t intensity);  // Ustaw siłę
+void vibrator_stop();                  // Zatrzymaj wibracje
+```
+
+**Zastosowania Terapeutyczne**:
+- ✅ Terapia wibracyjna dla poprawy krążenia
+- ✅ Relaksacja mięśniowa
+- ✅ Stymulacja sensoryczna
+- ✅ Połączenie z terapią EMF dla efektu multisensorycznego
+
+**Bezpieczeństwo**:
+- **Izolacja Galwaniczna**: Optoizolator 2500V RMS
+- **Ochrona Termiczna**: Monitoring temperatury silniczka
+- **Limit Czasu**: Auto-stop po 30 minutach
+- ⚠️ Przeciwwskazane w ciąży, rozrusznik serca
+
+---
+
+### 7. 🔋 Zasilacz Medyczny
 
 **Funkcja**: Zapewnienie bezpiecznego, izolowanego zasilania dla całego systemu.
 

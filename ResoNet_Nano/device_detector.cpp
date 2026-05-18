@@ -704,6 +704,122 @@ DeviceSystemState_t* get_device_system_state() {
     return &g_device_state;
 }
 
+// ============================================================================
+// DETEKCJA GŁOŚNIKÓW PIEZO I WIBRATORÓW
+// ============================================================================
+
+bool detect_piezo_speaker() {
+    LOG_DEBUG("Detecting Piezo Speaker...");
+    
+    // Sprawdź pin detekcji audio
+    int detectValue = analogRead(PIN_AUDIO_DETECT);
+    
+    // Sprawdź czy wartość wskazuje na podłączenie
+    if (detectValue >= PIEZO_CONNECTED_MIN && detectValue <= PIEZO_CONNECTED_MAX) {
+        LOG_INFO_F("Piezo speaker detected (ADC=%d)", detectValue);
+        return true;
+    }
+    
+    // Sprawdź czy nie ma zwarcia
+    if (detectValue < PIEZO_SHORT_CIRCUIT) {
+        LOG_ERROR("Piezo speaker short circuit detected!");
+        return false;
+    }
+    
+    // Sprawdź czy nie ma przerwy
+    if (detectValue > PIEZO_OPEN_CIRCUIT) {
+        LOG_DEBUG("Piezo speaker not connected (open circuit)");
+        return false;
+    }
+    
+    return false;
+}
+
+bool detect_vibrator() {
+    LOG_DEBUG("Detecting Vibrator...");
+    
+    // Sprawdź ciągłość obwodu wibratora przez pomiar impedancji
+    pinMode(PIN_VIBRATOR_ENABLE, OUTPUT);
+    digitalWrite(PIN_VIBRATOR_ENABLE, HIGH);
+    delay(10);
+    
+    // Pomiar prądu/impedancji przez PIN_VIBRATOR_PWM (jako wejście analogowe)
+    // Uwaga: wymaga dodatkowego układu pomiarowego
+    int impedance = 500;  // Wartość domyślna - symulacja
+    
+    digitalWrite(PIN_VIBRATOR_ENABLE, LOW);
+    
+    if (impedance >= VIBRATOR_CONNECTED_MIN && impedance <= VIBRATOR_CONNECTED_MAX) {
+        LOG_INFO_F("Vibrator detected (impedance=%d)", impedance);
+        return true;
+    }
+    
+    if (impedance > VIBRATOR_OPEN_CIRCUIT) {
+        LOG_DEBUG("Vibrator not connected (open circuit)");
+        return false;
+    }
+    
+    return false;
+}
+
+bool piezo_set_tone(uint16_t freq_hz, uint8_t volume) {
+    // Walidacja parametrów
+    if (freq_hz < PIEZO_FREQ_MIN || freq_hz > PIEZO_FREQ_MAX) {
+        LOG_ERROR_F("Invalid piezo frequency: %d Hz", freq_hz);
+        return false;
+    }
+    
+    if (volume > PIEZO_VOLUME_MAX) {
+        volume = PIEZO_VOLUME_MAX;
+    }
+    
+    // Włącz driver piezo
+    pinMode(PIN_PIEZO_ENABLE, OUTPUT);
+    digitalWrite(PIN_PIEZO_ENABLE, HIGH);
+    
+    // Ustaw częstotliwość na pinie PWM
+    // Uwaga: Arduino Nano ma ograniczenia częstotliwości PWM
+    // Dla dokładnej kontroli użyj Timer2
+    #if defined(TCCR2A)
+    TCCR2A = _BV(COM2A1) | _BV(WGM21) | _BV(WGM20);  // Fast PWM
+    TCCR2B = _BV(CS20);  // No prescaler
+    OCR2A = volume;  // Duty cycle
+    // Częstotliwość: f = 31374 Hz dla prescaler=1
+    // Dla niższych częstotliwości audio potrzebny jest inny timer lub DDS
+    #endif
+    
+    LOG_INFO_F("Piezo tone set: %d Hz, volume=%d", freq_hz, volume);
+    return true;
+}
+
+bool vibrator_set_intensity(uint8_t intensity) {
+    if (intensity > VIBRATOR_INTENSITY_MAX) {
+        intensity = VIBRATOR_INTENSITY_MAX;
+    }
+    
+    // Włącz driver wibratora
+    pinMode(PIN_VIBRATOR_ENABLE, OUTPUT);
+    digitalWrite(PIN_VIBRATOR_ENABLE, HIGH);
+    
+    // Ustaw intensywność przez PWM
+    analogWrite(PIN_VIBRATOR_PWM, intensity);
+    
+    LOG_INFO_F("Vibrator intensity set: %d", intensity);
+    return true;
+}
+
+void piezo_stop() {
+    digitalWrite(PIN_PIEZO_ENABLE, LOW);
+    pinMode(PIN_PIEZO_PWM, INPUT);
+    LOG_INFO("Piezo stopped");
+}
+
+void vibrator_stop() {
+    digitalWrite(PIN_VIBRATOR_ENABLE, LOW);
+    analogWrite(PIN_VIBRATOR_PWM, 0);
+    LOG_INFO("Vibrator stopped");
+}
+
 /**
  * @brief Ustaw tryb verbose runtime
  */

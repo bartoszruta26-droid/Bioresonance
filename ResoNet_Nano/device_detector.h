@@ -80,6 +80,14 @@ static DetectionConfig_t g_detection_config = {
 #define PIN_IR_DETECT           3     // Detekcja podłączenia IR LED strip
 #define PIN_IR_CURRENT_SENSE    A6    // Pomiar prądu IR LED (jeśli dostępny)
 
+// --- Głośniki Audio i Wibratory Piezo ---
+#define PIN_PIEZO_ENABLE        7     // Enable drivera piezo/speaker
+#define PIN_PIEZO_PWM           5     // PWM dla głośności
+#define PIN_PIEZO_FREQ          6     // PWM dla częstotliwości audio
+#define PIN_VIBRATOR_ENABLE     4     // Enable wibratora
+#define PIN_VIBRATOR_PWM        8     // PWM dla intensywności wibracji
+#define PIN_AUDIO_DETECT        A7    // Detekcja podłączenia głośnika
+
 // Adresy I2C dla biofeedback
 #define GSR_I2C_ADDRESS         0x48
 #define TEMP_I2C_ADDRESS        0x4A
@@ -117,6 +125,21 @@ static DetectionConfig_t g_detection_config = {
 #define IR_OPEN_CIRCUIT       950
 #define IR_SHORT_CIRCUIT      50
 #define IR_CURRENT_MAX        500   // mA - maksymalny prąd paska
+
+// Piezo Speaker / Audio
+#define PIEZO_CONNECTED_MIN   200
+#define PIEZO_CONNECTED_MAX   800
+#define PIEZO_OPEN_CIRCUIT    950
+#define PIEZO_SHORT_CIRCUIT   50
+#define PIEZO_FREQ_MIN        20    // Hz
+#define PIEZO_FREQ_MAX        20000 // Hz
+#define PIEZO_VOLUME_MAX      255   // PWM duty cycle
+
+// Vibrator
+#define VIBRATOR_CONNECTED_MIN 100
+#define VIBRATOR_CONNECTED_MAX 600
+#define VIBRATOR_OPEN_CIRCUIT  900
+#define VIBRATOR_INTENSITY_MAX 255  // PWM duty cycle
 
 // Biofeedback
 #define GSR_SIGNAL_MIN        100
@@ -162,7 +185,9 @@ typedef enum {
     EFFECTOR_OTIC,
     EFFECTOR_CONTACT,
     EFFECTOR_WRAP,
-    EFFECTOR_IR_LED_STRIP
+    EFFECTOR_IR_LED_STRIP,
+    EFFECTOR_PIEZO_SPEAKER,
+    EFFECTOR_VIBRATOR
 } EffectorType_t;
 
 // Stan połączenia elektrod
@@ -308,6 +333,43 @@ int read_gsr();
  * @return true jeśli podłączony i sprawny
  */
 bool detect_ir_led_strip();
+
+/**
+ * @brief Sprawdź podłączenie głośnika piezo
+ * @return true jeśli podłączony
+ */
+bool detect_piezo_speaker();
+
+/**
+ * @brief Sprawdź podłączenie wibratora
+ * @return true jeśli podłączony
+ */
+bool detect_vibrator();
+
+/**
+ * @brief Ustaw częstotliwość głośnika piezo
+ * @param freq_hz Częstotliwość w Hz (20-20000)
+ * @param volume Głośność 0-255
+ * @return true jeśli sukces
+ */
+bool piezo_set_tone(uint16_t freq_hz, uint8_t volume);
+
+/**
+ * @brief Ustaw intensywność wibratora
+ * @param intensity Intensywność 0-255
+ * @return true jeśli sukces
+ */
+bool vibrator_set_intensity(uint8_t intensity);
+
+/**
+ * @brief Zatrzymaj dźwięk piezo
+ */
+void piezo_stop();
+
+/**
+ * @brief Zatrzymaj wibrator
+ */
+void vibrator_stop();
 
 /**
  * @brief Adaptuj terapię na podstawie biofeedbacku
