@@ -35,56 +35,156 @@
 
 ```mermaid
 flowchart TD
-    subgraph Zasilacz["⚡ ZASILACZ MEDYCZNY\n5V/2A, IEC 60601-1"]
+    subgraph Zasilacz["⚡ ZASILACZ MEDYCZNY<br/>5V/2A, IEC 60601-1"]
         direction TB
+        Z5V["5V DC"]
+        ZGND["GND"]
     end
     
-    subgraph Arduino["🧠 ARDUINO NANO\nATmega328P, 16MHz"]
+    subgraph Arduino["🧠 ARDUINO NANO<br/>ATmega328P, 16MHz"]
         direction TB
+        A_D5["D5 - IR_PWM"]
+        A_D9["D9 - PWM_OUT"]
+        A_D10["D10 - SPI CS"]
+        A_D11["D11 - SPI MOSI"]
+        A_D12["D12 - SPI MISO"]
+        A_D13["D13 - SPI SCK"]
+        A_5V["5V"]
+        A_GND["GND"]
+        A_3V3["3.3V LDO"]
     end
     
-    subgraph Ethernet["🌐 ENC28J60\nETHERNET MODULE\nSPI, 10Mbps"]
+    subgraph Ethernet["🌐 ENC28J60<br/>ETHERNET MODULE<br/>SPI, 10Mbps"]
         direction TB
+        E_CS["Pin 2 - CS"]
+        E_SI["Pin 5 - SI/MOSI"]
+        E_SO["Pin 6 - SO/MISO"]
+        E_SCK["Pin 4 - SCK"]
+        E_VREG["Pin 8 - VREG 3.3V"]
+        E_GND["Pin 3 - GND"]
     end
     
-    subgraph IzolacjaDC["🔒 IZOLACJA DC-DC\n2500V RMS\nB0505S-1W"]
+    subgraph IzolacjaDC["🔒 IZOLACJA DC-DC<br/>2500V RMS<br/>B0505S-1W"]
         direction TB
+        I_IN5V["5V IN"]
+        I_INGND["GND IN"]
+        I_OUT5V["5V_ISO OUT"]
+        I_OUTGND["AGND OUT"]
     end
     
-    subgraph Opto["🔒 OPTOIZOLATORY\n6N137/HCPL-2630\n10 MHz"]
+    subgraph IzolacjaDCIR["🔒 IZOLACJA DC-DC IR<br/>2500V RMS<br/>B0505S-2W"]
         direction TB
+        IR_IN5V["5V IN"]
+        IR_INGND["GND IN"]
+        IR_OUT5V["5V_ISO_IR OUT"]
+        IR_OUTGND["GND_ISO_IR OUT"]
     end
     
-    subgraph ProbeHolder["🔬 PROBEHOLDER\nMOSFET + LC Filter\nBNC Output"]
+    subgraph OptoPWM["🔒 OPTOIZOLATOR PWM<br/>6N137<br/>10 MHz"]
         direction TB
+        OP_ANODE["Anode Pin 1"]
+        OP_CATHODE["Cathode Pin 2"]
+        OP_EMITTER["Emitter Pin 4"]
+        OP_COLLECTOR["Collector Pin 5"]
+        OP_VCC["VCC Pin 8"]
     end
     
-    subgraph Antena["📡 ANTENA EMF\nFlat/Ferrite Coil\n50-200µH"]
+    subgraph OptoIR["🔒 OPTOIZOLATOR IR<br/>6N137<br/>10 MHz"]
         direction TB
+        OI_ANODE["Anode Pin 1"]
+        OI_CATHODE["Cathode Pin 2"]
+        OI_EMITTER["Emitter Pin 4"]
+        OI_COLLECTOR["Collector Pin 5"]
+        OI_VCC["VCC Pin 8"]
     end
     
-    subgraph IR["💡 IR LED STRIP\n850nm/940nm\n5V, 60 LED/m"]
+    subgraph ProbeHolder["🔬 PROBEHOLDER<br/>MOSFET + LC Filter<br/>BNC Output"]
         direction TB
+        PH_PWM["PWM_IN"]
+        PH_5VISO["5V_ISO"]
+        PH_AGND["AGND"]
+        PH_MOSFET["MOSFET Gate"]
+        PH_LC["LC Filter Out"]
+        PH_BNC["BNC Output"]
     end
     
-    Zasilacz -->|"5V DC\nGND"| Arduino
-    Arduino -->|"SPI\nD10-D13"| Ethernet
-    Arduino -->|"PWM\nD9, D5"| Opto
-    Zasilacz -->|"5V IN"| IzolacjaDC
-    IzolacjaDC -->|"5V_ISO\nAGND"| ProbeHolder
-    IzolacjaDC -->|"5V_ISO_IR"| IR
-    Opto -->|"PWM_BUF\nIzolowane"| ProbeHolder
-    ProbeHolder -->|"RF Out\nBNC"| Antena
-    Opto -->|"IR_PWM\n38kHz"| IR
+    subgraph Antena["📡 ANTENA EMF<br/>Flat/Ferrite Coil<br/>50-200µH"]
+        direction TB
+        AN_HOT["HOT +"]
+        AN_COLD["COLD -"]
+    end
+    
+    subgraph IRDriver["💡 IR DRIVER<br/>MOSFET IRLZ44N"]
+        direction TB
+        ID_GATE["Gate"]
+        ID_DRAIN["Drain"]
+        ID_SOURCE["Source"]
+        ID_5V["5V_ISO_IR"]
+        ID_GND["GND_ISO_IR"]
+    end
+    
+    subgraph IRStrip["💡 IR LED STRIP<br/>850nm/940nm<br/>5V, 60 LED/m"]
+        direction TB
+        IS_VCC["VCC +"]
+        IS_GND["GND -"]
+    end
+    
+    %% Zasilanie główne
+    Z5V --> A_5V
+    ZGND --> A_GND
+    Z5V --> I_IN5V
+    ZGND --> I_INGND
+    Z5V --> IR_IN5V
+    ZGND --> IR_INGND
+    
+    %% LDO 3.3V dla Ethernet
+    A_5V -.->|LDO MCP1700| A_3V3
+    A_3V3 --> E_VREG
+    A_GND --> E_GND
+    
+    %% SPI Connection
+    A_D10 -->|Yellow<br/>SS/CS| E_CS
+    A_D11 -->|Green<br/>MOSI| E_SI
+    A_D12 -->|Blue<br/>MISO| E_SO
+    A_D13 -->|Orange<br/>SCK| E_SCK
+    
+    %% PWM Path with Isolation
+    A_D9 -->|220Ω| OP_ANODE
+    A_GND --> OP_CATHODE
+    I_OUT5V -->|10kΩ Pull-up| OP_VCC
+    I_OUT5V --> PH_5VISO
+    I_OUTGND --> PH_AGND
+    OP_EMITTER --> OP_VCC
+    OP_COLLECTOR --> PH_PWM
+    PH_PWM --> PH_MOSFET
+    PH_MOSFET --> PH_LC
+    PH_LC --> PH_BNC
+    PH_BNC -->|BNC Cable| AN_HOT
+    AN_COLD --> PH_AGND
+    
+    %% IR PWM Path with Isolation
+    A_D5 -->|220Ω| OI_ANODE
+    A_GND --> OI_CATHODE
+    IR_OUT5V -->|10kΩ Pull-up| OI_VCC
+    IR_OUT5V --> ID_5V
+    IR_OUTGND --> ID_GND
+    OI_EMITTER --> OI_VCC
+    OI_COLLECTOR --> ID_GATE
+    ID_SOURCE --> ID_GND
+    ID_DRAIN --> IS_GND
+    IR_OUT5V --> IS_VCC
     
     style Zasilacz fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
     style Arduino fill:#fff3e0,stroke:#f57c00,stroke-width:2px
     style Ethernet fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
     style IzolacjaDC fill:#fce4ec,stroke:#c2185b,stroke-width:2px
-    style Opto fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style IzolacjaDCIR fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    style OptoPWM fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style OptoIR fill:#ffcdd2,stroke:#c62828,stroke-width:2px
     style ProbeHolder fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
     style Antena fill:#fff8e1,stroke:#fbc02d,stroke-width:2px
-    style IR fill:#e0f7fa,stroke:#00838f,stroke-width:2px
+    style IRDriver fill:#fff9c4,stroke:#f9a825,stroke-width:2px
+    style IRStrip fill:#e0f7fa,stroke:#00838f,stroke-width:2px
 ```
 
 ### 🔌 Schemat Elektryczny Połączeń
@@ -94,18 +194,20 @@ flowchart TD
     subgraph Zasilanie["⚡ SYSTEM ZASILANIA"]
         Z1["<b>ZASILACZ SIECIOWY</b><br/>230V AC → 5V DC<br/>IEC 60601-1 Medical"]
         Z2["<b>FILTR LC</b><br/>10µH + 100µF<br/>Filtracja zakłóceń"]
-        Z3["<b>IZOLATOR DC-DC</b><br/>2500V RMS<br/>B0505S-1W"]
+        Z3["<b>IZOLATOR DC-DC PWM</b><br/>2500V RMS<br/>B0505S-1W"]
+        Z4["<b>IZOLATOR DC-DC IR</b><br/>2500V RMS<br/>B0505S-2W"]
     end
     
     subgraph Sterowanie["🎛️ SYSTEM STEROWANIA"]
-        A1["<b>ARDUINO NANO</b><br/>ATmega328P<br/>Pin D9: PWM<br/>Pin D10-13: SPI"]
+        A1["<b>ARDUINO NANO</b><br/>ATmega328P<br/>D5: IR PWM<br/>D9: PWM OUT<br/>D10-13: SPI"]
         A2["<b>ENC28J60</b><br/>Ethernet Module<br/>3.3V LDO<br/>SPI Interface"]
+        LDO["<b>LDO 3.3V</b><br/>MCP1700"]
     end
     
-    subgraph Wyjście["🔌 SYSTEM WYJŚCIOWY"]
-        O1["<b>OPTOIZOLATOR</b><br/>6N137/HCPL-2630<br/>10 MHz bandwidth"]
-        O2["<b>MOSFET DRIVER</b><br/>IRF540N<br/>100V, 33A"]
-        O3["<b>FILTR DOLNOPRZEPUSTOWY</b><br/>LC: 100µH + 100nF<br/>Butterworth 2nd order"]
+    subgraph Wyjście["🔌 SYSTEM WYJŚCIOWY PWM"]
+        O1["<b>OPTOIZOLATOR PWM</b><br/>6N137 Pin1-2: LED<br/>Pin4-5: Photo<br/>10 MHz bandwidth"]
+        O2["<b>MOSFET DRIVER</b><br/>IRF540N<br/>Gate←Opto<br/>100V, 33A"]
+        O3["<b>FILTR DOLNOPRZEPUSTOWY</b><br/>L: 100µH<br/>C: 100nF MKP<br/>Butterworth 2nd order"]
         O4["<b>ZŁĄCZE BNC</b><br/>50Ω impedance<br/>RF output"]
     end
     
@@ -114,25 +216,49 @@ flowchart TD
     end
     
     subgraph IR_System["💡 SYSTEM PODCZERWIENI"]
-        IR1["<b>OPTOIZOLATOR IR</b><br/>6N137<br/>Isolation 2500V"]
-        IR2["<b>MOSFET IR</b><br/>IRLZ44N<br/>Logic-level"]
-        IR3["<b>IR LED STRIP</b><br/>850nm/940nm<br/>60 LED/m, 5V"]
+        IR1["<b>OPTOIZOLATOR IR</b><br/>6N137 Pin1-2: LED<br/>Pin4-5: Photo<br/>Isolation 2500V"]
+        IR2["<b>MOSFET IR</b><br/>IRLZ44N<br/>Logic-level<br/>Gate←Opto"]
+        IR3["<b>IR LED STRIP</b><br/>850nm/940nm<br/>60 LED/m, 5V<br/>Drain→LED(-)"]
     end
     
+    %% Zasilanie główne
     Z1 --> Z2 --> Z3
-    Z3 --> A1
-    A1 <-->|SPI<br/>D10-CS<br/>D11-MOSI<br/>D12-MISO<br/>D13-SCK| A2
-    A1 -->|PWM<br/>D9| O1
-    A1 -->|IR PWM<br/>D5| IR1
-    O1 --> O2 --> O3 --> O4
+    Z1 --> Z2 --> Z4
+    Z3 -->|5V_ISO| A1
+    Z4 -->|5V_ISO_IR| IR3
+    
+    %% LDO dla Ethernet
+    A1 -->|5V| LDO
+    LDO -->|3.3V| A2
+    
+    %% SPI Connection - szczególowe piny
+    A1 <-->|D10→CS<br/>D11→MOSI<br/>D12→MISO<br/>D13→SCK| A2
+    
+    %% PWM Path - szczególowe połączenia
+    A1 -->|D9→220Ω→Pin1| O1
+    A1 -->|GND→Pin2| O1
+    O1 -->|Pin4→GND_ISO| GND1
+    O1 -->|Pin5→Gate| O2
+    O2 -->|Source→GND_ISO| GND1
+    O2 -->|Drain→LC Filter| O3
+    O3 --> O4
     O4 --> E1
-    IR1 --> IR2 --> IR3
+    
+    %% IR Path - szczegółowe połączenia
+    A1 -->|D5→220Ω→Pin1| IR1
+    A1 -->|GND→Pin2| IR1
+    IR1 -->|Pin4→GND_ISO_IR| GND2
+    IR1 -->|Pin5→Gate| IR2
+    IR2 -->|Source→GND_ISO_IR| GND2
+    IR2 -->|Drain→LED(-)| IR3
     
     style Z1 fill:#bbdefb,stroke:#1976d2,stroke-width:2px
     style Z2 fill:#bbdefb,stroke:#1976d2,stroke-width:2px
     style Z3 fill:#ffcdd2,stroke:#c62828,stroke-width:3px
+    style Z4 fill:#ffcdd2,stroke:#c62828,stroke-width:3px
     style A1 fill:#ffe0b2,stroke:#f57c00,stroke-width:2px
     style A2 fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style LDO fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
     style O1 fill:#ffcdd2,stroke:#c62828,stroke-width:3px
     style O2 fill:#fff9c4,stroke:#f9a825,stroke-width:2px
     style O3 fill:#e1bee7,stroke:#7b1fa2,stroke-width:2px
@@ -291,35 +417,36 @@ flowchart TD
 ```mermaid
 flowchart LR
     subgraph Arduino["Arduino Nano"]
-        A1["D5 PWM"]
-        A2["GND"]
+        A1["D5 PWM<br/>Timer0/2 - 38kHz"]
+        A2["GND<br/>DGND"]
     end
     
     subgraph Opto["Optoizolator 6N137"]
-        O1["Anode"]
-        O2["Cathode"]
-        O3["Emitter"]
-        O4["Collector"]
+        O1["Pin 1 Anode"]
+        O2["Pin 2 Cathode"]
+        O3["Pin 4 Emitter"]
+        O4["Pin 5 Collector"]
+        O5["Pin 8 VCC"]
     end
     
-    subgraph MOSFET["MOSFET Driver"]
+    subgraph MOSFET["MOSFET Driver<br/>IRLZ44N"]
         M1["Gate"]
         M2["Drain"]
         M3["Source"]
     end
     
-    subgraph IRStrip["IR LED Strip"]
-        I1["+5V"]
-        I2["- GND"]
+    subgraph IRStrip["IR LED Strip<br/>850nm/940nm"]
+        I1["+5V_ISO_IR"]
+        I2["- GND_ISO_IR"]
     end
     
     A1 -->|220Ω| O1
     A2 --> O2
-    O3 -->|10kΩ| PULLUP["5V_ISO Pull-up"]
+    O3 -->|10kΩ Pull-up| PWR["5V_ISO_IR"]
     O4 --> M1
     M2 --> I2
-    M3 --> GND_ISO["GND_ISO"]
-    I1 --> PWR_ISO["5V_ISO"]
+    M3 --> GND_ISO["GND_ISO_IR"]
+    I1 --> PWR
     
     style Arduino fill:#ffe0b2,stroke:#f57c00,stroke-width:2px
     style Opto fill:#ffcdd2,stroke:#c62828,stroke-width:2px
@@ -377,35 +504,36 @@ flowchart LR
 ```mermaid
 flowchart LR
     subgraph Arduino["Arduino Nano"]
-        A1["D7 PWM"]
-        A2["GND"]
+        A1["D7 PWM<br/>Audio Output"]
+        A2["GND<br/>DGND"]
     end
     
     subgraph Opto["Optoizolator 6N137"]
-        O1["Anode"]
-        O2["Cathode"]
-        O3["Emitter"]
-        O4["Collector"]
+        O1["Pin 1 Anode"]
+        O2["Pin 2 Cathode"]
+        O3["Pin 4 Emitter"]
+        O4["Pin 5 Collector"]
+        O5["Pin 8 VCC"]
     end
     
-    subgraph MOSFET["MOSFET Driver"]
+    subgraph MOSFET["MOSFET Driver<br/>IRLZ44N"]
         M1["Gate"]
         M2["Drain"]
         M3["Source"]
     end
     
-    subgraph Piezo["Piezo Speaker"]
-        P1["+ VCC"]
-        P2["- GND"]
+    subgraph Piezo["Piezo Speaker<br/>8Ω-32Ω"]
+        P1["+ VCC_ISO"]
+        P2["- GND_ISO"]
     end
     
     A1 -->|220Ω| O1
     A2 --> O2
-    O3 -->|10kΩ| PULLUP["5V_ISO Pull-up"]
+    O3 -->|10kΩ Pull-up| PWR["5V_ISO"]
     O4 --> M1
     M2 --> P2
     M3 --> GND_ISO["GND_ISO"]
-    P1 --> PWR_ISO["5V_ISO"]
+    P1 --> PWR
     
     style Arduino fill:#ffe0b2,stroke:#f57c00,stroke-width:2px
     style Opto fill:#ffcdd2,stroke:#c62828,stroke-width:2px

@@ -25,6 +25,12 @@ venv/
 *.swp
 *.swo
 
+# Build directories
+dist/
+build/
+target/
+.gradle/
+
 # Editors
 .vscode/
 .idea/
@@ -38,17 +44,12 @@ coverage/
 htmlcov/
 .coverage
 
-# Build directories
-dist/
-build/
-target/
-.gradle/
-
 # Python specific
 .mypy_cache/
 .pytest_cache/
 *.pyc
-__pycache__/
+*.pyo
+*.pyd
 
 # Compressed files
 *.zip
