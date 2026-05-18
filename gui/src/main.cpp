@@ -38,11 +38,10 @@ void signal_handler(int signum) {
 #endif
     }
     
-    LOG_WARNING(std::string("Otrzymano sygnał ") + signame + " (" + 
-                std::to_string(signum) + "), zamykanie aplikacji...");
-    
+    // Only set atomic flag - avoid non-async-signal-safe functions in handler
     g_shutdown_requested = true;
     
+    // Schedule cleanup for main thread via event
     if (g_app) {
         g_app->stop();
     }
@@ -218,6 +217,9 @@ int main(int argc, char* argv[]) {
 #ifdef SIGQUIT
         std::signal(SIGQUIT, signal_handler);
 #endif
+#ifdef SIGPIPE
+        std::signal(SIGPIPE, SIG_IGN);  // Ignore SIGPIPE to prevent crashes
+#endif
         
         std::cout << "\n";
         std::cout << "=== ResoNet-Nano Biorezonans GUI ===\n";
@@ -245,6 +247,7 @@ int main(int argc, char* argv[]) {
             REPORT_ERROR(ErrorCode::ERR_SYSTEM_RESOURCE_UNAVAILABLE, 
                         ErrorCategory::SYSTEM, "Failed to initialize application");
             std::cerr << "Błąd inicjalizacji aplikacji!\n";
+            g_app = nullptr;
             return 1;
         }
         
@@ -270,14 +273,17 @@ int main(int argc, char* argv[]) {
     } catch (const Exception& e) {
         LOG_CRITICAL(std::string("Wyjątek: ") + e.what());
         std::cerr << "Krytyczny błąd: " << e.what() << "\n";
+        g_app = nullptr;
         return 1;
     } catch (const std::exception& e) {
         LOG_CRITICAL(std::string("Wyjątek STL: ") + e.what());
         std::cerr << "Krytyczny błąd: " << e.what() << "\n";
+        g_app = nullptr;
         return 1;
     } catch (...) {
         LOG_CRITICAL("Nieznany wyjątek!");
         std::cerr << "Krytyczny błąd: nieznany wyjątek\n";
+        g_app = nullptr;
         return 1;
     }
 }
