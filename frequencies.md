@@ -3,6 +3,7 @@
 <!-- 
 ================================================================================
 BIORESONANCE FREQUENCIES DATABASE - Machine-readable & Human-friendly Format
+Arduino Nano + PoE 48V->5V Compatible
 ================================================================================
 Format: frequency_hz|category|subcategory|description|modulation_type|carrier_khz
 Categories: INJURY_BONE, INJURY_JOINT, INJURY_MUSCLE, INJURY_LIGAMENT, INJURY_NERVE, 
@@ -12,6 +13,8 @@ Categories: INJURY_BONE, INJURY_JOINT, INJURY_MUSCLE, INJURY_LIGAMENT, INJURY_NE
             CARDIOVASCULAR, LYMPHATIC, SKIN, AUTOIMMUNE, METABOLIC
 Modulation: AM, FM, PWM, BURST, SWEEP, RANDOM, NONE
 Carrier: carrier frequency in kHz for modulation (0 if not applicable)
+ARDUINO NANO LIMITS: Max carrier 30 kHz (PWM pin 9/10), Max modulated freq 20 kHz
+PoE 48V->5V: Stable 5V output for consistent frequency generation
 ================================================================================
 
 FREQUENCY_DATA_START
@@ -134,7 +137,7 @@ freq_hz|category|subcategory|description|modulation|carrier_khz
 1700|CIRCULATION|raynaud|Choroba Raynauda / Raynaud's disease|AM|0
 1850|CIRCULATION|claudication|Chromanie przestankowe / Intermittent claudication|AM|0
 570|CIRCULATION|angiogenesis_deep|Angiogeneza terapeutyczna / Therapeutic angiogenesis|AM|18
-680|CIRCULATION|brain_deep|Poprawa krążenia mózgowego / Brain circulation deep|FM|22
+680|CIRCULATION|brain_deep|Poprawa krążenia mózgowego / Brain circulation deep|FM|20
 --------------------------------------------------------------------------------
 === ODROBACZANIE I PASOŻYTY / ANTIPARASITIC ===
 20|ANTIPARASITIC|detox|Ogólna detoksykacja pasożytnicza / General parasitic detox|AM|0
@@ -159,9 +162,9 @@ freq_hz|category|subcategory|description|modulation|carrier_khz
 5000|ANTIPARASITIC|schistosoma|Schistosoma|AM|0
 5500|ANTIPARASITIC|leishmania|Leishmania|AM|0
 6000|ANTIPARASITIC|trypanosoma|Trypanosoma|AM|0
-125|ANTIPARASITIC|deep_tissue|Głębokie odrobaczanie tkanek / Deep tissue deworming|AM|30
-750|ANTIPARASITIC|lymphatic|Filarie w układzie limfatycznym / Filariae in lymphatic|PWM|35
-2000|ANTIPARASITIC|comprehensive|Kompleksowe oczyszczanie / Comprehensive cleansing|FM|40
+125|ANTIPARASITIC|deep_tissue|Głębokie odrobaczanie tkanek / Deep tissue deworming|AM|25
+750|ANTIPARASITIC|lymphatic|Filarie w układzie limfatycznym / Filariae in lymphatic|PWM|20
+2000|ANTIPARASITIC|comprehensive|Kompleksowe oczyszczanie / Comprehensive cleansing|FM|15
 --------------------------------------------------------------------------------
 === MITOCHONDRIA / MITOCHONDRIA ===
 10|MITOCHONDRIA|sync|Synchronizacja rytmów mitochondrialnych / Mitochondrial rhythm sync|AM|0
@@ -180,9 +183,9 @@ freq_hz|category|subcategory|description|modulation|carrier_khz
 160|MITOCHONDRIA|uncoupling|Białka rozprzęgające / Uncoupling proteins|AM|0
 170|MITOCHONDRIA|ketones|Metabolizm ciał ketonowych / Ketone metabolism|AM|0
 180|MITOCHONDRIA|fatigue|Zespół przewlekłego zmęczenia / Chronic fatigue syndrome|AM|0
-40|MITOCHONDRIA|deep_therapy|Głęboka terapia mitochondrialna / Deep mitochondrial therapy|FM|50
-80|MITOCHONDRIA|biogenesis_deep|Biogeneza mitochondrialna / Mitochondrial biogenesis|AM|55
-130|MITOCHONDRIA|pgc1a_deep|Aktywacja PGC-1α / PGC-1α activation|PWM|60
+40|MITOCHONDRIA|deep_therapy|Głęboka terapia mitochondrialna / Deep mitochondrial therapy|FM|25
+80|MITOCHONDRIA|biogenesis_deep|Biogeneza mitochondrialna / Mitochondrial biogenesis|AM|20
+130|MITOCHONDRIA|pgc1a_deep|Aktywacja PGC-1α / PGC-1α activation|PWM|18
 --------------------------------------------------------------------------------
 === TELOMERY I DŁUGOWIECZNOŚĆ / TELOMERES AND LONGEVITY ===
 144|TELOMERE|telomerase|Aktywacja telomerazy / Telomerase activation|FM|0
@@ -201,9 +204,9 @@ freq_hz|category|subcategory|description|modulation|carrier_khz
 2016|TELOMERE|longevity|Długowieczność / Longevity|AM|0
 2160|TELOMERE|sirtuins|Aktywacja sirtuin / Sirtuin activation|AM|0
 2304|TELOMERE|nad|Poziomy NAD+ / NAD+ levels|AM|0
-288|TELOMERE|lengthening_deep|Wydłużanie telomerów głębokie / Deep telomere lengthening|FM|70
-864|TELOMERE|tert_deep|Aktywacja TERT / TERT activation|AM|75
-1440|TELOMERE|rejuvenation|Odmładzanie komórkowe / Cellular rejuvenation|PWM|80
+288|TELOMERE|lengthening_deep|Wydłużanie telomerów głębokie / Deep telomere lengthening|FM|25
+864|TELOMERE|tert_deep|Aktywacja TERT / TERT activation|AM|20
+1440|TELOMERE|rejuvenation|Odmładzanie komórkowe / Cellular rejuvenation|PWM|18
 --------------------------------------------------------------------------------
 === PRZECIWBAKTERYJNE / ANTIBACTERIAL ===
 727|ANTIBACTERIAL|ecoli|E. coli|AM|0
@@ -454,17 +457,19 @@ freq_hz|category|subcategory|description|modulation|carrier_khz
 1350|LYMPHATIC|adenoids|Adenoidy / Adenoids|AM|0
 1550|LYMPHATIC|thymus_support|Wsparcie grasicy / Thymus support|AM|0
 --------------------------------------------------------------------------------
-=== CZĘSTOTLIWOŚCI NOŚNE / CARRIER FREQUENCIES ===
-100|CARRIER|surface|Nośna dla terapii powierzchniowych / Surface therapy carrier|NONE|100
-200|CARRIER|medium|Nośna dla terapii średnio-głębokich / Medium-depth therapy carrier|NONE|200
-300|CARRIER|deep|Nośna dla terapii głębokich / Deep therapy carrier|NONE|300
-400|CARRIER|very_deep|Nośna dla terapii bardzo głębokich / Very deep therapy carrier|NONE|400
-500|CARRIER|organs|Nośna dla terapii organów wewnętrznych / Internal organs carrier|NONE|500
-600|CARRIER|cns|Nośna dla terapii CNS / CNS therapy carrier|NONE|600
-700|CARRIER|marrow|Nośna dla terapii szpiku kostnego / Bone marrow carrier|NONE|700
-800|CARRIER|brain|Nośna dla terapii mózgu przez czaszkę / Brain through skull carrier|NONE|800
-900|CARRIER|heart|Nośna dla terapii serca przez klatkę piersiową / Heart through chest carrier|NONE|900
-1000|CARRIER|whole_body|Nośna dla terapii całociałej / Whole body carrier|NONE|1000
+=== CZĘSTOTLIWOŚCI NOŚNE / CARRIER FREQUENCIES (Arduino Nano Compatible: 1-30 kHz) ===
+1|CARRIER|surface|Nośna 1 kHz - terapia powierzchniowa / Surface therapy carrier|NONE|1
+2|CARRIER|shallow|Nośna 2 kHz - tkanki płytkie / Shallow tissue carrier|NONE|2
+3|CARRIER|skin|Nośna 3 kHz - skóra i tkanka podskórna / Skin and subcutaneous carrier|NONE|3
+5|CARRIER|muscle|Nośna 5 kHz - mięśnie powierzchowne / Superficial muscles carrier|NONE|5
+7|CARRIER|medium|Nośna 7 kHz - tkanki średnio-głębokie / Medium-depth tissue carrier|NONE|7
+10|CARRIER|deep|Nośna 10 kHz - tkanki głębokie / Deep tissue carrier|NONE|10
+12|CARRIER|organs|Nośna 12 kHz - organy wewnętrzne / Internal organs carrier|NONE|12
+15|CARRIER|cns|Nośna 15 kHz - układ nerwowy centralny / CNS carrier|NONE|15
+18|CARRIER|bone|Nośna 18 kHz - kości i stawy / Bone and joint carrier|NONE|18
+20|CARRIER|marrow|Nośna 20 kHz - szpik kostny / Bone marrow carrier|NONE|20
+25|CARRIER|brain|Nośna 25 kHz - mózg przez czaszkę / Brain through skull carrier|NONE|25
+30|CARRIER|max_arduino|Maksymalna dla Arduino Nano 30 kHz / Max for Arduino Nano|NONE|30
 --------------------------------------------------------------------------------
 === MODULACJE / MODULATION TYPES ===
 0|MODULATION|am|AM (Amplitude Modulation) - najlepsza dla tkanki miękkiej / Best for soft tissue|AM|0
