@@ -1,18 +1,66 @@
-(webui/.env*
-webui/node_modules/
-webui/dist/
-webui/build/
-webui/.vscode/
-webui/.idea/
-webui/*.log
-webui/__pycache__/
-webui/.pytest_cache/
-webui/.mypy_cache/
-webui/coverage/
-webui/htmlcov/
-webui/.coverage
-webui/*.tmp
-webui/*.swp
-webui/*.swo
-webui/.DS_Store
-webui/Thumbs.db)
+```
+# Compiled and binary files
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.a
+*.out
+
+# Dependencies
+node_modules/
+venv/
+.venv/
+__pycache__/
+dist/
+build/
+target/
+.gradle/
+
+# Editors/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# System/Environment
+.DS_Store
+Thumbs.db
+.env
+.env.local
+*.env.*
+
+# Logs and temp files
+*.log
+*.tmp
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Compressed files
+*.zip
+*.gz
+*.tar
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.zst
+*.lz4
+*.lzh
+*.cab
+*.arj
+*.rpm
+*.deb
+*.Z
+*.lz
+*.lzo
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
+```

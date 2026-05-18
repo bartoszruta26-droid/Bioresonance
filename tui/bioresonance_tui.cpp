@@ -882,6 +882,7 @@ public:
         if (freq > 0) {
             probe->frequency_hz_x100 = (uint32_t)(freq * 100);
             addLog("Freq: " + std::to_string(freq) + " Hz");
+            sendProbeConfig(probe);
         }
         
         noecho();
@@ -902,6 +903,7 @@ public:
         if (intensity >= 0 && intensity <= 4095) {
             probe->intensity_level = (uint16_t)intensity;
             addLog("Intensity: " + std::to_string(intensity));
+            sendProbeConfig(probe);
         }
         
         noecho();
@@ -916,6 +918,7 @@ public:
         probe->modulation = (ModulationType)mod;
         
         addLog("Modulacja: " + getModulationName(probe->modulation));
+        sendProbeConfig(probe);
     }
     
     void run() {
