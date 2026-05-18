@@ -33,9 +33,7 @@ Profesjonalny terminalowy interfejs użytkownika (TUI) do sterowania systemem bi
 ## 🏗️ Architektura Systemu
 
 ```mermaid
-blockDiagram
-    direction TB
-    
+flowchart TB
     User["👤 Użytkownik (Terminal)"]
     TUI["🖥️ BASH TUI Interface"]
     NetCat["🌐 netcat (TCP/IP)"]
