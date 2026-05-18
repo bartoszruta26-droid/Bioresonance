@@ -43,6 +43,10 @@
 #define PIN_GSR_DRDY            6     // Data ready GSR
 #define PIN_NTC_TEMP            A0    // Temperatura skóry
 
+// --- IR LED Strip ---
+#define PIN_IR_DETECT           3     // Detekcja podłączenia IR LED strip
+#define PIN_IR_CURRENT_SENSE    A6    // Pomiar prądu IR LED (jeśli dostępny)
+
 // Adresy I2C dla biofeedback
 #define GSR_I2C_ADDRESS         0x48
 #define TEMP_I2C_ADDRESS        0x4A
@@ -74,6 +78,13 @@
 #define WRAP_OPEN_CIRCUIT     900
 #define WRAP_TEMP_MAX         45.0f
 
+// IR LED Strip
+#define IR_CONNECTED_MIN      100
+#define IR_CONNECTED_MAX      800
+#define IR_OPEN_CIRCUIT       950
+#define IR_SHORT_CIRCUIT      50
+#define IR_CURRENT_MAX        500   // mA - maksymalny prąd paska
+
 // Biofeedback
 #define GSR_SIGNAL_MIN        100
 #define GSR_SIGNAL_MAX        900
@@ -90,7 +101,8 @@ typedef enum {
     EFFECTOR_HELMHOLTZ,
     EFFECTOR_OTIC,
     EFFECTOR_CONTACT,
-    EFFECTOR_WRAP
+    EFFECTOR_WRAP,
+    EFFECTOR_IR_LED_STRIP
 } EffectorType_t;
 
 // Stan połączenia elektrod
@@ -229,6 +241,12 @@ float evaluate_ppg_quality();
  * @return int - wartość ADC
  */
 int read_gsr();
+
+/**
+ * @brief Sprawdź status paska LED IR
+ * @return true jeśli podłączony i sprawny
+ */
+bool detect_ir_led_strip();
 
 /**
  * @brief Adaptuj terapię na podstawie biofeedbacku

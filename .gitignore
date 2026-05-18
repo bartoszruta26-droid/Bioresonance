@@ -1,14 +1,28 @@
 ```
-# Compiled and build artifacts
+# Arduino build artifacts
+*.hex
+*.elf
+*.bin
+*.map
+*.d
 *.o
-*.obj
 *.a
-*.lib
-*.dll
 *.so
 *.dylib
-*.exe
-*.out
+*.dll
+
+# Arduino IDE specific
+build/
+Build/
+core/
+libraries/
+
+# PlatformIO
+.platformio/
+.piolibdeps/
+
+# Arduino CLI
+.cache/
 
 # Dependencies
 node_modules/
@@ -18,35 +32,39 @@ __pycache__/
 *.egg-info/
 dist/
 build/
-target/
 
 # Logs and temp files
 *.log
 *.tmp
 *.swp
-*.swo
 
 # Environment
 .env
 .env.local
-*.env.*
+.env.*
 
 # Editors
 .vscode/
 .idea/
-*.swp
-*.swo
 
-# System files
+# OS
 .DS_Store
 Thumbs.db
 
-# Coverage reports
+# Coverage
 coverage/
 htmlcov/
 .coverage
 
-# Compression artifacts
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Compressed files
 *.zip
 *.gz
 *.tar
@@ -65,4 +83,8 @@ htmlcov/
 *.Z
 *.lz
 *.lzo
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
 ```

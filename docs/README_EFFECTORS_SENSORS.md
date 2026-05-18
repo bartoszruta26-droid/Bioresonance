@@ -94,6 +94,18 @@ Efektory to urządzenia wyjściowe aplikujące sygnały terapeutyczne na ciało 
 - **Detekcja**: Ciągłość cewki + temperatura
 - **[Pełna dokumentacja →](docs/effectors/effector_wrap_applicator.md)**
 
+#### 5. Pasek LED IR
+- **Zastosowanie**: Terapia fotoniczna tkanek miękkich, przyspieszanie gojenia
+- **Charakterystyka**: Dioda IR 850nm/940nm z carrier 38kHz, modulacja terapeutyczna 1-100Hz
+- **Detekcja**: Pomiar prądu + pin detekcji cyfrowej
+- **Piny Arduino**: D5 (IR_PWM), D6 (IR_MOD), D3 (IR_DETECT), A6 (IR_CURRENT)
+- **Specyfikacja**:
+  - Częstotliwość nośna: 38kHz (standard IR)
+  - Zakres modulacji: 1-100 Hz (AM/FM/Burst)
+  - Moc: do 500mA @ 5V
+  - Detekcja zwarć i przerwy w obwodzie
+- **Bezpieczeństwo**: Izolacja galwaniczna 2500V RMS, monitoring prądu
+
 ---
 
 ## 📊 Sensory
