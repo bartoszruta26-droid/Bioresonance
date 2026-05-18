@@ -104,14 +104,16 @@ ProbeMode ProbeManager::getProbeMode() const {
     return current_mode;
 }
 
-void ProbeManager::enableProbe(int channel_id, bool enable) {
+bool ProbeManager::enableProbe(int channel_id, bool enable) {
     ProbeConfig* probe = getProbe(channel_id);
     if (probe) {
         probe->enabled = enable;
         LOG_INFO("Probe " + std::to_string(channel_id) + (enable ? " enabled" : " disabled"));
+        return true;
     } else {
         LOG_WARNING("Attempted to " + std::string(enable ? "enable" : "disable") + 
                    " non-existent probe " + std::to_string(channel_id));
+        return false;
     }
 }
 

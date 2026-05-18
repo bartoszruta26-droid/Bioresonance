@@ -26,7 +26,7 @@ public:
     std::vector<const ProbeConfig*> getAllProbes() const;
     void setProbeMode(ProbeMode mode);
     ProbeMode getProbeMode() const;
-    void enableProbe(int channel_id, bool enable);
+    bool enableProbe(int channel_id, bool enable);  // Returns true if successful
     bool isProbeEnabled(int channel_id) const;
     std::string getProbeTypeName(ProbeType type) const;
     std::string getModeName(ProbeMode mode) const;

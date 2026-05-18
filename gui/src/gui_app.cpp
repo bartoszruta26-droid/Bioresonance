@@ -162,8 +162,11 @@ void GuiApp::onProbeSelected(int probe_id) {
 }
 
 void GuiApp::onProbeEnabledChanged(int probe_id, bool enabled) {
-    probe_manager.enableProbe(probe_id, enabled);
-    addLog("Końcówka " + std::to_string(probe_id) + (enabled ? " włączona" : " wyłączona"));
+    if (probe_manager.enableProbe(probe_id, enabled)) {
+        addLog("Końcówka " + std::to_string(probe_id) + (enabled ? " włączona" : " wyłączona"));
+    } else {
+        addLog("Błąd: Nie udało się zmienić stanu końcówki " + std::to_string(probe_id));
+    }
 }
 
 void GuiApp::onFrequencySelected(uint32_t frequency_hz) {
@@ -391,7 +394,8 @@ void GuiApp::renderProbePanel() {
 
 void GuiApp::renderFrequencyBrowser() {
     static char search_buffer[256] = "";
-    std::vector<FrequencyEntry> filtered_results;  // Non-static to avoid thread safety issues
+    // Non-static vector to avoid thread safety issues with static STL containers
+    std::vector<FrequencyEntry> filtered_results;
     bool search_triggered = false;
     
     ImGui::Text("Przeglądarka częstotliwości");
@@ -468,14 +472,22 @@ void GuiApp::renderStatusPanel() {
             disconnectFromDevice();
         }
     } else {
-        // Non-static buffers to avoid thread safety issues
-        char ip_buffer[64];
-        int port_buffer;
+        // Static buffers to preserve state between frames
+        static char ip_buffer[64] = "192.168.1.100";
+        static int port_buffer = 5001;
         
-        // Initialize with current values
-        strncpy(ip_buffer, device_ip.c_str(), sizeof(ip_buffer) - 1);
-        ip_buffer[sizeof(ip_buffer) - 1] = '\0';
-        port_buffer = device_port;
+        // Sync with current values if they changed externally
+        static std::string last_ip = device_ip;
+        static int last_port = device_port;
+        if (last_ip != device_ip) {
+            strncpy(ip_buffer, device_ip.c_str(), sizeof(ip_buffer) - 1);
+            ip_buffer[sizeof(ip_buffer) - 1] = '\0';
+            last_ip = device_ip;
+        }
+        if (last_port != device_port) {
+            port_buffer = device_port;
+            last_port = device_port;
+        }
         
         ImGui::InputText("IP urządzenia", ip_buffer, sizeof(ip_buffer));
         ImGui::SameLine();
@@ -483,7 +495,14 @@ void GuiApp::renderStatusPanel() {
         ImGui::SameLine();
         
         if (ImGui::Button("Połącz")) {
-            connectToDevice(ip_buffer, port_buffer);
+            // Validate IP before connecting
+            if (strlen(ip_buffer) == 0) {
+                addLog("Błąd: Puste IP urządzenia");
+            } else if (port_buffer < 1 || port_buffer > 65535) {
+                addLog("Błąd: Nieprawidłowy numer portu: " + std::to_string(port_buffer));
+            } else {
+                connectToDevice(ip_buffer, port_buffer);
+            }
         }
     }
     
@@ -528,6 +547,8 @@ void GuiApp::run() {
     running = true;
     
     SDL_Event event;
+    auto last_frame_time = std::chrono::steady_clock::now();
+    const auto target_frame_time = std::chrono::microseconds(16667); // ~60 FPS
     
     while (running) {
         while (SDL_PollEvent(&event)) {
@@ -571,18 +592,16 @@ void GuiApp::run() {
         ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
         SDL_RenderPresent(renderer);
         
-        // Start frame timing
-        auto frame_start = std::chrono::steady_clock::now();
+        // Frame timing - calculate delta time and limit to 60 FPS
+        auto current_frame_time = std::chrono::steady_clock::now();
+        auto frame_duration = current_frame_time - last_frame_time;
         
-        ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
-        SDL_RenderPresent(renderer);
-        
-        // End frame and calculate duration
-        auto frame_end = std::chrono::steady_clock::now();
-        auto frame_duration = std::chrono::duration_cast<std::chrono::microseconds>(frame_end - frame_start).count();
-        if (frame_duration < 16667) {
-            std::this_thread::sleep_for(std::chrono::microseconds(16667 - frame_duration));
+        if (frame_duration < target_frame_time) {
+            auto sleep_time = target_frame_time - frame_duration;
+            std::this_thread::sleep_for(sleep_time);
         }
+        
+        last_frame_time = std::chrono::steady_clock::now();
     }
 }
 

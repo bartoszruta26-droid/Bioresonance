@@ -23,6 +23,7 @@
 #include <atomic>
 #include <memory>
 #include <chrono>
+#include <condition_variable>
 #include "logger.h"
 
 /**
