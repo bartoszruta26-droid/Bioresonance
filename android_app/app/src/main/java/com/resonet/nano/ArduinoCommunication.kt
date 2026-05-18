@@ -107,9 +107,10 @@ class ArduinoCommunication {
                     val line = reader?.readLine()
                     if (line != null) {
                         response.appendLine(line)
-                        // Sprawdź czy to koniec odpowiedzi
-                        if (line.contains("OK") || line.contains("DONE") || 
-                            line.startsWith("===") || response.length > 4096) {
+                        // Sprawdź czy to koniec odpowiedzi (OK/DONE lub limit długości)
+                        // Nie przerywaj na liniach nagłówków ===
+                        if ((line.contains("OK") || line.contains("DONE")) && 
+                            response.length > 4096) {
                             break
                         }
                     }
@@ -214,6 +215,7 @@ class ArduinoCommunication {
         var freq = 0.0f
         var networkConn = false
         var effector = EffectorType.NONE
+        var state = SystemState.IDLE
         
         for (line in lines) {
             when {
@@ -238,11 +240,18 @@ class ArduinoCommunication {
                 line.contains("Effector:") -> {
                     effector = parseEffectorFromString(line)
                 }
+                line.contains("State:") || line.contains("System State:") -> {
+                    state = parseSystemStateFromString(line)
+                }
+                line.contains("Safety State:") -> {
+                    state = parseSystemStateFromString(line)
+                }
             }
         }
         
         return SystemStatus(
             uptimeSeconds = uptime,
+            state = state,
             temperatureCelsius = temp,
             freeMemoryBytes = freeMem,
             pwmIsActive = pwmActive,
@@ -250,6 +259,22 @@ class ArduinoCommunication {
             networkConnected = networkConn,
             detectedEffector = effector
         )
+    }
+    
+    /**
+     * Parsuje stan systemu z odpowiedzi
+     */
+    private fun parseSystemStateFromString(line: String): SystemState {
+        return when {
+            line.contains("BOOT") -> SystemState.BOOT
+            line.contains("IDLE") -> SystemState.IDLE
+            line.contains("CONFIGUR") -> SystemState.CONFIGURING
+            line.contains("RUNNING") || line.contains("Praca") -> SystemState.RUNNING
+            line.contains("ERROR") || line.contains("Błąd") -> SystemState.ERROR
+            line.contains("SAFE_LOCKOUT") || line.contains("Blokada Bezpieczeństwa") -> SystemState.SAFE_LOCKOUT
+            line.contains("THERMAL") || line.contains("Wyłączenie Termiczne") -> SystemState.THERMAL_SHUTDOWN
+            else -> SystemState.IDLE
+        }
     }
     
     /**

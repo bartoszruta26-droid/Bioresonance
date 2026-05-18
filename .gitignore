@@ -1,1 +1,37 @@
-Nothing should be ignored based on the provided file changes, as they consist only of source/config files (.md and .sh) without any build artifacts, dependencies, or temporary files.
+```
+# Android build outputs
+/build/
+/app/build/
+.gradle/
+
+# Android Studio files
+.idea/
+*.iml
+*.iws
+*.db
+
+# Android cache
+.cache/
+
+# Android resource files (generated)
+*/res/values/generated/
+*/res/values/merged/
+*/intermediates/
+*/outputs/
+
+# Log files
+*.log
+
+# Environment
+.env
+.env.local
+.env.*
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Temp files
+*.tmp
+*.swp
+```
