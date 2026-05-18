@@ -1,12 +1,16 @@
 /**
  * @file device_detector.cpp
  * @brief Implementacja systemu wykrywania efektorów i sensorów
- * @version 1.0
+ * @version 1.1 (Rozszerzona o debug, verbose, CLI, event handling)
  */
 
 #include "device_detector.h"
 #include "logging_system.h"
 #include "pwm_engine.h"
+#include "event_system.h"
+#include <stdarg.h>   // Dla va_list, va_start, va_end
+#include <string.h>   // Dla strcmp, strncmp, memcpy, strncpy
+#include <avr/pgmspace.h>  // Dla PROGMEM, pgm_read_word
 #include "ir_led_engine.h"
 
 // ============================================================================
@@ -16,6 +20,95 @@
 static DeviceSystemState_t g_device_state;
 static EffectorType_t g_current_effector = EFFECTOR_NONE;
 static BioSensorStatus_t g_bio_status;
+
+// Konfiguracja detekcji - może być nadpisana przez CLI
+static DetectionConfig_t s_detection_config = {
+    .verbose_mode = DETECTION_VERBOSE_MODE,
+    .debug_enabled = DETECTION_DEBUG_ENABLED,
+    .force_calibration = false,
+    .detection_interval = 5,  // Co 5 sekund
+    .quiet_mode = false
+};
+
+// Liczniki statystyk
+static uint32_t s_error_count = 0;
+static uint32_t s_detection_events = 0;
+
+// Tablica opisów błędów w pamięci FLASH
+static const char* const s_error_strings[] PROGMEM = {
+    "OK",                              // DETECT_OK
+    "Urządzenie nie wykryte",          // DETECT_ERR_NOT_FOUND
+    "Zwarcie wykryte",                 // DETECT_ERR_SHORT_CIRCUIT
+    "Przerwa w obwodzie",              // DETECT_ERR_OPEN_CIRCUIT
+    "Przegrzanie urządzenia",          // DETECT_ERR_OVERTEMP
+    "Nieprawidłowa impedancja",        // DETECT_ERR_INVALID_IMP
+    "Błąd komunikacji",                // DETECT_ERR_COMM_FAIL
+    "Timeout operacji",                // DETECT_ERR_TIMEOUT
+    "Błąd konfiguracji"                // DETECT_ERR_CONFIG
+};
+
+// ============================================================================
+// FUNKCJE POMOCNICZE - DEBUG & VERBOSE LOGGING
+// ============================================================================
+
+/**
+ * @brief Logowanie z formatowaniem i obsługą poziomów verbose
+ */
+void detection_log_printf(uint8_t level, const char* format, ...) {
+    // Sprawdź czy tryb quiet pozwala na ten poziom logowania
+    if (s_detection_config.quiet_mode && level < LOG_ERROR) {
+        return;
+    }
+    
+    // Sprawdź tryb verbose dla DEBUG/VERBOSE
+    if (!s_detection_config.verbose_mode && (level == LOG_DEBUG || level == LOG_VERBOSE)) {
+        return;
+    }
+    
+    if (!s_detection_config.debug_enabled && level == LOG_DEBUG) {
+        return;
+    }
+    
+    char buffer[LOG_MESSAGE_MAX_LEN];
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buffer, sizeof(buffer), format, args);
+    va_end(args);
+    
+    log_add_entry(level, 0, buffer);
+}
+
+/**
+ * @brief Makro wewnętrzne dla debug logów
+ */
+#define DBG_LOG(msg) do { \
+    if (s_detection_config.debug_enabled) { \
+        detection_log_printf(LOG_DEBUG, msg); \
+    } \
+} while(0)
+
+#define DBG_LOG_F(fmt, ...) do { \
+    if (s_detection_config.debug_enabled) { \
+        detection_log_printf(LOG_DEBUG, fmt, ##__VA_ARGS__); \
+    } \
+} while(0)
+
+/**
+ * @brief Obsługa zdarzeń detekcji
+ */
+void detection_handle_event(EventType_t event_type, EffectorType_t effector) {
+    s_detection_events++;
+    
+    // Wyślij zdarzenie do systemu eventów
+    char event_desc[64];
+    snprintf(event_desc, sizeof(event_desc), "Detector: %d", effector);
+    event_push(event_type, EVENT_SEVERITY_INFO, (uint32_t)effector, event_desc);
+    
+    // Loguj zdarzenie jeśli verbose
+    if (s_detection_config.verbose_mode) {
+        DBG_LOG_F("Event handled: 0x%04X for effector %d", event_type, effector);
+    }
+}
 
 // ============================================================================
 // FUNKCJE POMOCNICZE
@@ -40,11 +133,19 @@ static void delay_us(uint32_t us) {
 }
 
 // ============================================================================
-// INICJALIZACJA
+// INICJALIZACJA Z OBSŁUGĄ CLI
 // ============================================================================
 
-void device_detector_init() {
-    LOG_INFO("Device detector initialization");
+/**
+ * @brief Inicjalizacja systemu detekcji z konfiguracją
+ */
+void device_detector_init(DetectionConfig_t* config) {
+    // Jeśli podano konfigurację, użyj jej; w przeciwnym razie użyj domyślnej
+    if (config != NULL) {
+        memcpy(&s_detection_config, config, sizeof(DetectionConfig_t));
+    }
+    
+    DBG_LOG("Device detector initialization started");
     
     // Zerowanie stanu
     memset(&g_device_state, 0, sizeof(DeviceSystemState_t));
@@ -60,6 +161,7 @@ void device_detector_init() {
     pinMode(PPG_SPI_CS, OUTPUT);
     pinMode(PIN_IR_DETECT, INPUT_PULLUP);
     
+    // Ustawienie stanów początkowych - wszystkie wyłączone dla bezpieczeństwa
     digitalWrite(PIN_OTIC_ENABLE, LOW);
     digitalWrite(PIN_ELECTRODE_ENABLE, LOW);
     digitalWrite(PIN_WRAP_ENABLE, LOW);
@@ -76,7 +178,70 @@ void device_detector_init() {
     g_device_state.detectionCount = 0;
     g_device_state.errorCount = 0;
     
+    // Reset liczników błędów
+    s_error_count = 0;
+    s_detection_events = 0;
+    
+    // Loguj tryb pracy
+    if (s_detection_config.verbose_mode) {
+        DBG_LOG("Verbose mode ENABLED");
+    }
+    if (s_detection_config.quiet_mode) {
+        LOG_INFO("Quiet mode enabled - errors only");
+    }
+    
     LOG_INFO("Device detector initialized successfully");
+    DBG_LOG_F("Detection interval: %d seconds", s_detection_config.detection_interval);
+}
+
+/**
+ * @brief Parsowanie argumentów CLI (symulacja dla Arduino)
+ * @param argc Liczba argumentów
+ * @param argv Tablica stringów z argumentami
+ * @return true jeśli parsowanie udane
+ */
+bool detection_parse_cli_args(int argc, char** argv) {
+    if (argc == 0 || argv == NULL) {
+        return false;  // Brak argumentów - użyj domyślnych
+    }
+    
+    DBG_LOG_F("Parsing %d CLI arguments", argc);
+    
+    for (int i = 0; i < argc; i++) {
+        // Obsługa flag --verbose / -v
+        if (strcmp(argv[i], "--verbose") == 0 || strcmp(argv[i], "-v") == 0) {
+            s_detection_config.verbose_mode = true;
+            LOG_INFO("CLI: Verbose mode enabled");
+        }
+        // Obsługa flag --debug / -d
+        else if (strcmp(argv[i], "--debug") == 0 || strcmp(argv[i], "-d") == 0) {
+            s_detection_config.debug_enabled = true;
+            LOG_INFO("CLI: Debug mode enabled");
+        }
+        // Obsługa flag --quiet / -q
+        else if (strcmp(argv[i], "--quiet") == 0 || strcmp(argv[i], "-q") == 0) {
+            s_detection_config.quiet_mode = true;
+            LOG_INFO("CLI: Quiet mode enabled");
+        }
+        // Obsługa --interval=N
+        else if (strncmp(argv[i], "--interval=", 11) == 0) {
+            int interval = atoi(argv[i] + 11);
+            if (interval > 0 && interval <= 60) {
+                s_detection_config.detection_interval = (uint8_t)interval;
+                LOG_INFO_F("CLI: Detection interval set to %d seconds", interval);
+            }
+        }
+        // Obsługa --calibrate / -c
+        else if (strcmp(argv[i], "--calibrate") == 0 || strcmp(argv[i], "-c") == 0) {
+            s_detection_config.force_calibration = true;
+            LOG_INFO("CLI: Force calibration enabled");
+        }
+        else {
+            LOG_WARNING_F("CLI: Unknown argument '%s'", argv[i]);
+        }
+    }
+    
+    return true;
 }
 
 // ============================================================================
@@ -532,7 +697,7 @@ void device_detector_loop() {
 }
 
 // ============================================================================
-// FUNKCJE GETTERÓW
+// FUNKCJE GETTERÓW I ERROR HANDLING
 // ============================================================================
 
 DeviceSystemState_t* get_device_system_state() {
@@ -655,3 +820,51 @@ void vibrator_stop() {
     LOG_INFO("Vibrator stopped");
 }
 
+/**
+ * @brief Ustaw tryb verbose runtime
+ */
+void detection_set_verbose(bool enabled) {
+    s_detection_config.verbose_mode = enabled;
+    if (enabled) {
+        LOG_INFO("Verbose mode enabled at runtime");
+    } else {
+        DBG_LOG("Verbose mode disabled");
+    }
+}
+
+/**
+ * @brief Sprawdź czy tryb verbose jest aktywny
+ */
+bool detection_is_verbose() {
+    return s_detection_config.verbose_mode;
+}
+
+/**
+ * @brief Pobierz licznik błędów detekcji
+ */
+uint32_t detection_get_error_count() {
+    return s_error_count + g_device_state.errorCount;
+}
+
+/**
+ * @brief Resetuj liczniki błędów
+ */
+void detection_reset_error_count() {
+    s_error_count = 0;
+    g_device_state.errorCount = 0;
+    DBG_LOG("Error counters reset");
+}
+
+/**
+ * @brief Pobierz opis błędu jako string z pamięci FLASH
+ */
+const char* detection_get_error_string(DetectionError_t error) {
+    if (error >= 0 && error <= DETECT_ERR_CONFIG) {
+        return (const char*)pgm_read_word(&s_error_strings[error]);
+    }
+    return "Unknown error";
+}
+
+// ============================================================================
+// KONIEC PLIKU device_detector.cpp
+// ============================================================================
