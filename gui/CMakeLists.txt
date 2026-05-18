@@ -22,6 +22,7 @@ set(IMGUI_SOURCES
     imgui_lib/imgui_widgets.cpp
     imgui_lib/backends/imgui_impl_sdl2.cpp
     imgui_lib/backends/imgui_impl_sdlrenderer2.cpp
+    imgui_lib/misc/cpp/imgui_stdlib.cpp
 )
 
 # Pliki źródłowe
@@ -52,6 +53,7 @@ target_include_directories(bioresonance_gui PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/imgui_lib
     ${CMAKE_CURRENT_SOURCE_DIR}/imgui_lib/backends
+    ${CMAKE_CURRENT_SOURCE_DIR}/imgui_lib/misc/cpp
 )
 
 # Linkowanie SDL2
