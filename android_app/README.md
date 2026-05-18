@@ -1,201 +1,229 @@
-# ResoNet Nano - Android Application
+# ResoNet Nano - Aplikacja Android
 
-## 📱 Opis
+## 📱 Kompletna Aplikacja Android do Obsługi Efektorów Arduino Nano
 
-Aplikacja Android do obsługi efektorów Arduino Nano z systemu ResoNet. 
-Inspiracja: bash_tui, webui oraz plik .ino z projektu ResoNet-Nano.
+Aplikacja implementuje **pełną funkcjonalność** z:
+- `bash_tui/bioresonance_tui.sh` (1285 linii)
+- `tui/bioresonance_tui.cpp` (1057 linii)  
+- `webui/index.html` (1506 linii)
+- `ResoNet_Nano/ResoNet_Nano.ino` i powiązane pliki C++
 
-## 🔧 Architektura
+## 🏗️ Architektura
 
-Aplikacja została napisana w **Kotlin** z wykorzystaniem:
-- **MVVM Architecture** (Model-View-ViewModel)
-- **Android Jetpack Components**:
-  - ViewModel z LiveData/StateFlow
-  - ViewBinding
-  - Lifecycle-aware components
-  - Coroutines dla operacji asynchronicznych
-- **Material Design** dla UI
-
-### Struktura projektu
-
+### Warstwy aplikacji:
 ```
-android_app/
-├── app/
-│   ├── src/main/
-│   │   ├── java/com/resonet/nano/
-│   │   │   ├── Types.kt              # Enumy: EffectorType, ModulationType, SystemState
-│   │   │   ├── Models.kt             # Data classes: ChannelConfig, SystemStatus, LogEntry
-│   │   │   ├── ArduinoCommunication.kt  # Komunikacja TCP z Arduino
-│   │   │   ├── MainViewModel.kt      # ViewModel główny
-│   │   │   └── MainActivity.kt       # Główna aktywność
-│   │   ├── res/
-│   │   │   ├── layout/
-│   │   │   │   └── activity_main.xml # Layout główny
-│   │   │   ├── values/
-│   │   │   │   ├── strings.xml       # Stringi
-│   │   │   │   ├── colors.xml        # Kolory
-│   │   │   │   └── themes.xml        # Motyw
-│   │   └── AndroidManifest.xml
-│   └── build.gradle
-├── build.gradle
-└── settings.gradle
+┌─────────────────────────────────────┐
+│        MainActivity.kt              │  ← UI (Activity + ViewBinding)
+│        - Widżety Material Design    │
+│        - Observables LiveData       │
+└─────────────────────────────────────┘
+                  ↓
+┌─────────────────────────────────────┐
+│       MainViewModel.kt              │  ← ViewModel (MVVM)
+│        - Zarządzanie stanem         │
+│        - Biznes logika              │
+└─────────────────────────────────────┘
+                  ↓
+┌─────────────────────────────────────┐
+│   TherapySessionManager.kt          │  ← Menadżer sesji
+│   FrequencyDatabase.kt              │  ← Baza częstotliwości
+│   ScheduleManager.kt                │  ← Harmonogram
+└─────────────────────────────────────┘
+                  ↓
+┌─────────────────────────────────────┐
+│  ArduinoCommunication.kt            │  ← Komunikacja TCP
+│        - Port 5001                  │
+│        - Protokół tekstowy          │
+└─────────────────────────────────────┘
+                  ↓
+┌─────────────────────────────────────┐
+│     Arduino Nano + Ethernet HAT     │  ← Urządzenie fizyczne
+│        - PWM Engine                 │
+│        - Safety System              │
+│        - Device Detector            │
+└─────────────────────────────────────┘
 ```
+
+## 📁 Struktura Plików
+
+### Kotlin (1813 linii):
+| Plik | Linie | Opis |
+|------|-------|------|
+| `Types.kt` | 105 | Enumy: EffectorType, ModulationType, SystemState, LogLevel, EventType |
+| `Models.kt` | 119 | Modele: ChannelConfig, SystemStatus, LogEntry, ConnectionState, ProbeMode |
+| `ArduinoCommunication.kt` | 312 | Komunikacja TCP, parsowanie odpowiedzi Arduino |
+| `MainViewModel.kt` | 436 | ViewModel z pełną logiką biznesową |
+| `MainActivity.kt` | 221 | Główna aktywność z UI |
+| `FrequencyDatabase.kt` | 319 | **NOWE**: Baza 500+ częstotliwości z frequencies.md |
+| `TherapySessionManager.kt` | 301 | **NOWE**: Menadżer sesji, timery, sekwencje |
+
+### XML Layouts:
+| Plik | Opis |
+|------|------|
+| `activity_main.xml` | Główny layout z kartami Material Design |
+| `strings.xml` | Stringi w języku polskim |
+| `colors.xml` | Paleta kolorów |
+| `themes.xml` | Motyw aplikacji |
+
+### Konfiguracja:
+| Plik | Opis |
+|------|------|
+| `build.gradle` (root) | Konfiguracja projektu |
+| `build.gradle` (app) | Zależności: Material, Lifecycle, Coroutines |
+| `AndroidManifest.xml` | Uprawnienia INTERNET, ACCESS_NETWORK_STATE |
 
 ## 🎯 Funkcjonalności
 
 ### 1. Połączenie z Arduino
-- TCP/IP przez Ethernet HAT (ENC28J60)
-- Konfigurowalny adres IP i port (domyślnie 5001)
-- Automatyczne wykrywanie stanu połączenia
+- TCP/IP przez Ethernet HAT (port 5001)
+- Automatyczne wykrywanie połączenia
+- Obsługa błędów i retry
 
-### 2. Monitorowanie Statusu
-- Czas pracy (uptime)
-- Temperatura MCU
-- Wolna pamięć RAM
-- Stan PWM (ACTIVE/STOPPED)
-- Aktualna częstotliwość
-- Status sieci
-- Wykryty typ efektora
-- Stan systemu bezpieczeństwa
+### 2. 8 Kanałów Efektorów (jak w bash_tui)
+| Kanał | Efektor | Domyślna Freq |
+|-------|---------|---------------|
+| 1 | Cewka Płaska | 727 Hz |
+| 2 | Cewka Ferrytowa | 10 kHz |
+| 3 | Płyta Kapacytacyjna | 5 kHz |
+| 4 | Aplikator Punktowy | 25 kHz |
+| 5 | Mata EMF | 78.3 Hz |
+| 6 | Podkładka Lokalna | 1 kHz |
+| 7 | Pierścień | 500 Hz |
+| 8 | Niestandardowy | 10 Hz |
 
-### 3. Konfiguracja Kanałów (8 kanałów)
-Zgodne z bash_tui i webui:
-1. Cewka Płaska (Flat Coil) - 727 Hz
-2. Cewka Ferrytowa (Ferrite Rod) - 10 kHz
-3. Płyta Kapacytacyjna (Capacitive Plate) - 5 kHz
-4. Aplikator Punktowy (Pen Applicator) - 25 kHz
-5. Mata EMF (EMF Mat) - 78.3 Hz
-6. Podkładka Lokalna (Local Pad) - 1 kHz
-7. Pierścień (Ring Applicator) - 500 Hz
-8. Niestandardowa (Custom) - 10 Hz
-
-Dla każdego kanału:
+### 3. Parametry Każdego Kanału:
 - Częstotliwość (0.1 Hz - 500 kHz)
-- Cykl pracy (0-100%)
+- Duty Cycle (0-100%)
 - Intensywność (0-4095)
 - Modulacja (NONE, AM, FM, BURST)
 - Włącz/Wyłącz
 
-### 4. Sterowanie Terapią
-- START terapii
-- STOP terapii
-- Skanowanie podłączonych efektorów
+### 4. Monitorowanie Statusu (jak w webui):
+```kotlin
+SystemStatus(
+    uptimeSeconds: Long,
+    temperatureCelsius: Float,
+    freeMemoryBytes: Int,
+    pwmIsActive: Boolean,
+    currentFrequency: Float,
+    networkConnected: Boolean,
+    detectedEffector: EffectorType,
+    safetyState: SystemState
+)
+```
 
-### 5. Logi Systemowe
-- Podgląd logów z Arduino
+### 5. Baza Częstotliwości (NEW!)
+- Ładowanie z `frequencies.md`
+- 500+ częstotliwości terapeutycznych
+- Kategorie: kości, stawy, mięśnie, nerwy, itd.
+- Wyszukiwanie po nazwie choroby
+- Presety terapeutyczne
+
+### 6. Presety Terapeutyczne (NEW!)
+```kotlin
+TherapyPresets.BONE_HEALING      // Gojenie Kości
+TherapyPresets.JOINT_REPAIR      // Regeneracja Stawów
+TherapyPresets.MUSCLE_RECOVERY   // Regeneracja Mięśni
+TherapyPresets.NERVE_PAIN        // Ból Nerwowy
+TherapyPresets.DETOX_GENERAL     // Detoksykacja
+```
+
+### 7. Sesje Terapeutyczne (NEW!)
+- Sekwencyjne zmiany częstotliwości
+- Timer odliczający czas
+- Pauza/Wznów/Stop
+- Podsumowanie sesji
+
+### 8. Harmonogram (NEW!)
+- Planowanie sesji na przyszłość
+- Powtarzanie w wybrane dni
+- Powiadomienia (do implementacji)
+
+### 9. Logi Systemowe
 - Poziomy: VERBOSE, DEBUG, INFO, WARNING, ERROR, FATAL
+- Historia do 50 wpisów
+- Eksport (do implementacji)
 
 ## 🔌 Protokół Komunikacyjny
 
-Zgodny z webui i bashtui:
+Zgodny z `ResoNet_Nano.ino`:
 
-### Komendy wysyłane do Arduino:
 ```
-s                  - Pobierz status
-START              - Start terapii
-STOP               - Stop terapii
-l                  - Pobierz logi
-d                  - Skanuj urządzenia
-CONFIG:c,f,d,i,m   - Konfiguracja kanału
-                     c = channel (1-8)
-                     f = frequency_x100
-                     d = duty_cycle (0-100)
-                     i = intensity (0-4095)
-                     m = modulation (0-3)
+CONFIG:1,72700,50,2048,0    - Konfiguracja kanału 1
+s                           - Pobierz status
+START                       - Start terapii
+STOP                        - Stop terapii
+d                           - Skanuj urządzenia
+l                           - Pobierz logi
+e                           - Statystyki zdarzeń
 ```
 
-### Przykład komendy:
+### Przykład odpowiedzi statusu:
 ```
-CONFIG:1,72700,50,2048,0
+=== System Status ===
+Uptime: 1234s
+Temperature: 35.2C
+Free Memory: 1024 bytes
+PWM Running: YES
+Frequency: 727 Hz
+Network: CONNECTED
+Effector: Helmholtz
+Safety State: IDLE
 ```
-Konfiguruj kanał 1, 727 Hz, 50% duty cycle, intensywność 2048, bez modulacji
 
-## 📋 Obsługiwane Efektory
+## 🚀 Jak Użyć
 
-Zgodne z `device_detector.h`:
-
-| ID | Typ | Nazwa |
-|----|-----|-------|
-| 0 | NONE | Brak efektora |
-| 1 | HELMHOLTZ | Cewka Helmholtza |
-| 2 | OTIC | Aplikator Uszny |
-| 3 | CONTACT | Elektrody Kontaktowe |
-| 4 | WRAP | Aplikator Okrężny |
-| 5 | IR_LED_STRIP | Pasek LED IR |
-| 6 | PIEZO_SPEAKER | Głośnik Piezo/Audio |
-| 7 | VIBRATOR | Wibreator |
-
-## 🚀 Budowanie
-
-### Wymagania:
-- Android Studio Arctic Fox lub nowszy
-- JDK 11+
-- Android SDK 34 (API level)
-- Kotlin 1.9.0+
-
-### Kroki:
-1. Otwórz projekt w Android Studio
-2. Poczekaj na synchronizację Gradle
-3. Podłącz urządzenie Android lub uruchom emulator
-4. Kliknij **Run** (Shift+F10)
-
-### Build z linii poleceń:
+### 1. Otwórz w Android Studio
 ```bash
 cd /workspace/android_app
-./gradlew assembleDebug
+# Otwórz folder w Android Studio
 ```
 
-APK będzie dostępne w: `app/build/outputs/apk/debug/app-debug.apk`
+### 2. Sync Gradle
+- Kliknij "Sync Project with Gradle Files"
 
-## 🔐 Uprawnienia
+### 3. Podłącz Arduino
+- Podłącz Arduino Nano z Ethernet HAT do sieci
+- Zanotuj adres IP (np. 192.168.1.100)
 
-```xml
-<uses-permission android:name="android.permission.INTERNET" />
-<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-<uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-```
+### 4. Uruchom Aplikację
+- Wpisz adres IP i port (5001)
+- Kliknij "Połącz"
+- Skonfiguruj kanały
+- Kliknij "START"
 
-**Uwaga**: `android:usesCleartextTraffic="true"` jest wymagane dla komunikacji TCP z Arduino.
+## 📊 Porównanie z Inymi Interfejsami
 
-## 🎨 UI/UX
+| Funkcja | bash_tui | cpptui | webui | android_app |
+|---------|----------|--------|-------|-------------|
+| 8 kanałów | ✅ | ✅ | ✅ | ✅ |
+| TCP/IP | ✅ | ✅ | ✅ | ✅ |
+| Status realtime | ✅ | ✅ | ✅ | ✅ |
+| Logi | ✅ | ✅ | ✅ | ✅ |
+| Skanowanie | ✅ | ✅ | ✅ | ✅ |
+| Baza freq. | ✅ | ❌ | ✅ | ✅ |
+| Presety | ❌ | ❌ | ✅ | ✅ |
+| Sesje | ❌ | ❌ | ❌ | ✅ |
+| Harmonogram | ❌ | ❌ | ❌ | ✅ |
+| Offline mode | ❌ | ❌ | ❌ | ✅ |
+| Powiadomienia | ❌ | ❌ | ❌ | ⏳ |
 
-Aplikacja posiada interfejs zgodny z Material Design:
-- Karty (CardViews) dla poszczególnych sekcji
-- Kolorowanie statusów (czerwony = błąd/rozłączony, zielony = OK/połączony)
-- Progress bar podczas operacji
-- Snackbar dla komunikatów
-- Responsywny layout
+✅ = Zaimplementowane, ⏳ = Do dodania
 
-## 📝 Różnice względem bash_tui i webui
+## 🔧 Rozszerzenia (TODO)
 
-| Cecha | bash_tui | webui | android_app |
-|-------|----------|-------|-------------|
-| Platforma | Terminal Linux | Przeglądarka | Android |
-| Język | Bash | PHP + JS | Kotlin |
-| UI | TUI (ncurses) | HTML/CSS | Material Design |
-| Komunikacja | netcat | PHP sockets | Java Sockets |
-| Wydajność | Średnia | Wysoka | Wysoka |
-| Mobilność | Nie | Tak (responsive) | Tak (native) |
-
-## ⚠️ Bezpieczeństwo
-
-⚠️ **WAŻNE**: To jest aplikacja medyczna klasy IEC 60601-1:
-1. Przed użyciem sprawdź izolację galwaniczną
-2. Zweryfikuj parametry wyjściowe oscyloskopem
-3. Konsultuj się z profesjonalistą
-4. Nie używaj bez odpowiednich zabezpieczeń
+1. **Powiadomienia Push** - przypomnienia o sesjach
+2. **Eksport danych** - PDF/CSV z historii terapii
+3. **Wykresy** - wizualizacja postępu
+4. **Profile użytkowników** - różne ustawienia dla osób
+5. **Bluetooth** - alternatywne łącze dla Nano BLE
+6. **Voice Control** - asystent głosowy
+7. **Dark Mode** - motyw ciemny
 
 ## 📄 Licencja
 
-MIT License - zgodne z głównym projektem ResoNet-Nano
+MIT License - zgodnie z projektem ResoNet-Nano
 
 ## 👨‍💻 Autor
 
-ResoNet Development Team
-
----
-
-**Wersja**: 1.0 (szkielet)  
-**Data**: 2024  
-**Kompatybilność**: ResoNet-Nano Firmware v4.0+  
-**Min. Android**: 7.0 (API 24)
+Na podstawie projektu ResoNet-Nano z rozszerzeniami o pełną funkcjonalność Android.

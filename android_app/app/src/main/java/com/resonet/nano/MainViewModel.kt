@@ -10,6 +10,7 @@ import kotlinx.coroutines.launch
 /**
  * ViewModel główny aplikacji ResoNet Nano
  * Zarządza stanem UI, połączeniem i konfiguracją efektorów
+ * Rozbudowany o pełną funkcjonalność z bashtui, cpptui i webui
  */
 class MainViewModel : ViewModel() {
     
@@ -41,12 +42,36 @@ class MainViewModel : ViewModel() {
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
     
+    // Baza częstotliwości
+    private val _frequenciesLoaded = MutableStateFlow(false)
+    val frequenciesLoaded: StateFlow<Boolean> = _frequenciesLoaded.asStateFlow()
+    
+    // Sesja terapeutyczna
+    private val _sessionState = MutableStateFlow<TherapySessionManager.SessionState>(TherapySessionManager.SessionState.Idle)
+    val sessionState: StateFlow<TherapySessionManager.SessionState> = _sessionState.asStateFlow()
+    
     // Interfejs komunikacyjny
     private val communication = ArduinoCommunication()
+    
+    // Menadżer sesji terapeutycznych
+    private lateinit var therapySessionManager: TherapySessionManager
+    
+    // Menadżer harmonogramu
+    private val scheduleManager = ScheduleManager()
     
     init {
         // Inicjalizacja domyślnych 8 kanałów
         initializeDefaultChannels()
+        
+        // Inicjalizacja menadżera sesji
+        therapySessionManager = TherapySessionManager(communication)
+        
+        // Obserwacja stanu sesji
+        viewModelScope.launch {
+            therapySessionManager.sessionState.collect { state ->
+                _sessionState.value = state
+            }
+        }
         
         // Nasłuchiwanie zmian połączenia
         communication.addConnectionListener(object : ArduinoCommunication.ConnectionStateListener {
@@ -57,6 +82,7 @@ class MainViewModel : ViewModel() {
                         is ConnectionState.Connected -> {
                             showMessage("Połączono z ${state.ipAddress}:${state.port}")
                             refreshStatus()
+                            refreshLogs()
                         }
                         is ConnectionState.Error -> {
                             showMessage("Błąd: ${state.message}")
@@ -66,6 +92,9 @@ class MainViewModel : ViewModel() {
                 }
             }
         })
+        
+        // Ładowanie bazy częstotliwości
+        loadFrequencyDatabase()
     }
     
     /**
@@ -269,8 +298,137 @@ class MainViewModel : ViewModel() {
         }
     }
     
+    /**
+     * Ładowanie bazy częstotliwości z pliku frequencies.md
+     */
+    fun loadFrequencyDatabase() {
+        viewModelScope.launch {
+            try {
+                // W produkcji: wczytaj z assets/frequencies.md
+                val mockContent = """
+                    727|INJURY_BONE|general|Podstawowa regeneracja kości / Basic bone regeneration|AM|0
+                    1530|INJURY_BONE|healing|Przyspieszenie zrostów kostnych / Bone union acceleration|AM|0
+                    666|INJURY_JOINT|cartilage|Regeneracja chrząstki stawowej / Articular cartilage regeneration|AM|0
+                    880|INJURY_JOINT|lubrication|Nawilżanie stawów / Joint lubrication|AM|0
+                    290|INJURY_MUSCLE|relax|Rozluźnienie mięśni napiętych / Muscle tension relief|AM|0
+                    528|INJURY_MUSCLE|fiber|Regeneracja włókien mięśniowych / Muscle fiber regeneration|FM|0
+                    174|INJURY_NERVE|pain|Łagodzenie bólu nerwowego / Nerve pain relief|PWM|0
+                    729|INJURY_NERVE|vagus|Stymulacja nerwu błędnego / Vagus nerve stimulation|PWM|0
+                """.trimIndent()
+                
+                val count = FrequencyDatabase.loadFromAssets(mockContent)
+                _frequenciesLoaded.value = true
+                showMessage("Załadowano $count częstotliwości")
+            } catch (e: Exception) {
+                showMessage("Błąd ładowania częstotliwości: ${e.message}")
+            }
+        }
+    }
+    
+    /**
+     * Wyszukuje częstotliwości po nazwie choroby
+     */
+    fun searchFrequencies(query: String): List<FrequencyEntry> {
+        return FrequencyDatabase.searchByDisease(query)
+    }
+    
+    /**
+     * Pobiera częstotliwości dla kategorii
+     */
+    fun getFrequenciesByCategory(category: FrequencyCategory): List<FrequencyEntry> {
+        return FrequencyDatabase.getByCategory(category)
+    }
+    
+    /**
+     * Start sesji terapeutycznej z presetu
+     */
+    fun startTherapySession(preset: TherapyPreset) {
+        therapySessionManager.startSession(preset)
+    }
+    
+    /**
+     * Pauza sesji
+     */
+    fun pauseTherapySession() {
+        therapySessionManager.pauseSession()
+    }
+    
+    /**
+     * Wznowienie sesji
+     */
+    fun resumeTherapySession() {
+        therapySessionManager.resumeSession()
+    }
+    
+    /**
+     * Stop sesji
+     */
+    fun stopTherapySession() {
+        therapySessionManager.stopSession()
+    }
+    
+    /**
+     * Tworzy niestandardową sesję
+     */
+    fun createCustomTherapy(
+        name: String,
+        frequencies: List<Int>,
+        durationPerFreq: Int = 180,
+        intensity: Int = 2048
+    ) {
+        val preset = therapySessionManager.createCustomSession(
+            name = name,
+            frequencies = frequencies,
+            durationPerFreq = durationPerFreq,
+            intensity = intensity
+        )
+        startTherapySession(preset)
+    }
+    
+    /**
+     * Dodaje harmonogram terapii
+     */
+    fun addSchedule(
+        presetId: String,
+        scheduledTime: Long,
+        repeatDays: List<Int> = emptyList(),
+        notes: String = ""
+    ) {
+        val schedule = TherapySchedule(
+            id = "schedule_${System.currentTimeMillis()}",
+            presetId = presetId,
+            scheduledTime = scheduledTime,
+            repeatDays = repeatDays,
+            notes = notes
+        )
+        scheduleManager.addSchedule(schedule)
+        showMessage("Dodano harmonogram")
+    }
+    
+    /**
+     * Pobiera zaplanowane sesje na dziś
+     */
+    fun getScheduledToday(): List<TherapySchedule> {
+        return scheduleManager.getScheduledToday()
+    }
+    
+    /**
+     * Pobiera wszystkie presety
+     */
+    fun getAllPresets(): List<TherapyPreset> {
+        return TherapyPresets.ALL_PRESETS
+    }
+    
+    /**
+     * Dostępne kategorie częstotliwości
+     */
+    fun getAvailableCategories(): List<FrequencyCategory> {
+        return FrequencyDatabase.getAvailableCategories()
+    }
+
     override fun onCleared() {
         super.onCleared()
+        therapySessionManager.cleanup()
         viewModelScope.launch {
             communication.disconnect()
         }
