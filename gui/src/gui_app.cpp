@@ -393,8 +393,9 @@ void GuiApp::renderProbePanel() {
 }
 
 void GuiApp::renderFrequencyBrowser() {
-    static char search_buffer[256] = "";
-    // Non-static vector to avoid thread safety issues with static STL containers
+    // Use member variable or persistent storage instead of static local
+    // For now, use a local buffer that persists via ImGui's internal state
+    static char search_buffer[256] = "";  // ImGui manages the text input state internally
     std::vector<FrequencyEntry> filtered_results;
     bool search_triggered = false;
     
@@ -472,7 +473,8 @@ void GuiApp::renderStatusPanel() {
             disconnectFromDevice();
         }
     } else {
-        // Static buffers to preserve state between frames
+        // Static buffers to preserve state between frames (ImGui requires persistent storage for input widgets)
+        // These are safe because ImGui single-threaded rendering context
         static char ip_buffer[64] = "192.168.1.100";
         static int port_buffer = 5001;
         

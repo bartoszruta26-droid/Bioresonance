@@ -95,6 +95,7 @@ public:
      * @brief Ustaw minimalny poziom logowania
      */
     void setLogLevel(LogLevel level) {
+        std::lock_guard<std::mutex> lock(log_mutex);
         min_level = level;
     }
     
@@ -102,6 +103,7 @@ public:
      * @brief Włącz/wyłącz tryb verbose
      */
     void setVerbose(bool enable) {
+        std::lock_guard<std::mutex> lock(log_mutex);
         verbose_mode = enable;
         if (enable) {
             min_level = LogLevel::DEBUG;
@@ -204,6 +206,7 @@ public:
      * @brief Włącz/wyłącz wyjście na konsolę
      */
     void setConsoleOutput(bool enable) {
+        std::lock_guard<std::mutex> lock(log_mutex);
         console_output = enable;
     }
     
