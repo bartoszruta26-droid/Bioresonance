@@ -1,7 +1,7 @@
 /**
  * @file event_system.h
  * @brief System obsługi zdarzeń (Event Handling) - Nagłówki
- * @version 4.1 (Poprawiona spójność typów)
+ * @version 4.0 (Modular Architecture with Pseudo-threading)
  */
 
 #ifndef EVENT_SYSTEM_H
