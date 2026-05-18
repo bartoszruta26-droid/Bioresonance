@@ -1,1 +1,43 @@
-Nothing should be ignored based on the provided file changes. The only modified file is `ResoNet_Nano.ino`, which is a source code file and should not be ignored. No build artifacts, dependencies, or temporary files are present in the changes.
+```
+# Arduino build artifacts
+*.hex
+*.elf
+*.bin
+*.map
+*.d
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+
+# Arduino IDE
+build/
+Build/
+.build/
+.tmp/
+
+# PlatformIO
+.platformio/
+.pio/
+pioenvs/
+piolib/
+
+# Arduino libraries cache
+.cache/
+arduino-build-*/
+
+# Logs
+*.log
+*.txt~
+
+# Temp files
+*.tmp
+*~
+.swp
+.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+```
