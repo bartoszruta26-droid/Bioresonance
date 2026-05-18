@@ -1,1 +1,23 @@
-Nothing should be ignored based on the provided file changes, as they consist only of source/config files (.md and .sh) without any build artifacts, dependencies, or temporary files.
+```
+# CMake build artifacts
+gui/build/
+gui/CMakeCache.txt
+CMakeFiles/
+CMakeCache.txt
+Makefile
+cmake_install.cmake
+*.cmake
+*.o
+*.d
+*.bin
+*.out
+
+# Executables
+bioresonance_gui
+
+# Dependencies
+imgui_lib/
+
+# Logs
+*.log
+```
