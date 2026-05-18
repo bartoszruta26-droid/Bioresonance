@@ -1,7 +1,7 @@
 /**
  * @file pwm_engine.h
  * @brief Silnik generowania sygnałów PWM - Nagłówki
- * @version 4.0 (Modular Architecture with Pseudo-threading)
+ * @version 4.1 (Poprawiona spójność typów)
  * 
  * Generator XV-LPWM (0.1 Hz - 500 kHz, rozdzielczość 0.01 Hz)
  */
@@ -10,6 +10,7 @@
 #define PWM_ENGINE_H
 
 #include <Arduino.h>
+#include "types.h"
 
 // ============================================================================
 // KONFIGURACJA PWM
@@ -19,11 +20,11 @@
 #define PWM_MIN_FREQUENCY_HZ_X100 10      // 0.1 Hz
 #define PWM_MAX_FREQUENCY_HZ_X100 5000000 // 500 kHz
 
-// Typy modulacji
-#define MODULATION_NONE     0
-#define MODULATION_AM       1
-#define MODULATION_FM       2
-#define MODULATION_BURST    3
+// Typy modulacji (używamy z types.h)
+// MODULATION_NONE = 0
+// MODULATION_AM = 1
+// MODULATION_FM = 2
+// MODULATION_BURST = 3
 
 // Struktura konfiguracji PWM
 typedef struct {

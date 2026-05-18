@@ -1,7 +1,7 @@
 /**
  * @file network_system.h
  * @brief System komunikacji sieciowej Ethernet ENC28J60 - Nagłówki
- * @version 4.0 (Modular Architecture with Pseudo-threading)
+ * @version 4.1 (Poprawiona spójność typów)
  */
 
 #ifndef NETWORK_SYSTEM_H

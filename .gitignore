@@ -1,43 +1,36 @@
 ```
-# Arduino build artifacts
+# Compiled and build artifacts
+*.o
+*.obj
+*.out
+*.bin
 *.hex
 *.elf
-*.bin
-*.map
-*.d
-*.o
-*.a
-*.so
-*.dylib
-*.dll
 
-# Arduino IDE
-build/
-Build/
-.build/
-.tmp/
-
-# PlatformIO
-.platformio/
+# Dependencies
 .pio/
-pioenvs/
-piolib/
+.platformio/
+lib/
+src/lib/
 
-# Arduino libraries cache
-.cache/
-arduino-build-*/
-
-# Logs
+# Logs and temp files
 *.log
-*.txt~
-
-# Temp files
 *.tmp
-*~
-.swp
-.swo
+*.swp
 
-# OS files
-.DS_Store
-Thumbs.db
+# Environment
+.env
+.env.local
+*.env.*
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build outputs
+build/
+dist/
+output/
 ```
