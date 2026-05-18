@@ -6,10 +6,11 @@
 ![Language](https://img.shields.io/badge/language-C%2B%2B%20%7C%20C%23%20%7C%20TypeScript-green)
 ![Medical Class](https://img.shields.io/badge/class-Medical%20Device%20IIb-red)
 ![License](https://img.shields.io/badge/license-AGPLv3%20%7C%20CC--BY--NC--SA-orange)
+![Version](https://img.shields.io/badge/version-2.0-purple)
 
 **Zaawansowany system biorezonansu z architekturą rozproszoną, spełniający rygorystyczne normy bezpieczeństwa urządzeń medycznych.**
 
-[Opis](#-wstęp-i-opis-projektu) • [Architektura](#-architektura-systemu-i-standardy-medyczne) • [Desktop App](#-aplikacja-desktop-c-cross-platform) • [WebUI Apache2](#-webui-apache2-profesjonalny-panel-sterowania) • [Uruchomienie](#-instrukcja-uruchomienia-i-kalibracji) • [Bezpieczeństwo](#-bezpieczeństwo-normy-i-ostrzeżenia-medyczne)
+[Opis](#-wstęp-i-opis-projektu) • [Architektura](#-architektura-systemu-i-standardy-medyczne) • [Schemat Blokowy](#-schemat-blokowy-systemu) • [Desktop App](#-aplikacja-desktop-c-cross-platform) • [WebUI Apache2](#-webui-apache2-profesjonalny-panel-sterowania) • [Uruchomienie](#-instrukcja-uruchomienia-i-kalibracji) • [Bezpieczeństwo](#-bezpieczeństwo-normy-i-ostrzeżenia-medyczne)
 
 </div>
 
@@ -19,6 +20,7 @@
 
 - [Wstęp i Opis Projektu](#-wstęp-i-opis-projektu)
 - [Architektura Systemu i Standardy Medyczne](#-architektura-systemu-i-standardy-medyczne)
+- [Schemat Blokowy Systemu](#-schemat-blokowy-systemu)
 - [Specyfikacja Sprzętowa](#-szczegółowa-specyfikacja-sprzętowa)
 - [Dokumentacja Sprzętowa - Połączenia i Elementy](#-dokumentacja-sprzętowa-połączenia-i-elementy)
 - [Oprogramowanie Układowe](#-oprogramowanie-układowe-firmware---architektura-real-time)
