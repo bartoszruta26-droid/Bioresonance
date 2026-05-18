@@ -3,15 +3,10 @@
 *.o
 *.obj
 *.out
-*.bin
-*.hex
-*.elf
 
 # Dependencies
-.pio/
-.platformio/
-lib/
-src/lib/
+.build/
+deps/
 
 # Logs and temp files
 *.log
@@ -26,11 +21,12 @@ src/lib/
 # Editors
 .vscode/
 .idea/
-*.swp
-*.swo
 
-# Build outputs
-build/
-dist/
-output/
+# Coverage reports
+coverage/
+htmlcov/
+.coverage
+
+# MyPy cache
+.mypy_cache/
 ```

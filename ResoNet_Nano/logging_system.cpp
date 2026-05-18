@@ -112,7 +112,7 @@ void log_add_entry(uint8_t level, uint16_t event_code, const char* message) {
  * @return Nazwa jako string z pamięci FLASH
  */
 const char* get_log_level_name(uint8_t level) {
-    if (level <= LOG_LEVEL_FATAL) {
+    if (level <= LOG_FATAL) {
         return log_level_names[level];
     }
     return "UNKNOWN";

@@ -18,10 +18,10 @@
 #define EVENT_DESC_MAX_LEN 32
 
 // Poziomy ważności zdarzeń (używamy z types.h)
-// EVENT_SEVERITY_INFO = 0
-// EVENT_SEVERITY_WARNING = 1
-// EVENT_SEVERITY_ERROR = 2
-// EVENT_SEVERITY_CRITICAL = 3
+#define EVENT_SEVERITY_INFO      0
+#define EVENT_SEVERITY_WARNING   1
+#define EVENT_SEVERITY_ERROR     2
+#define EVENT_SEVERITY_CRITICAL  3
 
 // Struktura zdarzenia systemowego (używamy Event_t z types.h jako bazę)
 typedef struct {

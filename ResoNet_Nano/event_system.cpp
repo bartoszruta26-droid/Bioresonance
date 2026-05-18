@@ -46,7 +46,7 @@ void event_system_loop() {
         // Specjalna obsługa krytycznych zdarzeń
         if (event.severity == EVENT_SEVERITY_CRITICAL) {
             // Natychmiastowe logowanie krytycznych zdarzeń
-            LOG_EVENT(LOG_LEVEL_FATAL, event.event_code, event.description);
+            LOG_EVENT(LOG_FATAL, event.event_code, event.description);
             
             // Można dodać dodatkowe akcje dla zdarzeń krytycznych
             // np. natychmiastowe wysłanie alertu przez sieć
@@ -99,7 +99,7 @@ bool event_push(uint16_t event_code, uint8_t severity, uint32_t data, const char
     if (severity == EVENT_SEVERITY_CRITICAL || severity == EVENT_SEVERITY_ERROR) {
         char log_msg[64];
         snprintf_P(log_msg, sizeof(log_msg), PSTR("Event 0x%04X [%s]"), event_code, description);
-        log_add_entry(severity == EVENT_SEVERITY_CRITICAL ? LOG_LEVEL_FATAL : LOG_LEVEL_ERROR, 
+        log_add_entry(severity == EVENT_SEVERITY_CRITICAL ? LOG_FATAL : LOG_ERROR, 
                       event_code, log_msg);
     }
     
