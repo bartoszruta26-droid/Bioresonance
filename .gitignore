@@ -1,1 +1,1 @@
-Nothing needs to be added to .gitignore since only a markdown file (frequencies.md) was added, which is a source/config file and should not be ignored.
+Nothing should be ignored based on the provided file changes. The only modified file is 'frequencies.md', which is a markdown source file and should not be added to .gitignore.
