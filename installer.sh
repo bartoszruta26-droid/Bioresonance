@@ -117,9 +117,24 @@ download_from_github() {
         fi
     fi
     
-    # Pobierz projekt
+    # Pobierz projekt - bez sudo, aby zachować uprawnienia użytkownika
     echo -e "${BLUE}Klonowanie repozytorium...${NC}"
-    if sudo git clone "$GITHUB_REPO" "$INSTALL_DIR"; then
+    
+    # Najpierw utwórz katalog z uprawnieniami użytkownika
+    if ! sudo mkdir -p "$INSTALL_DIR"; then
+        echo -e "${RED}Nie udało się utworzyć katalogu ${INSTALL_DIR}${NC}"
+        return 1
+    fi
+    
+    # Zmień właściciela na bieżącego użytkownika
+    if ! sudo chown "$(whoami):$(whoami)" "$INSTALL_DIR"; then
+        echo -e "${RED}Nie udało się zmienić właściciela katalogu${NC}"
+        sudo rm -rf "$INSTALL_DIR"
+        return 1
+    fi
+    
+    # Klonuj bez sudo - użytkownik będzie miał pełne prawa do zapisu
+    if git clone "$GITHUB_REPO" "$INSTALL_DIR"; then
         echo ""
         echo -e "${GREEN}Pomyślnie pobrano projekt z GitHub!${NC}"
         echo ""
@@ -136,6 +151,8 @@ download_from_github() {
     else
         echo -e "${RED}Błąd podczas pobierania projektu z GitHub!${NC}"
         echo "Sprawdź połączenie z internetem i upewnij się, że repozytorium jest dostępne."
+        # Wyczyść nieudany katalog
+        sudo rm -rf "$INSTALL_DIR"
         return 1
     fi
     
