@@ -12,11 +12,12 @@ Categories: INJURY_BONE, INJURY_JOINT, INJURY_MUSCLE, INJURY_LIGAMENT, INJURY_NE
             ORGAN_SPECIFIC, PAIN, NEUROLOGICAL, RESPIRATORY, DIGESTIVE,
             CARDIOVASCULAR, LYMPHATIC, SKIN, AUTOIMMUNE, METABOLIC,
             SPIRITUALITY, VIRTUES, MERCY_ACTS, CHAKRAS, HOLY_SPIRIT_GIFTS,
-            PROPHECY, LONGEVITY
+            PROPHECY, LONGEVITY, CANCER
 Modulation: AM, FM, PWM, BURST, SWEEP, RANDOM, NONE
 Carrier: carrier frequency in kHz for modulation (0 if not applicable)
 ARDUINO NANO LIMITS: Max carrier 30 kHz (PWM pin 9/10), Max modulated freq 20 kHz
 PoE 48V->5V: Stable 5V output for consistent frequency generation
+NOTE: All frequencies are in Hz (integer values). Decimal kHz values have been converted to Hz.
 ================================================================================
 
 FREQUENCY_DATA_START
@@ -683,290 +684,289 @@ freq_hz|category|subcategory|description|modulation|carrier_khz
 727|INTERFERENCE|bone|8000 Hz + 8727 Hz = 727 Hz częstotliwość różnicowa (kość)|AM|0
 528|INTERFERENCE|dna|10000 Hz + 10528 Hz = 528 Hz częstotliwość różnicowa (naprawa DNA)|AM|0
 --------------------------------------------------------------------------------
-=== CZĘSTOTLIWOŚCI W kHz / FREQUENCIES IN KILOHERTZ ===
 === CHOROBY NOWOTWOROWE / CANCER THERAPY ===
-10.5|CANCER|general|Ogólna terapia nowotworowa / General cancer therapy|AM|0
-15.75|CANCER|breast|Rak piersi / Breast cancer|FM|0
-21.28|CANCER|lung|Rak płuc / Lung cancer|AM|0
-27.5|CANCER|prostate|Rak prostaty / Prostate cancer|FM|0
-33.0|CANCER|colon|Rak jelita grubego / Colon cancer|AM|0
-42.5|CANCER|pancreas|Rak trzustki / Pancreatic cancer|FM|0
-48.75|CANCER|liver|Rak wątroby / Liver cancer|AM|0
-55.0|CANCER|brain|Guz mózgu / Brain tumor|FM|0
-62.5|CANCER|leukemia|Białaczka / Leukemia|AM|0
-70.0|CANCER|lymphoma|Chłoniak / Lymphoma|FM|0
-78.5|CANCER|ovarian|Rak jajnika / Ovarian cancer|AM|0
-85.0|CANCER|kidney|Rak nerki / Kidney cancer|FM|0
-92.5|CANCER|bladder|Rak pęcherza / Bladder cancer|AM|0
-100.0|CANCER|melanoma|Czerniak / Melanoma|FM|0
-10.5|CANCER|deep_tissue|Głęboka terapia nowotworowa / Deep cancer therapy|AM|150
-21.28|CANCER|metastasis|Przerzuty / Metastases|FM|175
+10500|CANCER|general|Ogólna terapia nowotworowa / General cancer therapy|AM|0
+15750|CANCER|breast|Rak piersi / Breast cancer|FM|0
+21280|CANCER|lung|Rak płuc / Lung cancer|AM|0
+27500|CANCER|prostate|Rak prostaty / Prostate cancer|FM|0
+33000|CANCER|colon|Rak jelita grubego / Colon cancer|AM|0
+42500|CANCER|pancreas|Rak trzustki / Pancreatic cancer|FM|0
+48750|CANCER|liver|Rak wątroby / Liver cancer|AM|0
+55000|CANCER|brain|Guz mózgu / Brain tumor|FM|0
+62500|CANCER|leukemia|Białaczka / Leukemia|AM|0
+70000|CANCER|lymphoma|Chłoniak / Lymphoma|FM|0
+78500|CANCER|ovarian|Rak jajnika / Ovarian cancer|AM|0
+85000|CANCER|kidney|Rak nerki / Kidney cancer|FM|0
+92500|CANCER|bladder|Rak pęcherza / Bladder cancer|AM|0
+100000|CANCER|melanoma|Czerniak / Melanoma|FM|0
+10500|CANCER|deep_tissue|Głęboka terapia nowotworowa / Deep cancer therapy|AM|150
+21280|CANCER|metastasis|Przerzuty / Metastases|FM|175
 --------------------------------------------------------------------------------
 === CHOROBY SERCA I UKŁADU KRĄŻENIA / CARDIOVASCULAR DISEASES ===
-5.0|CARDIOVASCULAR|arrhythmia|Arytmia serca / Heart arrhythmia|AM|0
-8.5|CARDIOVASCULAR|hypertension|Nadciśnienie tętnicze / Hypertension|FM|0
-12.0|CARDIOVASCULAR|angina|Dławica piersiowa / Angina pectoris|AM|0
-16.5|CARDIOVASCULAR|heart_failure|Niewydolność serca / Heart failure|FM|0
-22.0|CARDIOVASCULAR|atherosclerosis|Miażdżyca / Atherosclerosis|AM|0
-28.5|CARDIOVASCULAR|myocardial|Infarkt mięśnia sercowego / Myocardial infarction|FM|0
-35.0|CARDIOVASCULAR|valve|Wady zastawek / Valve defects|AM|0
-42.0|CARDIOVASCULAR|pericarditis|Zapalenie osierdzia / Pericarditis|FM|0
-50.0|CARDIOVASCULAR|endocarditis|Zapalenie wsierdzia / Endocarditis|AM|0
-58.0|CARDIOVASCULAR|cardiomyopathy|Kardiomiopatia / Cardiomyopathy|FM|0
-66.0|CARDIOVASCULAR|palpitations|Kołatanie serca / Heart palpitations|AM|0
-75.0|CARDIOVASCULAR|edema|Obrzęk płuc / Pulmonary edema|FM|0
-8.5|CARDIOVASCULAR|deep_therapy|Głęboka terapia kardiologiczna / Deep cardiac therapy|AM|120
+5000|CARDIOVASCULAR|arrhythmia|Arytmia serca / Heart arrhythmia|AM|0
+8500|CARDIOVASCULAR|hypertension|Nadciśnienie tętnicze / Hypertension|FM|0
+12000|CARDIOVASCULAR|angina|Dławica piersiowa / Angina pectoris|AM|0
+16500|CARDIOVASCULAR|heart_failure|Niewydolność serca / Heart failure|FM|0
+22000|CARDIOVASCULAR|atherosclerosis|Miażdżyca / Atherosclerosis|AM|0
+28500|CARDIOVASCULAR|myocardial|Infarkt mięśnia sercowego / Myocardial infarction|FM|0
+35000|CARDIOVASCULAR|valve|Wady zastawek / Valve defects|AM|0
+42000|CARDIOVASCULAR|pericarditis|Zapalenie osierdzia / Pericarditis|FM|0
+50000|CARDIOVASCULAR|endocarditis|Zapalenie wsierdzia / Endocarditis|AM|0
+58000|CARDIOVASCULAR|cardiomyopathy|Kardiomiopatia / Cardiomyopathy|FM|0
+66000|CARDIOVASCULAR|palpitations|Kołatanie serca / Heart palpitations|AM|0
+75000|CARDIOVASCULAR|edema|Obrzęk płuc / Pulmonary edema|FM|0
+8500|CARDIOVASCULAR|deep_therapy|Głęboka terapia kardiologiczna / Deep cardiac therapy|AM|120
 --------------------------------------------------------------------------------
 === CHOROBY UKŁADU ODDECHOWEGO / RESPIRATORY DISEASES ===
-3.5|RESPIRATORY|asthma|Astma oskrzelowa / Bronchial asthma|AM|0
-6.0|RESPIRATORY|bronchitis|Zapalenie oskrzeli / Bronchitis|FM|0
-9.5|RESPIRATORY|pneumonia|Zapalenie płuc / Pneumonia|AM|0
-13.0|RESPIRATORY|copd|POChP / COPD|FM|0
-17.5|RESPIRATORY|emphysema|Rozedma płuc / Emphysema|AM|0
-23.0|RESPIRATORY|fibrosis|Zwłóknienie płuc / Pulmonary fibrosis|FM|0
-30.0|RESPIRATORY|pleurisy|Zapalenie opłucnej / Pleurisy|AM|0
-38.0|RESPIRATORY|tuberculosis|Gruźlica / Tuberculosis|FM|0
-47.0|RESPIRATORY|sleep_apnea|Bezdech senny / Sleep apnea|AM|0
-56.0|RESPIRATORY|cystic_fibrosis|Mukowiscydoza / Cystic fibrosis|FM|0
-65.0|RESPIRATORY|pulmonary_embolism|Zatorowość płucna / Pulmonary embolism|AM|0
-75.0|RESPIRATORY|silicosis|Pylica płuc / Silicosis|FM|0
-9.5|RESPIRATORY|deep_lung|Głęboka terapia płucna / Deep lung therapy|AM|100
+3500|RESPIRATORY|asthma|Astma oskrzelowa / Bronchial asthma|AM|0
+6000|RESPIRATORY|bronchitis|Zapalenie oskrzeli / Bronchitis|FM|0
+9500|RESPIRATORY|pneumonia|Zapalenie płuc / Pneumonia|AM|0
+13000|RESPIRATORY|copd|POChP / COPD|FM|0
+17500|RESPIRATORY|emphysema|Rozedma płuc / Emphysema|AM|0
+23000|RESPIRATORY|fibrosis|Zwłóknienie płuc / Pulmonary fibrosis|FM|0
+30000|RESPIRATORY|pleurisy|Zapalenie opłucnej / Pleurisy|AM|0
+38000|RESPIRATORY|tuberculosis|Gruźlica / Tuberculosis|FM|0
+47000|RESPIRATORY|sleep_apnea|Bezdech senny / Sleep apnea|AM|0
+56000|RESPIRATORY|cystic_fibrosis|Mukowiscydoza / Cystic fibrosis|FM|0
+65000|RESPIRATORY|pulmonary_embolism|Zatorowość płucna / Pulmonary embolism|AM|0
+75000|RESPIRATORY|silicosis|Pylica płuc / Silicosis|FM|0
+9500|RESPIRATORY|deep_lung|Głęboka terapia płucna / Deep lung therapy|AM|100
 --------------------------------------------------------------------------------
 === CHOROBY UKŁADU POKARMOWEGO / DIGESTIVE DISEASES ===
-4.0|DIGESTIVE|gastritis|Zapalenie żołądka / Gastritis|AM|0
-7.5|DIGESTIVE|ulcer|Wrzody żołądka i dwunastnicy / Stomach and duodenal ulcers|FM|0
-11.0|DIGESTIVE|reflux|Refluks żołądkowo-przełykowy / GERD|AM|0
-15.5|DIGESTIVE|crohn|Choroba Leśniowskiego-Crohna / Crohn's disease|FM|0
-21.0|DIGESTIVE|colitis|Wrzodziejące zapalenie jelita grubego / Ulcerative colitis|AM|0
-28.0|DIGESTIVE|ibs|Zespół jelita drażliwego / IBS|FM|0
-36.0|DIGESTIVE|hepatitis|Zapalenie wątroby / Hepatitis|AM|0
-45.0|DIGESTIVE|cirrhosis|Marskość wątroby / Liver cirrhosis|FM|0
-55.0|DIGESTIVE|gallstones|Kamica żółciowa / Gallstones|AM|0
-66.0|DIGESTIVE|pancreatitis|Zapalenie trzustki / Pancreatitis|FM|0
-78.0|DIGESTIVE|diverticulitis|Uchyłkowatość jelit / Diverticulitis|AM|0
-90.0|DIGESTIVE|celiac|Choroba trzewna / Celiac disease|FM|0
-11.0|DIGESTIVE|liver_detox|Detoksykacja wątroby / Liver detox|AM|130
+4000|DIGESTIVE|gastritis|Zapalenie żołądka / Gastritis|AM|0
+7500|DIGESTIVE|ulcer|Wrzody żołądka i dwunastnicy / Stomach and duodenal ulcers|FM|0
+11000|DIGESTIVE|reflux|Refluks żołądkowo-przełykowy / GERD|AM|0
+15500|DIGESTIVE|crohn|Choroba Leśniowskiego-Crohna / Crohn's disease|FM|0
+21000|DIGESTIVE|colitis|Wrzodziejące zapalenie jelita grubego / Ulcerative colitis|AM|0
+28000|DIGESTIVE|ibs|Zespół jelita drażliwego / IBS|FM|0
+36000|DIGESTIVE|hepatitis|Zapalenie wątroby / Hepatitis|AM|0
+45000|DIGESTIVE|cirrhosis|Marskość wątroby / Liver cirrhosis|FM|0
+55000|DIGESTIVE|gallstones|Kamica żółciowa / Gallstones|AM|0
+66000|DIGESTIVE|pancreatitis|Zapalenie trzustki / Pancreatitis|FM|0
+78000|DIGESTIVE|diverticulitis|Uchyłkowatość jelit / Diverticulitis|AM|0
+90000|DIGESTIVE|celiac|Choroba trzewna / Celiac disease|FM|0
+11000|DIGESTIVE|liver_detox|Detoksykacja wątroby / Liver detox|AM|130
 --------------------------------------------------------------------------------
 === CHOROBY NEREK I DRÓG MOCZOWYCH / KIDNEY AND URINARY DISEASES ===
-5.5|URINARY|kidney_stones|Kamica nerkowa / Kidney stones|AM|0
-9.0|URINARY|nephritis|Zapalenie nerek / Nephritis|FM|0
-13.5|URINARY|uti|Infekcje dróg moczowych / UTI|AM|0
-19.0|URINARY|renal_failure|Niewydolność nerek / Renal failure|FM|0
-26.0|URINARY|pyelonephritis|Odmiedniczkowe zapalenie nerek / Pyelonephritis|AM|0
-34.0|URINARY|glomerulonephritis|Kłębuszkowe zapalenie nerek / Glomerulonephritis|FM|0
-43.0|URINARY|incontinence|Nietrzymanie moczu / Urinary incontinence|AM|0
-53.0|URINARY|interstitial_cystitis|Śródmiąższowe zapalenie pęcherza / Interstitial cystitis|FM|0
-64.0|URINARY|enlarged_prostate|Powiększenie prostaty / Enlarged prostate|AM|0
-76.0|URINARY|urethritis|Zapalenie cewki moczowej / Urethritis|FM|0
-88.0|URINARY|bladder_infection|Infekcja pęcherza / Bladder infection|AM|0
-13.5|URINARY|kidney_clean|Oczyszczanie nerek / Kidney cleansing|FM|110
+5500|URINARY|kidney_stones|Kamica nerkowa / Kidney stones|AM|0
+9000|URINARY|nephritis|Zapalenie nerek / Nephritis|FM|0
+13500|URINARY|uti|Infekcje dróg moczowych / UTI|AM|0
+19000|URINARY|renal_failure|Niewydolność nerek / Renal failure|FM|0
+26000|URINARY|pyelonephritis|Odmiedniczkowe zapalenie nerek / Pyelonephritis|AM|0
+34000|URINARY|glomerulonephritis|Kłębuszkowe zapalenie nerek / Glomerulonephritis|FM|0
+43000|URINARY|incontinence|Nietrzymanie moczu / Urinary incontinence|AM|0
+53000|URINARY|interstitial_cystitis|Śródmiąższowe zapalenie pęcherza / Interstitial cystitis|FM|0
+64000|URINARY|enlarged_prostate|Powiększenie prostaty / Enlarged prostate|AM|0
+76000|URINARY|urethritis|Zapalenie cewki moczowej / Urethritis|FM|0
+88000|URINARY|bladder_infection|Infekcja pęcherza / Bladder infection|AM|0
+13500|URINARY|kidney_clean|Oczyszczanie nerek / Kidney cleansing|FM|110
 --------------------------------------------------------------------------------
 === CHOROBY SKÓRY / SKIN DISEASES ===
-2.5|SKIN|acne|Trądzik / Acne|AM|0
-4.5|SKIN|eczema|Egzema / Eczema|FM|0
-7.0|SKIN|psoriasis|Łuszczyca / Psoriasis|AM|0
-10.0|SKIN|dermatitis|Zapalenie skóry / Dermatitis|FM|0
-14.0|SKIN|rosacea|Trądzik różowaty / Rosacea|AM|0
-19.0|SKIN|vitiligo|Bielactwo / Vitiligo|FM|0
-25.0|SKIN|herpes|Opryszczka / Herpes|AM|0
-32.0|SKIN|shingles|Półpasiec / Shingles|FM|0
-40.0|SKIN|warts|Brodawki / Warts|AM|0
-49.0|SKIN|fungal|Infekcje grzybicze / Fungal infections|FM|0
-59.0|SKIN|cellulite|Cellulit / Cellulite|AM|0
-70.0|SKIN|scars|Blizny / Scars|FM|0
-82.0|SKIN|burns|Oparzenia / Burns|AM|0
-95.0|SKIN|aging|Starzenie się skóry / Skin aging|FM|0
-7.0|SKIN|deep_regeneration|Głęboka regeneracja skóry / Deep skin regeneration|AM|85
+2500|SKIN|acne|Trądzik / Acne|AM|0
+4500|SKIN|eczema|Egzema / Eczema|FM|0
+7000|SKIN|psoriasis|Łuszczyca / Psoriasis|AM|0
+10000|SKIN|dermatitis|Zapalenie skóry / Dermatitis|FM|0
+14000|SKIN|rosacea|Trądzik różowaty / Rosacea|AM|0
+19000|SKIN|vitiligo|Bielactwo / Vitiligo|FM|0
+25000|SKIN|herpes|Opryszczka / Herpes|AM|0
+32000|SKIN|shingles|Półpasiec / Shingles|FM|0
+40000|SKIN|warts|Brodawki / Warts|AM|0
+49000|SKIN|fungal|Infekcje grzybicze / Fungal infections|FM|0
+59000|SKIN|cellulite|Cellulit / Cellulite|AM|0
+70000|SKIN|scars|Blizny / Scars|FM|0
+82000|SKIN|burns|Oparzenia / Burns|AM|0
+95000|SKIN|aging|Starzenie się skóry / Skin aging|FM|0
+7000|SKIN|deep_regeneration|Głęboka regeneracja skóry / Deep skin regeneration|AM|85
 --------------------------------------------------------------------------------
 === CHOROBY AUTOIMMUNOLOGICZNE / AUTOIMMUNE DISEASES ===
-6.5|AUTOIMMUNE|lupus|Toczeń rumieniowaty / Lupus erythematosus|AM|0
-10.5|AUTOIMMUNE|rheumatoid_arthritis|Reumatoidalne zapalenie stawów / Rheumatoid arthritis|FM|0
-15.0|AUTOIMMUNE|multiple_sclerosis|Stwardnienie rozsiane / Multiple sclerosis|AM|0
-20.5|AUTOIMMUNE|hashimoto|Choroba Hashimoto / Hashimoto's thyroiditis|FM|0
-27.0|AUTOIMMUNE|grave|Choroba Gravesa-Basedowa / Graves' disease|AM|0
-35.0|AUTOIMMUNE|type1_diabetes|Cukrzyca typu 1 / Type 1 diabetes|FM|0
-44.0|AUTOIMMUNE|sjogren|Zespół Sjögrena / Sjögren's syndrome|AM|0
-54.0|AUTOIMMUNE|scleroderma|Twardzina układowa / Systemic sclerosis|FM|0
-65.0|AUTOIMMUNE|polymyositis|Polimiozapalenie / Polymyositis|AM|0
-77.0|AUTOIMMUNE|vasculitis|Zapalenie naczyń / Vasculitis|FM|0
-90.0|AUTOIMMUNE|myasthenia_gravis|Miastenia / Myasthenia gravis|AM|0
-104.0|AUTOIMMUNE|ankylosing_spondylitis|Zesztywniające zapalenie stawów kręgosłupa / Ankylosing spondylitis|FM|0
-15.0|AUTOIMMUNE|immune_balance|Regulacja układu odpornościowego / Immune system regulation|AM|140
+6500|AUTOIMMUNE|lupus|Toczeń rumieniowaty / Lupus erythematosus|AM|0
+10500|AUTOIMMUNE|rheumatoid_arthritis|Reumatoidalne zapalenie stawów / Rheumatoid arthritis|FM|0
+15000|AUTOIMMUNE|multiple_sclerosis|Stwardnienie rozsiane / Multiple sclerosis|AM|0
+20500|AUTOIMMUNE|hashimoto|Choroba Hashimoto / Hashimoto's thyroiditis|FM|0
+27000|AUTOIMMUNE|grave|Choroba Gravesa-Basedowa / Graves' disease|AM|0
+35000|AUTOIMMUNE|type1_diabetes|Cukrzyca typu 1 / Type 1 diabetes|FM|0
+44000|AUTOIMMUNE|sjogren|Zespół Sjögrena / Sjögren's syndrome|AM|0
+54000|AUTOIMMUNE|scleroderma|Twardzina układowa / Systemic sclerosis|FM|0
+65000|AUTOIMMUNE|polymyositis|Polimiozapalenie / Polymyositis|AM|0
+77000|AUTOIMMUNE|vasculitis|Zapalenie naczyń / Vasculitis|FM|0
+90000|AUTOIMMUNE|myasthenia_gravis|Miastenia / Myasthenia gravis|AM|0
+104000|AUTOIMMUNE|ankylosing_spondylitis|Zesztywniające zapalenie stawów kręgosłupa / Ankylosing spondylitis|FM|0
+15000|AUTOIMMUNE|immune_balance|Regulacja układu odpornościowego / Immune system regulation|AM|140
 --------------------------------------------------------------------------------
 === CHOROBY NEUROLOGICZNE / NEUROLOGICAL DISEASES ===
-3.0|NEUROLOGICAL|migraine|Migrena / Migraine|AM|0
-5.5|NEUROLOGICAL|epilepsy|Padaczka / Epilepsy|FM|0
-8.5|NEUROLOGICAL|parkinson|Choroba Parkinsona / Parkinson's disease|AM|0
-12.5|NEUROLOGICAL|alzheimer|Choroba Alzheimera / Alzheimer's disease|FM|0
-17.0|NEUROLOGICAL|als|Stwardnienie zanikowe boczne / ALS|AM|0
-23.0|NEUROLOGICAL|neuropathy|Neuropatia obwodowa / Peripheral neuropathy|FM|0
-30.0|NEUROLOGICAL|stroke|Udar mózgu / Stroke recovery|AM|0
-38.0|NEUROLOGICAL|vertigo|Zawroty głowy / Vertigo|FM|0
-47.0|NEUROLOGICAL|essential_tremor|Drżenie samoistne / Essential tremor|AM|0
-57.0|NEUROLOGICAL|restless_leg|Zespół niespokojnych nóg / Restless leg syndrome|FM|0
-68.0|NEUROLOGICAL|bell_palsy|Porażenie Bella / Bell's palsy|AM|0
-80.0|NEUROLOGICAL|trigeminal|Neuralgia nerwu trójdzielnego / Trigeminal neuralgia|FM|0
-93.0|NEUROLOGICAL|optic_neuritis|Zapalenie nerwu wzrokowego / Optic neuritis|AM|0
-107.0|NEUROLOGICAL|guillain_barre|Zespół Guillaina-Barrégo / Guillain-Barré syndrome|FM|0
-8.5|NEUROLOGICAL|brain_regen|Regeneracja neuronalna / Neuronal regeneration|AM|160
+3000|NEUROLOGICAL|migraine|Migrena / Migraine|AM|0
+5500|NEUROLOGICAL|epilepsy|Padaczka / Epilepsy|FM|0
+8500|NEUROLOGICAL|parkinson|Choroba Parkinsona / Parkinson's disease|AM|0
+12500|NEUROLOGICAL|alzheimer|Choroba Alzheimera / Alzheimer's disease|FM|0
+17000|NEUROLOGICAL|als|Stwardnienie zanikowe boczne / ALS|AM|0
+23000|NEUROLOGICAL|neuropathy|Neuropatia obwodowa / Peripheral neuropathy|FM|0
+30000|NEUROLOGICAL|stroke|Udar mózgu / Stroke recovery|AM|0
+38000|NEUROLOGICAL|vertigo|Zawroty głowy / Vertigo|FM|0
+47000|NEUROLOGICAL|essential_tremor|Drżenie samoistne / Essential tremor|AM|0
+57000|NEUROLOGICAL|restless_leg|Zespół niespokojnych nóg / Restless leg syndrome|FM|0
+68000|NEUROLOGICAL|bell_palsy|Porażenie Bella / Bell's palsy|AM|0
+80000|NEUROLOGICAL|trigeminal|Neuralgia nerwu trójdzielnego / Trigeminal neuralgia|FM|0
+93000|NEUROLOGICAL|optic_neuritis|Zapalenie nerwu wzrokowego / Optic neuritis|AM|0
+107000|NEUROLOGICAL|guillain_barre|Zespół Guillaina-Barrégo / Guillain-Barré syndrome|FM|0
+8500|NEUROLOGICAL|brain_regen|Regeneracja neuronalna / Neuronal regeneration|AM|160
 --------------------------------------------------------------------------------
 === CHOROBY ENDOKRYNOLOGICZNE / ENDOCRINE DISEASES ===
-4.5|HORMONAL|hypothyroid|Niedoczynność tarczycy / Hypothyroidism|AM|0
-7.5|HORMONAL|hyperthyroid|Nadczynność tarczycy / Hyperthyroidism|FM|0
-11.5|HORMONAL|adrenal_fatigue|Zmęczenie nadnerczy / Adrenal fatigue|AM|0
-16.0|HORMONAL|pcos|Zespół policystycznych jajników / PCOS|FM|0
-22.0|HORMONAL|menopause|Menopauza / Menopause|AM|0
-29.0|HORMONAL|insulin_resistance|Insulinooporność / Insulin resistance|FM|0
-37.0|HORMONAL|growth_hormone|Hormon wzrostu / Growth hormone optimization|AM|0
-46.0|HORMONAL|testosterone|Optymalizacja testosteronu / Testosterone optimization|FM|0
-56.0|HORMONAL|estrogen|Balans estrogenowy / Estrogen balance|AM|0
-67.0|HORMONAL|cortisol|Regulacja kortyzolu / Cortisol regulation|FM|0
-79.0|HORMONAL|pituitary|Przysadka mózgowa / Pituitary gland|AM|0
-92.0|HORMONAL|pineal|Szyszynka / Pineal gland|FM|0
-106.0|HORMONAL|parathyroid|Przytarczyce / Parathyroid|AM|0
-16.0|HORMONAL|endocrine_balance|Balans hormonalny / Hormonal balance|AM|125
+4500|HORMONAL|hypothyroid|Niedoczynność tarczycy / Hypothyroidism|AM|0
+7500|HORMONAL|hyperthyroid|Nadczynność tarczycy / Hyperthyroidism|FM|0
+11500|HORMONAL|adrenal_fatigue|Zmęczenie nadnerczy / Adrenal fatigue|AM|0
+16000|HORMONAL|pcos|Zespół policystycznych jajników / PCOS|FM|0
+22000|HORMONAL|menopause|Menopauza / Menopause|AM|0
+29000|HORMONAL|insulin_resistance|Insulinooporność / Insulin resistance|FM|0
+37000|HORMONAL|growth_hormone|Hormon wzrostu / Growth hormone optimization|AM|0
+46000|HORMONAL|testosterone|Optymalizacja testosteronu / Testosterone optimization|FM|0
+56000|HORMONAL|estrogen|Balans estrogenowy / Estrogen balance|AM|0
+67000|HORMONAL|cortisol|Regulacja kortyzolu / Cortisol regulation|FM|0
+79000|HORMONAL|pituitary|Przysadka mózgowa / Pituitary gland|AM|0
+92000|HORMONAL|pineal|Szyszynka / Pineal gland|FM|0
+106000|HORMONAL|parathyroid|Przytarczyce / Parathyroid|AM|0
+16000|HORMONAL|endocrine_balance|Balans hormonalny / Hormonal balance|AM|125
 --------------------------------------------------------------------------------
 === DOLEGLIWOŚCI BÓLOWE / PAIN CONDITIONS ===
-2.0|PAIN|acute|Ostry ból / Acute pain|AM|0
-3.5|PAIN|chronic|Przewlekły ból / Chronic pain|FM|0
-5.0|PAIN|back_pain|Ból kręgosłupa / Back pain|AM|0
-7.0|PAIN|neck_pain|Ból szyi / Neck pain|FM|0
-9.5|PAIN|joint_pain|Ból stawów / Joint pain|AM|0
-12.5|PAIN|muscle_pain|Ból mięśni / Muscle pain|FM|0
-16.0|PAIN|nerve_pain|Ból nerwowy / Nerve pain|AM|0
-20.5|PAIN|headache|Bóle głowy / Headaches|FM|0
-26.0|PAIN|fibromyalgia|Fibromialgia / Fibromyalgia|AM|0
-33.0|PAIN|sciatica|Rwa kulszowa / Sciatica|FM|0
-41.0|PAIN|phantom_limbs|Bóle fantomowe / Phantom limb pain|AM|0
-50.0|PAIN|complex_regional|Złożony regionalny zespół bólowy / CRPS|FM|0
-60.0|PAIN|post_surgical|Ból pooperacyjny / Post-surgical pain|AM|0
-71.0|PAIN|arthritic|Ból artretyczny / Arthritic pain|FM|0
-83.0|PAIN|visceral|Ból trzewny / Visceral pain|AM|0
-96.0|PAIN|central|Ból centralny / Central pain|FM|0
-5.0|PAIN|deep_relief|Głębokie uśmierzanie bólu / Deep pain relief|AM|180
+2000|PAIN|acute|Ostry ból / Acute pain|AM|0
+3500|PAIN|chronic|Przewlekły ból / Chronic pain|FM|0
+5000|PAIN|back_pain|Ból kręgosłupa / Back pain|AM|0
+7000|PAIN|neck_pain|Ból szyi / Neck pain|FM|0
+9500|PAIN|joint_pain|Ból stawów / Joint pain|AM|0
+12500|PAIN|muscle_pain|Ból mięśni / Muscle pain|FM|0
+16000|PAIN|nerve_pain|Ból nerwowy / Nerve pain|AM|0
+20500|PAIN|headache|Bóle głowy / Headaches|FM|0
+26000|PAIN|fibromyalgia|Fibromialgia / Fibromyalgia|AM|0
+33000|PAIN|sciatica|Rwa kulszowa / Sciatica|FM|0
+41000|PAIN|phantom_limbs|Bóle fantomowe / Phantom limb pain|AM|0
+50000|PAIN|complex_regional|Złożony regionalny zespół bólowy / CRPS|FM|0
+60000|PAIN|post_surgical|Ból pooperacyjny / Post-surgical pain|AM|0
+71000|PAIN|arthritic|Ból artretyczny / Arthritic pain|FM|0
+83000|PAIN|visceral|Ból trzewny / Visceral pain|AM|0
+96000|PAIN|central|Ból centralny / Central pain|FM|0
+5000|PAIN|deep_relief|Głębokie uśmierzanie bólu / Deep pain relief|AM|180
 --------------------------------------------------------------------------------
 === INFEKCJE I STANY ZAPALNE / INFECTIONS AND INFLAMMATION ===
-3.0|ANTIBACTERIAL|staph|Gronkowiec / Staphylococcus|AM|0
-5.0|ANTIBACTERIAL|strep|Paciorkowiec / Streptococcus|FM|0
-7.5|ANTIBACTERIAL|ecoli|E. coli|AM|0
-10.5|ANTIBACTERIAL|salmonella|Salmonella|FM|0
-14.0|ANTIBACTERIAL|pseudomonas|Pseudomonas|AM|0
-18.5|ANTIBACTERIAL|klebsiella|Klebsiella|FM|0
-24.0|ANTIBACTERIAL|enterococcus|Enterococcus|AM|0
-31.0|ANTIBACTERIAL|clostridium|Clostridium|FM|0
-39.0|ANTIBACTERIAL|borrelia|Borelioza / Borrelia (Lyme disease)|AM|0
-48.0|ANTIBACTERIAL|bartonella|Bartonella|FM|0
-58.0|ANTIBACTERIAL|babesia_detailed|Babeszjoza / Babesiosis|AM|0
-69.0|ANTIBACTERIAL|ehrlichia|Ehrlichioza / Ehrlichiosis|FM|0
-81.0|ANTIBACTERIAL|leptospirosis|Leptospiroza / Leptospirosis|AM|0
-94.0|ANTIBACTERIAL|brucellosis|Bruceloza / Brucellosis|FM|0
-108.0|ANTIBACTERIAL|anthrax|Wąglik / Anthrax|AM|0
-3.0|ANTIVIRAL|influenza|Grypa / Influenza|AM|0
-5.5|ANTIVIRAL|common_cold|Przeziębienie / Common cold|FM|0
-8.5|ANTIVIRAL|hiv|HIV/AIDS|AM|0
-12.0|ANTIVIRAL|hepatitis_b|Wirusowe zapalenie wątroby B / Hepatitis B|FM|0
-16.5|ANTIVIRAL|hepatitis_c|Wirusowe zapalenie wątroby C / Hepatitis C|AM|0
-22.0|ANTIVIRAL|hpv|HPV (brodawczak ludzki) / Human papillomavirus|FM|0
-29.0|ANTIVIRAL|ebv|Epstein-Barr virus|AM|0
-37.0|ANTIVIRAL|cmv|Cytomegalowirus / Cytomegalovirus|FM|0
-46.0|ANTIVIRAL|hsv|Herpes simplex virus|AM|0
-56.0|ANTIVIRAL|vzv|Varicella zoster virus|FM|0
-67.0|ANTIVIRAL|enterovirus|Enterowirusy / Enteroviruses|AM|0
-79.0|ANTIVIRAL|adenovirus|Adenowirusy / Adenoviruses|FM|0
-92.0|ANTIVIRAL|parvovirus|Parwowirus / Parvovirus|AM|0
-106.0|ANTIVIRAL|west_nile|West Nile virus|FM|0
-121.0|ANTIVIRAL|zika|Zika virus|AM|0
-3.5|ANTIFUNGAL|candida|Candida albicans|AM|0
-6.0|ANTIFUNGAL|aspergillus|Aspergillus|FM|0
-9.0|ANTIFUNGAL|cryptococcus|Cryptococcus|AM|0
-13.0|ANTIFUNGAL|histoplasma|Histoplasma|FM|0
-18.0|ANTIFUNGAL|coccidioides|Coccidioides|AM|0
-24.0|ANTIFUNGAL|blastomyces|Blastomyces|FM|0
-31.0|ANTIFUNGAL|pneumocystis|Pneumocystis jirovecii|AM|0
-39.0|ANTIFUNGAL|mucor|Mucormycosis|FM|0
-48.0|ANTIFUNGAL|sporothrix|Sporothrix|AM|0
-58.0|ANTIFUNGAL|dermatophytes|Grzybice skóry / Dermatophytes|FM|0
-69.0|ANTIFUNGAL|onychomycosis|Grzybica paznokci / Onychomycosis|AM|0
-81.0|ANTIFUNGAL|tinea|Grzybica ciała / Tinea|FM|0
-94.0|ANTIFUNGAL|seborrheic|Łojotokowe zapalenie skóry / Seborrheic dermatitis|AM|0
-108.0|ANTIFUNGAL|fungal_systemic|Grzybica układowa / Systemic fungal infection|FM|0
-7.5|INFLAMMATION|acute|Ostry stan zapalny / Acute inflammation|AM|0
-12.0|INFLAMMATION|chronic|Przewlekły stan zapalny / Chronic inflammation|FM|0
-18.0|INFLAMMATION|systemic|Stan zapalny całego organizmu / Systemic inflammation|AM|0
-25.0|INFLAMMATION|autoimmune_related|Stan zapalny autoimmunologiczny / Autoimmune inflammation|FM|0
-33.0|INFLAMMATION|cytokine|Burza cytokinowa / Cytokine storm|AM|0
-42.0|INFLAMMATION|crp|Podwyższone CRP / Elevated CRP|FM|0
-52.0|INFLAMMATION|esr|Podwyższone OB / Elevated ESR|AM|0
-63.0|INFLAMMATION|nf_kappa_b|Inhibicja NF-kappaB / NF-kappaB inhibition|FM|0
-75.0|INFLAMMATION|cox2|Inhibicja COX-2 / COX-2 inhibition|AM|0
-88.0|INFLAMMATION|tnf_alpha|Redukcja TNF-alfa / TNF-alpha reduction|FM|0
-102.0|INFLAMMATION|il6|Redukcja IL-6 / IL-6 reduction|AM|0
-117.0|INFLAMMATION|interferon|Stymulacja interferonu / Interferon stimulation|FM|0
-12.0|INFLAMMATION|deep_antiinflammatory|Głębokie działanie przeciwzapalne / Deep anti-inflammatory|AM|145
+3000|ANTIBACTERIAL|staph|Gronkowiec / Staphylococcus|AM|0
+5000|ANTIBACTERIAL|strep|Paciorkowiec / Streptococcus|FM|0
+7500|ANTIBACTERIAL|ecoli|E. coli|AM|0
+10500|ANTIBACTERIAL|salmonella|Salmonella|FM|0
+14000|ANTIBACTERIAL|pseudomonas|Pseudomonas|AM|0
+18500|ANTIBACTERIAL|klebsiella|Klebsiella|FM|0
+24000|ANTIBACTERIAL|enterococcus|Enterococcus|AM|0
+31000|ANTIBACTERIAL|clostridium|Clostridium|FM|0
+39000|ANTIBACTERIAL|borrelia|Borelioza / Borrelia (Lyme disease)|AM|0
+48000|ANTIBACTERIAL|bartonella|Bartonella|FM|0
+58000|ANTIBACTERIAL|babesia_detailed|Babeszjoza / Babesiosis|AM|0
+69000|ANTIBACTERIAL|ehrlichia|Ehrlichioza / Ehrlichiosis|FM|0
+81000|ANTIBACTERIAL|leptospirosis|Leptospiroza / Leptospirosis|AM|0
+94000|ANTIBACTERIAL|brucellosis|Bruceloza / Brucellosis|FM|0
+108000|ANTIBACTERIAL|anthrax|Wąglik / Anthrax|AM|0
+3000|ANTIVIRAL|influenza|Grypa / Influenza|AM|0
+5500|ANTIVIRAL|common_cold|Przeziębienie / Common cold|FM|0
+8500|ANTIVIRAL|hiv|HIV/AIDS|AM|0
+12000|ANTIVIRAL|hepatitis_b|Wirusowe zapalenie wątroby B / Hepatitis B|FM|0
+16500|ANTIVIRAL|hepatitis_c|Wirusowe zapalenie wątroby C / Hepatitis C|AM|0
+22000|ANTIVIRAL|hpv|HPV (brodawczak ludzki) / Human papillomavirus|FM|0
+29000|ANTIVIRAL|ebv|Epstein-Barr virus|AM|0
+37000|ANTIVIRAL|cmv|Cytomegalowirus / Cytomegalovirus|FM|0
+46000|ANTIVIRAL|hsv|Herpes simplex virus|AM|0
+56000|ANTIVIRAL|vzv|Varicella zoster virus|FM|0
+67000|ANTIVIRAL|enterovirus|Enterowirusy / Enteroviruses|AM|0
+79000|ANTIVIRAL|adenovirus|Adenowirusy / Adenoviruses|FM|0
+92000|ANTIVIRAL|parvovirus|Parwowirus / Parvovirus|AM|0
+106000|ANTIVIRAL|west_nile|West Nile virus|FM|0
+121000|ANTIVIRAL|zika|Zika virus|AM|0
+3500|ANTIFUNGAL|candida|Candida albicans|AM|0
+6000|ANTIFUNGAL|aspergillus|Aspergillus|FM|0
+9000|ANTIFUNGAL|cryptococcus|Cryptococcus|AM|0
+13000|ANTIFUNGAL|histoplasma|Histoplasma|FM|0
+18000|ANTIFUNGAL|coccidioides|Coccidioides|AM|0
+24000|ANTIFUNGAL|blastomyces|Blastomyces|FM|0
+31000|ANTIFUNGAL|pneumocystis|Pneumocystis jirovecii|AM|0
+39000|ANTIFUNGAL|mucor|Mucormycosis|FM|0
+48000|ANTIFUNGAL|sporothrix|Sporothrix|AM|0
+58000|ANTIFUNGAL|dermatophytes|Grzybice skóry / Dermatophytes|FM|0
+69000|ANTIFUNGAL|onychomycosis|Grzybica paznokci / Onychomycosis|AM|0
+81000|ANTIFUNGAL|tinea|Grzybica ciała / Tinea|FM|0
+94000|ANTIFUNGAL|seborrheic|Łojotokowe zapalenie skóry / Seborrheic dermatitis|AM|0
+108000|ANTIFUNGAL|fungal_systemic|Grzybica układowa / Systemic fungal infection|FM|0
+7500|INFLAMMATION|acute|Ostry stan zapalny / Acute inflammation|AM|0
+12000|INFLAMMATION|chronic|Przewlekły stan zapalny / Chronic inflammation|FM|0
+18000|INFLAMMATION|systemic|Stan zapalny całego organizmu / Systemic inflammation|AM|0
+25000|INFLAMMATION|autoimmune_related|Stan zapalny autoimmunologiczny / Autoimmune inflammation|FM|0
+33000|INFLAMMATION|cytokine|Burza cytokinowa / Cytokine storm|AM|0
+42000|INFLAMMATION|crp|Podwyższone CRP / Elevated CRP|FM|0
+52000|INFLAMMATION|esr|Podwyższone OB / Elevated ESR|AM|0
+63000|INFLAMMATION|nf_kappa_b|Inhibicja NF-kappaB / NF-kappaB inhibition|FM|0
+75000|INFLAMMATION|cox2|Inhibicja COX-2 / COX-2 inhibition|AM|0
+88000|INFLAMMATION|tnf_alpha|Redukcja TNF-alfa / TNF-alpha reduction|FM|0
+102000|INFLAMMATION|il6|Redukcja IL-6 / IL-6 reduction|AM|0
+117000|INFLAMMATION|interferon|Stymulacja interferonu / Interferon stimulation|FM|0
+12000|INFLAMMATION|deep_antiinflammatory|Głębokie działanie przeciwzapalne / Deep anti-inflammatory|AM|145
 --------------------------------------------------------------------------------
 === ZABURZENIA PSYCHICZNE I EMOCJONALNE / MENTAL AND EMOTIONAL DISORDERS ===
-2.5|MENTAL|anxiety|Lęk i niepokój / Anxiety|AM|0
-4.0|MENTAL|depression|Depresja / Depression|FM|0
-6.0|MENTAL|panic_attacks|Ataki paniki / Panic attacks|AM|0
-8.5|MENTAL|ptsd|PTSD / Post-traumatic stress disorder|FM|0
-11.5|MENTAL|ocd|OCD / Obsessive-compulsive disorder|AM|0
-15.0|MENTAL|bipolar|Choroba afektywna dwubiegunowa / Bipolar disorder|FM|0
-19.5|MENTAL|schizophrenia|Schizofrenia / Schizophrenia|AM|0
-25.0|MENTAL|adhd|ADHD / Attention deficit hyperactivity disorder|FM|0
-31.5|MENTAL|autism|Spektrum autyzmu / Autism spectrum|AM|0
-39.0|MENTAL|eating_disorder|Zaburzenia odżywiania / Eating disorders|FM|0
-47.5|MENTAL|addiction|Uzależnienia / Addictions|AM|0
-57.0|MENTAL|insomnia|Bezsenność / Insomnia|FM|0
-67.5|MENTAL|stress|Stres przewlekły / Chronic stress|AM|0
-79.0|MENTAL|burnout|Wypalenie zawodowe / Burnout syndrome|FM|0
-91.5|MENTAL|mood_swings|Wahania nastroju / Mood swings|AM|0
-105.0|MENTAL|emotional_trauma|Trauma emocjonalna / Emotional trauma|FM|0
-120.0|MENTAL|grief|Żałoba / Grief processing|AM|0
-136.0|MENTAL|anger_management|Kontrola gniewu / Anger management|FM|0
-6.0|MENTAL|calm|Głęboki spokój / Deep calm|AM|95
-11.5|MENTAL|focus|Koncentracja i skupienie / Focus and concentration|FM|80
+2500|MENTAL|anxiety|Lęk i niepokój / Anxiety|AM|0
+4000|MENTAL|depression|Depresja / Depression|FM|0
+6000|MENTAL|panic_attacks|Ataki paniki / Panic attacks|AM|0
+8500|MENTAL|ptsd|PTSD / Post-traumatic stress disorder|FM|0
+11500|MENTAL|ocd|OCD / Obsessive-compulsive disorder|AM|0
+15000|MENTAL|bipolar|Choroba afektywna dwubiegunowa / Bipolar disorder|FM|0
+19500|MENTAL|schizophrenia|Schizofrenia / Schizophrenia|AM|0
+25000|MENTAL|adhd|ADHD / Attention deficit hyperactivity disorder|FM|0
+31500|MENTAL|autism|Spektrum autyzmu / Autism spectrum|AM|0
+39000|MENTAL|eating_disorder|Zaburzenia odżywiania / Eating disorders|FM|0
+47500|MENTAL|addiction|Uzależnienia / Addictions|AM|0
+57000|MENTAL|insomnia|Bezsenność / Insomnia|FM|0
+67500|MENTAL|stress|Stres przewlekły / Chronic stress|AM|0
+79000|MENTAL|burnout|Wypalenie zawodowe / Burnout syndrome|FM|0
+91500|MENTAL|mood_swings|Wahania nastroju / Mood swings|AM|0
+105000|MENTAL|emotional_trauma|Trauma emocjonalna / Emotional trauma|FM|0
+120000|MENTAL|grief|Żałoba / Grief processing|AM|0
+136000|MENTAL|anger_management|Kontrola gniewu / Anger management|FM|0
+6000|MENTAL|calm|Głęboki spokój / Deep calm|AM|95
+11500|MENTAL|focus|Koncentracja i skupienie / Focus and concentration|FM|80
 --------------------------------------------------------------------------------
 === DETOKSYKACJA / DETOXIFICATION ===
-8.0|DETOX|heavy_metals|Metale ciężkie / Heavy metals|AM|0
-13.0|DETOX|mercury|RTĘĆ / Mercury|FM|0
-19.0|DETOX|lead|OŁÓW / Lead|AM|0
-26.0|DETOX|cadmium|KADM / Cadmium|FM|0
-34.0|DETOX|aluminum|GLIN / Aluminum|AM|0
-43.0|DETOX|arsenic|ARSEN / Arsenic|FM|0
-53.0|DETOX|chemicals|Toksyny chemiczne / Chemical toxins|AM|0
-64.0|DETOX|pesticides|Pestycydy / Pesticides|FM|0
-76.0|DETOX|herbicides|Herbicydy / Herbicides|AM|0
-89.0|DETOX|industrial|Toksyny przemysłowe / Industrial toxins|FM|0
-103.0|DETOX|radiation|Promieniowanie / Radiation detox|AM|0
-118.0|DETOX|chemotherapy|Detoks po chemioterapii / Post-chemotherapy detox|FM|0
-134.0|DETOX|drug_detox|Detoks lekowy / Drug detoxification|AM|0
-151.0|DETOX|alcohol|Detoks alkoholowy / Alcohol detox|FM|0
-169.0|DETOX|nicotine|Detoks nikotynowy / Nicotine detox|AM|0
-188.0|DETOX|environmental|Toksyny środowiskowe / Environmental toxins|FM|0
-13.0|DETOX|liver_support|Wsparcie wątroby / Liver support|AM|115
-26.0|DETOX|kidney_support|Wsparcie nerek / Kidney support|FM|100
+8000|DETOX|heavy_metals|Metale ciężkie / Heavy metals|AM|0
+13000|DETOX|mercury|RTĘĆ / Mercury|FM|0
+19000|DETOX|lead|OŁÓW / Lead|AM|0
+26000|DETOX|cadmium|KADM / Cadmium|FM|0
+34000|DETOX|aluminum|GLIN / Aluminum|AM|0
+43000|DETOX|arsenic|ARSEN / Arsenic|FM|0
+53000|DETOX|chemicals|Toksyny chemiczne / Chemical toxins|AM|0
+64000|DETOX|pesticides|Pestycydy / Pesticides|FM|0
+76000|DETOX|herbicides|Herbicydy / Herbicides|AM|0
+89000|DETOX|industrial|Toksyny przemysłowe / Industrial toxins|FM|0
+103000|DETOX|radiation|Promieniowanie / Radiation detox|AM|0
+118000|DETOX|chemotherapy|Detoks po chemioterapii / Post-chemotherapy detox|FM|0
+134000|DETOX|drug_detox|Detoks lekowy / Drug detoxification|AM|0
+151000|DETOX|alcohol|Detoks alkoholowy / Alcohol detox|FM|0
+169000|DETOX|nicotine|Detoks nikotynowy / Nicotine detox|AM|0
+188000|DETOX|environmental|Toksyny środowiskowe / Environmental toxins|FM|0
+13000|DETOX|liver_support|Wsparcie wątroby / Liver support|AM|115
+26000|DETOX|kidney_support|Wsparcie nerek / Kidney support|FM|100
 --------------------------------------------------------------------------------
 === OCZY I USZY / EYES AND EARS ===
-3.5|SENSORY|cataracts|Zaćma / Cataracts|AM|0
-5.5|SENSORY|glaucoma|Jaskra / Glaucoma|FM|0
-8.0|SENSORY|macular_degeneration|Zwyrodnienie plamki żółtej / Macular degeneration|AM|0
-11.0|SENSORY|retinitis|Zapalenie siatkówki / Retinitis|FM|0
-14.5|SENSORY|conjunctivitis|Zapalenie spojówek / Conjunctivitis|AM|0
-18.5|SENSORY|dry_eyes|Zespół suchego oka / Dry eye syndrome|FM|0
-23.0|SENSORY|eye_strain|Zmęczenie oczu / Eye strain|AM|0
-28.0|SENSORY|night_blindness|Ślepota nocna / Night blindness|FM|0
-33.5|SENSORY|color_blindness|Daltonizm / Color blindness|AM|0
-39.5|SENSORY|floaters|Męty w oku / Eye floaters|FM|0
-46.0|SENSORY|hearing_loss|Utrata słuchu / Hearing loss|AM|0
-53.0|SENSORY|tinnitus|Szumy uszne / Tinnitus|FM|0
-60.5|SENSORY|ear_infection|Infekcja ucha / Ear infection|AM|0
-68.5|SENSORY|vertigo_detailed|Zawroty głowy - ucho wewnętrzne / Inner ear vertigo|FM|0
-77.0|SENSORY|otosclerosis|Otoskleroza / Otosclerosis|AM|0
-86.0|SENSORY|meniere|Choroba Meniere'a / Meniere's disease|FM|0
-95.5|SENSORY|auditory_nerve|Nerw słuchowy / Auditory nerve|AM|0
-105.5|SENSORY|optic_nerve|Nerw wzrokowy / Optic nerve|FM|0
-8.0|SENSORY|vision_improve|Poprawa wzroku / Vision improvement|AM|75
-53.0|SENSORY|hearing_improve|Poprawa słuchu / Hearing improvement|FM|70
+3500|SENSORY|cataracts|Zaćma / Cataracts|AM|0
+5500|SENSORY|glaucoma|Jaskra / Glaucoma|FM|0
+8000|SENSORY|macular_degeneration|Zwyrodnienie plamki żółtej / Macular degeneration|AM|0
+11000|SENSORY|retinitis|Zapalenie siatkówki / Retinitis|FM|0
+14500|SENSORY|conjunctivitis|Zapalenie spojówek / Conjunctivitis|AM|0
+18500|SENSORY|dry_eyes|Zespół suchego oka / Dry eye syndrome|FM|0
+23000|SENSORY|eye_strain|Zmęczenie oczu / Eye strain|AM|0
+28000|SENSORY|night_blindness|Ślepota nocna / Night blindness|FM|0
+33500|SENSORY|color_blindness|Daltonizm / Color blindness|AM|0
+39500|SENSORY|floaters|Męty w oku / Eye floaters|FM|0
+46000|SENSORY|hearing_loss|Utrata słuchu / Hearing loss|AM|0
+53000|SENSORY|tinnitus|Szumy uszne / Tinnitus|FM|0
+60500|SENSORY|ear_infection|Infekcja ucha / Ear infection|AM|0
+68500|SENSORY|vertigo_detailed|Zawroty głowy - ucho wewnętrzne / Inner ear vertigo|FM|0
+77000|SENSORY|otosclerosis|Otoskleroza / Otosclerosis|AM|0
+86000|SENSORY|meniere|Choroba Meniere'a / Meniere's disease|FM|0
+95500|SENSORY|auditory_nerve|Nerw słuchowy / Auditory nerve|AM|0
+105500|SENSORY|optic_nerve|Nerw wzrokowy / Optic nerve|FM|0
+8000|SENSORY|vision_improve|Poprawa wzroku / Vision improvement|AM|75
+53000|SENSORY|hearing_improve|Poprawa słuchu / Hearing improvement|FM|70
 --------------------------------------------------------------------------------
 FREQUENCY_DATA_END
 
