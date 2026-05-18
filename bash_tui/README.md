@@ -32,6 +32,12 @@ sudo pacman -S gnu-netcat bc
 
 ## 🚀 Uruchomienie
 
+### Szczegóły Implementacji
+- **Plik źródłowy**: `bioresonance_tui.sh` (1600 linii)
+- **Język**: Bash 4.0+
+- **Zależności**: netcat (`nc`), `bc`, `tput`, `timeout`
+- **Tryby pracy**: Interaktywny TUI + Direct Control Mode (CLI)
+
 ### Tryb TUI (Interaktywny)
 
 ```bash
