@@ -34,52 +34,57 @@
 ### 📊 Diagram Blokowy Systemu
 
 ```mermaid
-blockDiagram
-    title "RESO-NANO SYSTEM - Architektura Sprzętowa"
-    
-    block:Zasilacz["⚡ ZASILACZ MEDYCZNY\n5V/2A, IEC 60601-1"]
-        style fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+flowchart TD
+    subgraph Zasilacz["⚡ ZASILACZ MEDYCZNY\n5V/2A, IEC 60601-1"]
+        direction TB
     end
     
-    block:Arduino["🧠 ARDUINO NANO\nATmega328P, 16MHz"]
-        style fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    subgraph Arduino["🧠 ARDUINO NANO\nATmega328P, 16MHz"]
+        direction TB
     end
     
-    block:Ethernet["🌐 ENC28J60\nETHERNET MODULE\nSPI, 10Mbps"]
-        style fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+    subgraph Ethernet["🌐 ENC28J60\nETHERNET MODULE\nSPI, 10Mbps"]
+        direction TB
     end
     
-    block:IzolacjaDC["🔒 IZOLACJA DC-DC\n2500V RMS\nB0505S-1W"]
-        style fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    subgraph IzolacjaDC["🔒 IZOLACJA DC-DC\n2500V RMS\nB0505S-1W"]
+        direction TB
     end
     
-    block:Opto["🔒 OPTOIZOLATORY\n6N137/HCPL-2630\n10 MHz"]
-        style fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    subgraph Opto["🔒 OPTOIZOLATORY\n6N137/HCPL-2630\n10 MHz"]
+        direction TB
     end
     
-    block:ProbeHolder["🔬 PROBEHOLDER\nMOSFET + LC Filter\nBNC Output"]
-        style fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    subgraph ProbeHolder["🔬 PROBEHOLDER\nMOSFET + LC Filter\nBNC Output"]
+        direction TB
     end
     
-    block:Antena["📡 ANTENA EMF\nFlat/Ferrite Coil\n50-200µH"]
-        style fill:#fff8e1,stroke:#fbc02d,stroke-width:2px
+    subgraph Antena["📡 ANTENA EMF\nFlat/Ferrite Coil\n50-200µH"]
+        direction TB
     end
     
-    block:IR["💡 IR LED STRIP\n850nm/940nm\n5V, 60 LED/m"]
-        style fill:#e0f7fa,stroke:#00838f,stroke-width:2px
+    subgraph IR["💡 IR LED STRIP\n850nm/940nm\n5V, 60 LED/m"]
+        direction TB
     end
     
-    Zasilacz --> Arduino : "5V DC\nGND"
-    Arduino --> Ethernet : "SPI\nD10-D13"
-    Arduino --> Opto : "PWM\nD9, D5"
-    Zasilacz --> IzolacjaDC : "5V IN"
-    IzolacjaDC --> ProbeHolder : "5V_ISO\nAGND"
-    IzolacjaDC --> IR : "5V_ISO_IR"
-    Opto --> ProbeHolder : "PWM_BUF\nIzolowane"
-    ProbeHolder --> Antena : "RF Out\nBNC"
-    Opto --> IR : "IR_PWM\n38kHz"
+    Zasilacz -->|"5V DC\nGND"| Arduino
+    Arduino -->|"SPI\nD10-D13"| Ethernet
+    Arduino -->|"PWM\nD9, D5"| Opto
+    Zasilacz -->|"5V IN"| IzolacjaDC
+    IzolacjaDC -->|"5V_ISO\nAGND"| ProbeHolder
+    IzolacjaDC -->|"5V_ISO_IR"| IR
+    Opto -->|"PWM_BUF\nIzolowane"| ProbeHolder
+    ProbeHolder -->|"RF Out\nBNC"| Antena
+    Opto -->|"IR_PWM\n38kHz"| IR
     
-    classDef default text-align:left,font-family:monospace;
+    style Zasilacz fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Arduino fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Ethernet fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+    style IzolacjaDC fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    style Opto fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style ProbeHolder fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Antena fill:#fff8e1,stroke:#fbc02d,stroke-width:2px
+    style IR fill:#e0f7fa,stroke:#00838f,stroke-width:2px
 ```
 
 ### 🔌 Schemat Elektryczny Połączeń
