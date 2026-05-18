@@ -21,6 +21,7 @@
 #include <stdexcept>
 #include <memory>
 #include <map>
+#include <sstream>
 #include "logger.h"
 
 /**

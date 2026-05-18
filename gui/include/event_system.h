@@ -194,20 +194,9 @@ public:
      */
     void unsubscribeAll(EventType event_type) {
         std::lock_guard<std::mutex> lock(mutex_);
-        // Create a copy of IDs to avoid issues with concurrent modification
-        std::vector<int> ids_to_remove;
-        for (const auto& sub : subscriptions_) {
+        for (auto& sub : subscriptions_) {
             if (sub.event_type == event_type) {
-                ids_to_remove.push_back(sub.id);
-            }
-        }
-        // Now mark them as inactive
-        for (int id : ids_to_remove) {
-            for (auto& sub : subscriptions_) {
-                if (sub.id == id) {
-                    sub.active = false;
-                    break;
-                }
+                sub.active = false;
             }
         }
     }
@@ -257,11 +246,9 @@ public:
         queue_cv_.notify_one();
         
         // Start processing thread if not already running (with proper locking)
-        {
-            std::lock_guard<std::mutex> lock(processing_mutex_);
-            if (!processing_thread_.joinable() || !processing_active_) {
-                startProcessingThread();
-            }
+        std::lock_guard<std::mutex> lock(processing_mutex_);
+        if (!processing_thread_.joinable() || !processing_active_) {
+            startProcessingThread();
         }
     }
     
