@@ -898,6 +898,24 @@
             }
         }
         
+        /**
+         * Funkcja do bezpiecznego escapowania HTML (ochrona przed XSS)
+         * @param {string} text - Tekst do zescapowania
+         * @returns {string} - Bezpieczny HTML
+         */
+        function escapeHtml(text) {
+            if (typeof text !== 'string') {
+                text = String(text);
+            }
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        /**
+         * Renderuje listę końcówek w panelu głównym
+         * Zastosowano escapeHtml dla wszystkich danych wejściowych od użytkownika
+         */
         function renderProbeList() {
             const container = document.getElementById('probeList');
             container.innerHTML = '';
@@ -910,9 +928,13 @@
                 card.className = `probe-card ${probe.enabled ? 'active' : 'inactive'}`;
                 card.onclick = () => openEditor(channel);
                 
+                // Zastosowano escapeHtml dla wszystkich pól wprowadzanych przez użytkownika
+                const safeName = escapeHtml(probe.name);
+                const safeTypeName = escapeHtml(getTypeName(probe.type));
+                
                 card.innerHTML = `
                     <div class="probe-header">
-                        <span class="probe-name">Kanał ${channel}: ${probe.name}</span>
+                        <span class="probe-name">Kanał ${channel}: ${safeName}</span>
                         <span class="probe-status ${probe.enabled ? 'enabled' : 'disabled'}">
                             ${probe.enabled ? 'AKTYWNA' : 'NIEAKTYWNA'}
                         </span>
@@ -920,7 +942,7 @@
                     <div class="probe-details">
                         <div class="probe-detail-item">
                             <span class="probe-detail-label">Typ</span>
-                            <span class="probe-detail-value">${getTypeName(probe.type)}</span>
+                            <span class="probe-detail-value">${safeTypeName}</span>
                         </div>
                         <div class="probe-detail-item">
                             <span class="probe-detail-label">Częstotliwość</span>
@@ -1139,6 +1161,7 @@
                 
                 if (statusResult.success) {
                     const status = statusResult.status;
+                    // Użyto textContent zamiast innerHTML dla bezpieczeństwa (automatyczne escapowanie)
                     document.getElementById('statusTemp').textContent = `${status.temp}°C`;
                     document.getElementById('statusMemory').textContent = `${status.memory} B`;
                     document.getElementById('statusUptime').textContent = `${status.uptime} s`;
@@ -1160,11 +1183,7 @@
             }
         }
         
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
+        // Funkcja escapeHtml została przeniesiona wyżej (linia 906) - usunięto duplikat
         
         // ============================================================================
         // TRYB PRACY

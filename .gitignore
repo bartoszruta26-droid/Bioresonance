@@ -1,6 +1,4 @@
-(webui/.env
-webui/.env.local
-webui/.env.*
+(webui/.env*
 webui/node_modules/
 webui/dist/
 webui/build/
@@ -10,6 +8,11 @@ webui/*.log
 webui/__pycache__/
 webui/.pytest_cache/
 webui/.mypy_cache/
-webui/venv/
-webui/.venv/
-)
+webui/coverage/
+webui/htmlcov/
+webui/.coverage
+webui/*.tmp
+webui/*.swp
+webui/*.swo
+webui/.DS_Store
+webui/Thumbs.db)
