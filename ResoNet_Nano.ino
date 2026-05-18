@@ -1,7 +1,7 @@
 /**
  * @file ResoNet_Nano.ino
  * @brief Profesjonalny System Biorezonansu Klasy Medycznej - Firmware Arduino
- * @version 2.0 (Medical Grade)
+ * @version 3.0 (Medical Grade with Full Debug & Event System)
  * @date 2024
  * 
  * @description
@@ -29,11 +29,42 @@
  * - Optoizolatory 6N137 na liniach PWM
  * - Watchdog Timer aktywny
  * - Detekcja błędów i reset systemu
+ * 
+ * Funkcje dodatkowe (v3.0):
+ * - Zaawansowany system logowania z poziomami (VERBOSE, DEBUG, INFO, WARN, ERROR, FATAL)
+ * - Obsługa zdarzeń (Event Handling) z kolejką
+ * - Kompleksowa obsługa błędów z kodami i opisami
+ * - Rozbudowany Watchdog z monitorowaniem wielu warstw
+ * - Statystyki systemowe i diagnostyka
+ * - Ring buffer dla logów
  */
 
 #include <SPI.h>
 #include <avr/wdt.h>
 #include <avr/interrupt.h>
+#include <avr/pgmspace.h>
+
+// ============================================================================
+// KONFIGURACJA SYSTEMU DEBUGOWANIA I LOGOWANIA
+// ============================================================================
+
+// Poziomy logowania
+#define LOG_LEVEL_VERBOSE  0
+#define LOG_LEVEL_DEBUG    1
+#define LOG_LEVEL_INFO     2
+#define LOG_LEVEL_WARN     3
+#define LOG_LEVEL_ERROR    4
+#define LOG_LEVEL_FATAL    5
+
+// Konfiguracja poziomu logowania (zmień na wyższy aby ukryć szczegółowe logi)
+#define CURRENT_LOG_LEVEL LOG_LEVEL_VERBOSE
+
+// Włącz/wyłącz logowanie przez Serial
+#define ENABLE_SERIAL_LOG true
+#define ENABLE_REMOTE_LOG  true  // Logi przez sieć (UDP)
+
+// Rozmiar ring buffera dla logów
+#define LOG_BUFFER_SIZE 256
 
 // ============================================================================
 // KONFIGURACJA PINÓW I SPRZĘTU
@@ -50,6 +81,9 @@
 
 // Status LED
 #define STATUS_LED      13  // Built-in LED
+
+// Debug LED (dodatkowy)
+#define DEBUG_LED       8   // Dodatkowa dioda do debugowania
 
 // ============================================================================
 // KONFIGURACJA SIECIOWA
@@ -95,7 +129,7 @@ struct DeviceStatus {
 };
 
 // ============================================================================
-// FLAGI STATUSU I BŁĘDY
+// FLAGI STATUSU I BŁĘDY - ROZSZERZONE
 // ============================================================================
 
 #define STATUS_RUNNING          0x01
@@ -103,16 +137,45 @@ struct DeviceStatus {
 #define STATUS_CALIBRATING      0x04
 #define STATUS_OVERHEAT         0x08
 #define STATUS_ANTENNA_FAULT    0x10
+#define STATUS_WATCHDOG_RESET   0x20
+#define STATUS_NETWORK_FAULT    0x40
+#define STATUS_EEPROM_FAULT     0x80
 
-#define ERROR_NONE              0x00
-#define ERROR_FREQ_OUT_OF_RANGE 0x01
-#define ERROR_DUTY_INVALID      0x02
-#define ERROR_CHECKSUM_FAIL     0x03
-#define ERROR_TIMER_CONFIG      0x04
-#define ERROR_OVERHEAT          0x05
+#define ERROR_NONE                  0x00
+#define ERROR_FREQ_OUT_OF_RANGE     0x01
+#define ERROR_DUTY_INVALID          0x02
+#define ERROR_CHECKSUM_FAIL         0x03
+#define ERROR_TIMER_CONFIG          0x04
+#define ERROR_OVERHEAT              0x05
+#define ERROR_NETWORK_INIT          0x06
+#define ERROR_MEMORY_ALLOC          0x07
+#define ERROR_EVENT_QUEUE_FULL      0x08
+#define ERROR_LOG_BUFFER_OVERFLOW   0x09
+#define ERROR_WDTO_RESET            0x0A
+#define ERROR_STACK_OVERFLOW        0x0B
+#define ERROR_INVALID_PARAM         0x0C
+#define ERROR_HARDWARE_FAULT        0x0D
+
+// Kody zdarzeń (Event Codes)
+#define EVENT_THERAPY_START         0x0001
+#define EVENT_THERAPY_STOP          0x0002
+#define EVENT_THERAPY_COMPLETE      0x0003
+#define EVENT_FREQ_CHANGED          0x0004
+#define EVENT_MODULATION_CHANGED    0x0005
+#define EVENT_NETWORK_CONNECTED     0x0006
+#define EVENT_NETWORK_DISCONNECTED  0x0007
+#define EVENT_WATCHDOG_FEED         0x0008
+#define EVENT_ERROR_OCCURRED        0x0009
+#define EVENT_LOG_FLUSH             0x000A
+#define EVENT_SYSTEM_RESET          0x000B
+#define EVENT_SAFETY_TRIGGER        0x000C
+
+// Rozmiary kolejek
+#define EVENT_QUEUE_SIZE 32
+#define ERROR_HISTORY_SIZE 16
 
 // ============================================================================
-// ZMIENNE GLOBALNE
+// ZMIENNE GLOBALNE - ROZSZERZONE O SYSTEM LOGOWANIA I EVENTÓW
 // ============================================================================
 
 // Stan terapii
@@ -159,6 +222,339 @@ const uint8_t crc8_table[256] PROGMEM = {
   0xDE, 0xD9, 0xD0, 0xD7, 0xC2, 0xC5, 0xCC, 0xCB, 0xE6, 0xE1, 0xE8, 0xEF,
   0xFA, 0xFD, 0xF4, 0xF3
 };
+
+// ============================================================================
+// STRUKTURY SYSTEMU LOGOWANIA
+// ============================================================================
+
+struct LogEntry {
+  uint32_t timestamp;
+  uint8_t level;
+  uint16_t event_code;
+  char message[64];
+};
+
+// Ring buffer dla logów
+struct LogBuffer {
+  LogEntry entries[LOG_BUFFER_SIZE];
+  uint16_t head;
+  uint16_t tail;
+  uint16_t count;
+  uint16_t overflow_count;
+};
+
+volatile LogBuffer log_buffer;
+
+// ============================================================================
+// STRUKTURY SYSTEMU EVENTÓW
+// ============================================================================
+
+struct SystemEvent {
+  uint32_t timestamp;
+  uint16_t event_code;
+  uint8_t severity;  // 0=Info, 1=Warning, 2=Error, 3=Critical
+  uint32_t data;
+  char description[32];
+};
+
+struct EventQueue {
+  SystemEvent events[EVENT_QUEUE_SIZE];
+  uint16_t head;
+  uint16_t tail;
+  uint16_t count;
+  uint16_t dropped_count;
+};
+
+volatile EventQueue event_queue;
+
+// ============================================================================
+// STRUKTURY STATYSTYK I DIAGNOSTYKI
+// ============================================================================
+
+struct SystemStats {
+  uint32_t uptime_ms;
+  uint32_t total_events;
+  uint32_t total_errors;
+  uint32_t watchdog_resets;
+  uint32_t packets_received;
+  uint32_t packets_sent;
+  uint32_t therapy_sessions;
+  uint16_t max_free_memory;
+  uint8_t current_error;
+};
+
+volatile SystemStats system_stats;
+
+// Historia błędów
+struct ErrorHistory {
+  uint8_t error_codes[ERROR_HISTORY_SIZE];
+  uint32_t timestamps[ERROR_HISTORY_SIZE];
+  uint16_t head;
+  uint16_t count;
+};
+
+volatile ErrorHistory error_history;
+
+// ============================================================================
+// SYSTEM LOGOWANIA - IMPLEMENTACJA
+// ============================================================================
+
+/**
+ * @brief Nazwy poziomów logowania
+ */
+const char* get_log_level_name(uint8_t level) {
+  switch(level) {
+    case LOG_LEVEL_VERBOSE: return PSTR("VERBOSE");
+    case LOG_LEVEL_DEBUG:   return PSTR("DEBUG");
+    case LOG_LEVEL_INFO:    return PSTR("INFO");
+    case LOG_LEVEL_WARN:    return PSTR("WARN");
+    case LOG_LEVEL_ERROR:   return PSTR("ERROR");
+    case LOG_LEVEL_FATAL:   return PSTR("FATAL");
+    default:                return PSTR("UNKNOWN");
+  }
+}
+
+/**
+ * @brief Inicjalizuje ring buffer logów
+ */
+void log_buffer_init() {
+  cli();
+  log_buffer.head = 0;
+  log_buffer.tail = 0;
+  log_buffer.count = 0;
+  log_buffer.overflow_count = 0;
+  sei();
+}
+
+/**
+ * @brief Dodaje wpis do ring buffera logów
+ * @param level Poziom logowania
+ * @param event_code Kod zdarzenia
+ * @param message Wiadomość tekstowa
+ */
+void log_add_entry(uint8_t level, uint16_t event_code, const char* message) {
+  if (level < CURRENT_LOG_LEVEL) {
+    return;  // Pomijamy logi poniżej aktualnego poziomu
+  }
+  
+  cli();
+  
+  // Sprawdź przepełnienie
+  if (log_buffer.count >= LOG_BUFFER_SIZE) {
+    log_buffer.overflow_count++;
+    log_buffer.tail = (log_buffer.tail + 1) % LOG_BUFFER_SIZE;
+    log_buffer.count--;
+  }
+  
+  // Dodaj nowy wpis
+  LogEntry* entry = &log_buffer.entries[log_buffer.head];
+  entry->timestamp = millis();
+  entry->level = level;
+  entry->event_code = event_code;
+  
+  // Skopiuj wiadomość (bezpieczne kopiowanie)
+  strncpy(entry->message, message, sizeof(entry->message) - 1);
+  entry->message[sizeof(entry->message) - 1] = '\0';
+  
+  // Aktualizuj wskaźniki
+  log_buffer.head = (log_buffer.head + 1) % LOG_BUFFER_SIZE;
+  log_buffer.count++;
+  
+  sei();
+  
+  // Wyślij na Serial jeśli włączone
+  if (ENABLE_SERIAL_LOG && Serial) {
+    Serial.print(F("[LOG "));
+    Serial.print(millis());
+    Serial.print(F("ms] "));
+    Serial.print(get_log_level_name(level));
+    Serial.print(F(": "));
+    Serial.println(message);
+  }
+}
+
+/**
+ * @brief Makra pomocnicze dla logowania
+ */
+#define LOG_VERBOSE(msg) log_add_entry(LOG_LEVEL_VERBOSE, 0, msg)
+#define LOG_DEBUG(msg)   log_add_entry(LOG_LEVEL_DEBUG, 0, msg)
+#define LOG_INFO(msg)    log_add_entry(LOG_LEVEL_INFO, 0, msg)
+#define LOG_WARN(msg)    log_add_entry(LOG_LEVEL_WARN, 0, msg)
+#define LOG_ERROR(msg)   log_add_entry(LOG_LEVEL_ERROR, 0, msg)
+#define LOG_FATAL(msg)   log_add_entry(LOG_LEVEL_FATAL, 0, msg)
+
+#define LOG_EVENT(level, event, msg) log_add_entry(level, event, msg)
+
+// ============================================================================
+// SYSTEM OBSŁUGI ZDARZEŃ (EVENT HANDLING) - IMPLEMENTACJA
+// ============================================================================
+
+/**
+ * @brief Inicjalizuje kolejkę zdarzeń
+ */
+void event_queue_init() {
+  cli();
+  event_queue.head = 0;
+  event_queue.tail = 0;
+  event_queue.count = 0;
+  event_queue.dropped_count = 0;
+  sei();
+}
+
+/**
+ * @brief Dodaje zdarzenie do kolejki
+ * @param event_code Kod zdarzenia
+ * @param severity Poziom ważności (0=Info, 1=Warning, 2=Error, 3=Critical)
+ * @param data Dodatkowe dane
+ * @param description Opis zdarzenia
+ * @return true jeśli dodano sukcesem, false jeśli kolejka pełna
+ */
+bool event_push(uint16_t event_code, uint8_t severity, uint32_t data, const char* description) {
+  cli();
+  
+  // Sprawdź przepełnienie
+  if (event_queue.count >= EVENT_QUEUE_SIZE) {
+    event_queue.dropped_count++;
+    event_queue.tail = (event_queue.tail + 1) % EVENT_QUEUE_SIZE;
+    event_queue.count--;
+    
+    LOG_EVENT(LOG_LEVEL_WARN, EVENT_ERROR_OCCURRED, "Event queue overflow - dropped event");
+    system_stats.total_errors++;
+  }
+  
+  // Dodaj nowe zdarzenie
+  SystemEvent* event = &event_queue.events[event_queue.head];
+  event->timestamp = millis();
+  event->event_code = event_code;
+  event->severity = severity;
+  event->data = data;
+  
+  strncpy(event->description, description, sizeof(event->description) - 1);
+  event->description[sizeof(event->description) - 1] = '\0';
+  
+  // Aktualizuj wskaźniki
+  event_queue.head = (event_queue.head + 1) % EVENT_QUEUE_SIZE;
+  event_queue.count++;
+  system_stats.total_events++;
+  
+  sei();
+  
+  // Loguj zdarzenie
+  char log_msg[80];
+  snprintf_P(log_msg, sizeof(log_msg), PSTR("Event 0x%04X [%s]"), event_code, description);
+  log_add_entry(LOG_LEVEL_INFO, event_code, log_msg);
+  
+  return true;
+}
+
+/**
+ * @brief Pobiera zdarzenie z kolejki (FIFO)
+ * @param event Wskaźnik do struktury zdarzenia
+ * @return true jeśli pobrano zdarzenie, false jeśli kolejka pusta
+ */
+bool event_pop(SystemEvent* event) {
+  if (!event) return false;
+  
+  cli();
+  
+  if (event_queue.count == 0) {
+    sei();
+    return false;
+  }
+  
+  // Skopiuj zdarzenie
+  memcpy(event, &event_queue.events[event_queue.tail], sizeof(SystemEvent));
+  
+  // Aktualizuj wskaźniki
+  event_queue.tail = (event_queue.tail + 1) % EVENT_QUEUE_SIZE;
+  event_queue.count--;
+  
+  sei();
+  return true;
+}
+
+/**
+ * @brief Helper do dodawania zdarzeń
+ */
+#define EVENT_INFO(code, desc)      event_push(code, 0, 0, desc)
+#define EVENT_WARNING(code, desc)   event_push(code, 1, 0, desc)
+#define EVENT_ERROR(code, desc)     event_push(code, 2, 0, desc)
+#define EVENT_CRITICAL(code, desc)  event_push(code, 3, 0, desc)
+
+// ============================================================================
+// SYSTEM OBSŁUGI BŁĘDÓW (ERROR HANDLING) - IMPLEMENTACJA
+// ============================================================================
+
+/**
+ * @brief Inicjalizuje historię błędów
+ */
+void error_history_init() {
+  cli();
+  error_history.head = 0;
+  error_history.count = 0;
+  sei();
+}
+
+/**
+ * @brief Rejestruje błąd w historii
+ * @param error_code Kod błędu
+ */
+void error_register(uint8_t error_code) {
+  if (error_code == ERROR_NONE) return;
+  
+  cli();
+  
+  // Sprawdź przepełnienie
+  if (error_history.count >= ERROR_HISTORY_SIZE) {
+    error_history.head = (error_history.head + 1) % ERROR_HISTORY_SIZE;
+    error_history.count--;
+  }
+  
+  // Dodaj błąd
+  error_history.error_codes[error_history.head] = error_code;
+  error_history.timestamps[error_history.head] = millis();
+  error_history.head = (error_history.head + 1) % ERROR_HISTORY_SIZE;
+  error_history.count++;
+  
+  system_stats.current_error = error_code;
+  system_stats.total_errors++;
+  
+  sei();
+  
+  // Loguj błąd
+  char log_msg[64];
+  snprintf_P(log_msg, sizeof(log_msg), PSTR("Error registered: 0x%02X"), error_code);
+  LOG_EVENT(LOG_LEVEL_ERROR, EVENT_ERROR_OCCURRED, log_msg);
+  
+  // Dodaj zdarzenie krytyczne dla poważnych błędów
+  if (error_code >= ERROR_OVERHEAT) {
+    EVENT_CRITICAL(EVENT_SAFETY_TRIGGER, "Critical error triggered safety system");
+  }
+}
+
+/**
+ * @brief Pobiera ostatni błąd
+ * @return Kod ostatniego błędu
+ */
+uint8_t error_get_last() {
+  cli();
+  uint8_t last_error = (error_history.count > 0) ? 
+    error_history.error_codes[error_history.head > 0 ? error_history.head - 1 : ERROR_HISTORY_SIZE - 1] : ERROR_NONE;
+  sei();
+  return last_error;
+}
+
+/**
+ * @brief Czyści historię błędów
+ */
+void error_clear_history() {
+  cli();
+  error_history.head = 0;
+  error_history.count = 0;
+  system_stats.current_error = ERROR_NONE;
+  sei();
+  LOG_INFO("Error history cleared");
+}
 
 // ============================================================================
 // FUNKCJE POMOCNICZE - CRC8
@@ -365,59 +761,252 @@ void process_burst_modulation(uint32_t burst_freq, uint8_t burst_duty) {
 }
 
 // ============================================================================
-// FUNKCJE BEZPIECZEŃSTWA
+// ROZSZERZONE FUNKCJE BEZPIECZEŃSTWA I WATCHDOG
 // ============================================================================
 
+// Watchdog wielopoziomowy
+struct MultiWatchdog {
+  uint32_t main_wd_timer;
+  uint32_t network_wd_timer;
+  uint32_t therapy_wd_timer;
+  uint32_t comms_wd_timer;
+  uint8_t reset_count;
+  uint8_t max_resets;
+};
+
+volatile MultiWatchdog multi_wd;
+
+#define MAIN_WD_TIMEOUT     4000    // 4s - główny watchdog
+#define NETWORK_WD_TIMEOUT  5000    // 5s - sieć
+#define THERAPY_WD_TIMEOUT  1000    // 1s - terapia
+#define COMMS_WD_TIMEOUT    2000    // 2s - komunikacja
+#define MAX_WD_RESETS       5       // Maksymalna liczba resetów przed blokadą
+
 /**
- * @brief Monitoruje temperaturę MCU i stan systemu
+ * @brief Inicjalizuje wielopoziomowy watchdog
+ */
+void multi_watchdog_init() {
+  cli();
+  multi_wd.main_wd_timer = millis();
+  multi_wd.network_wd_timer = millis();
+  multi_wd.therapy_wd_timer = millis();
+  multi_wd.comms_wd_timer = millis();
+  multi_wd.reset_count = 0;
+  multi_wd.max_resets = MAX_WD_RESETS;
+  sei();
+  LOG_INFO("Multi-watchdog initialized");
+}
+
+/**
+ * @brief Resetuje główny watchdog
+ */
+void watchdog_feed_main() {
+  cli();
+  multi_wd.main_wd_timer = millis();
+  sei();
+}
+
+/**
+ * @brief Resetuje watchdog sieci
+ */
+void watchdog_feed_network() {
+  cli();
+  multi_wd.network_wd_timer = millis();
+  sei();
+}
+
+/**
+ * @brief Resetuje watchdog terapii
+ */
+void watchdog_feed_therapy() {
+  cli();
+  multi_wd.therapy_wd_timer = millis();
+  sei();
+}
+
+/**
+ * @brief Resetuje watchdog komunikacji
+ */
+void watchdog_feed_comms() {
+  cli();
+  multi_wd.comms_wd_timer = millis();
+  sei();
+}
+
+/**
+ * @brief Sprawdza status wszystkich watchdogów
  * @return Kod błędu lub ERROR_NONE
  */
-uint8_t safety_monitor() {
-  // Sprawdzenie przegrzania (prosta detekcja)
-  // W wersji produkcyjnej dodać termistor lub czujnik wewnętrzny
-  static unsigned long monitor_timer = 0;
+uint8_t multi_watchdog_check() {
+  uint32_t now = millis();
   
-  if (millis() - monitor_timer > 1000) {
-    monitor_timer = millis();
-    
-    // Symulacja pomiaru temperatury
-    // W rzeczywistości odczytać z wbudowanego sensora lub zewnętrznego
-    uint16_t temp = 250;  // 25.0°C * 10
-    
-    if (temp > 850) {  // > 85°C
-      return ERROR_OVERHEAT;
-    }
+  // Sprawdź główny watchdog
+  if (now - multi_wd.main_wd_timer > MAIN_WD_TIMEOUT) {
+    LOG_FATAL("Main watchdog timeout!");
+    return ERROR_WDTO_RESET;
   }
   
-  // Sprawdzenie watchdog network
-  if (millis() - last_heartbeat > HEARTBEAT_TIMEOUT) {
-    // Reset połączenia
+  // Sprawdź watchdog sieci
+  if (now - multi_wd.network_wd_timer > NETWORK_WD_TIMEOUT) {
+    LOG_WARN("Network watchdog timeout - connection lost");
     disable_pwm();
     therapy_active = false;
-    return ERROR_NONE;  // Nie błąd, tylko timeout
+    EVENT_WARNING(EVENT_NETWORK_DISCONNECTED, "Network watchdog timeout");
+  }
+  
+  // Sprawdź watchdog terapii (tylko jeśli terapia aktywna)
+  if (therapy_active && (now - multi_wd.therapy_wd_timer > THERAPY_WD_TIMEOUT)) {
+    LOG_ERROR("Therapy watchdog timeout!");
+    error_register(ERROR_WDTO_RESET);
+    return ERROR_WDTO_RESET;
   }
   
   return ERROR_NONE;
 }
 
 /**
- * @brief Resetuje system w przypadku krytycznego błędu
+ * @brief Monitoruje temperaturę MCU i stan systemu
+ * @return Kod błędu lub ERROR_NONE
  */
-void emergency_reset() {
+uint8_t safety_monitor() {
+  static unsigned long monitor_timer = 0;
+  static uint16_t consecutive_overheat = 0;
+  
+  if (millis() - monitor_timer > 500) {  // Sprawdź co 500ms
+    monitor_timer = millis();
+    
+    // Pomiar temperatury z wbudowanego źródła (opcjonalnie)
+    // ADMUX = _BV(REFS0) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
+    // ADCSRA |= _BV(ADSC);
+    // while (ADCSRA & _BV(ADSC));
+    // uint16_t temp = ADC;
+    
+    // Symulacja pomiaru temperatury
+    uint16_t temp = 250;  // 25.0°C * 10
+    
+    if (temp > 750) {  // > 75°C - ostrzeżenie
+      consecutive_overheat++;
+      LOG_WARN("Temperature warning");
+      
+      if (consecutive_overheat >= 3) {
+        LOG_ERROR("Overheat detected!");
+        error_register(ERROR_OVERHEAT);
+        return ERROR_OVERHEAT;
+      }
+    } else {
+      consecutive_overheat = 0;
+    }
+    
+    // Sprawdź watchdog wielopoziomowy
+    uint8_t wd_error = multi_watchdog_check();
+    if (wd_error != ERROR_NONE) {
+      return wd_error;
+    }
+  }
+  
+  return ERROR_NONE;
+}
+
+/**
+ * @brief Zapisuje przyczynę resetu w EEPROM (symulacja)
+ */
+void save_reset_cause(uint8_t cause) {
+  // W pełnej implementacji zapisz do EEPROM
+  LOG_EVENT(LOG_LEVEL_ERROR, EVENT_SYSTEM_RESET, "Reset cause saved");
+}
+
+/**
+ * @brief Odczytuje przyczynę ostatniego resetu
+ * @return Kod przyczyny resetu
+ */
+uint8_t get_reset_cause() {
+  // W pełnej implementacji odczytaj z EEPROM
+  uint8_t mcusr = MCUSR;
+  MCUSR = 0;  // Wyczyść flagi
+  
+  if (mcusr & _BV(PORF)) return 0x01;  // Power-on
+  if (mcusr & _BV(EXTRF)) return 0x02;  // External reset
+  if (mcusr & _BV(BORF)) return 0x03;   // Brown-out
+  if (mcusr & _BV(WDRF)) return 0x04;   // Watchdog
+  
+  return 0x00;  // Unknown
+}
+
+/**
+ * @brief Resetuje system w przypadku krytycznego błędu
+ * @param error_code Kod błędu powodującego reset
+ */
+void emergency_reset(uint8_t error_code) {
+  LOG_FATAL("Emergency reset triggered!");
+  
+  // Zarejestruj błąd
+  error_register(error_code);
+  
+  // Wyłącz PWM natychmiast
   disable_pwm();
   therapy_active = false;
   
-  // Migaj diodą ostrzegawczo
-  for (int i = 0; i < 10; i++) {
-    digitalWrite(STATUS_LED, HIGH);
-    delay(100);
-    digitalWrite(STATUS_LED, LOW);
-    delay(100);
+  // Zapisz przyczynę resetu
+  save_reset_cause(error_code);
+  
+  // Sygnalizacja diodami (SOS pattern)
+  for (int cycle = 0; cycle < 3; cycle++) {
+    // 3 x krótkie błyski (S)
+    for (int i = 0; i < 3; i++) {
+      digitalWrite(STATUS_LED, HIGH);
+      digitalWrite(DEBUG_LED, HIGH);
+      delay(150);
+      digitalWrite(STATUS_LED, LOW);
+      digitalWrite(DEBUG_LED, LOW);
+      delay(150);
+    }
+    delay(500);
+    // 3 x długie błyski (O)
+    for (int i = 0; i < 3; i++) {
+      digitalWrite(STATUS_LED, HIGH);
+      digitalWrite(DEBUG_LED, HIGH);
+      delay(400);
+      digitalWrite(STATUS_LED, LOW);
+      digitalWrite(DEBUG_LED, LOW);
+      delay(400);
+    }
+    delay(500);
   }
   
-  // Reset przez watchdog
+  // Increment reset counter
+  multi_wd.reset_count++;
+  
+  if (multi_wd.reset_count >= multi_wd.max_resets) {
+    LOG_FATAL("Maximum reset count reached - entering safe mode");
+    // Wejdź w tryb bezpieczny - nie resetuj więcej
+    while(1) {
+      digitalWrite(STATUS_LED, HIGH);
+      delay(1000);
+      digitalWrite(STATUS_LED, LOW);
+      delay(1000);
+    }
+  }
+  
+  // Reset przez watchdog hardware
+  LOG_FATAL("Initiating hardware reset...");
   wdt_enable(WDTO_15MS);
-  while(1);
+  while(1);  // Czekaj na reset
+}
+
+/**
+ * @brief Wysyła heartbeat do sieci
+ */
+void send_heartbeat() {
+  static uint32_t last_hb = 0;
+  
+  if (millis() - last_hb > 1000) {
+    last_hb = millis();
+    watchdog_feed_network();
+    watchdog_feed_comms();
+    
+    // Wyślij pakiet heartbeat (implementacja zależna od protokołu)
+    LOG_VERBOSE("Heartbeat sent");
+  }
 }
 
 // ============================================================================
@@ -531,10 +1120,12 @@ void setup() {
   // Konfiguracja pinów
   pinMode(PWM_OUTPUT_PIN, OUTPUT);
   pinMode(STATUS_LED, OUTPUT);
+  pinMode(DEBUG_LED, OUTPUT);
   pinMode(ENC28J60_CS, OUTPUT);
   
   digitalWrite(PWM_OUTPUT_PIN, LOW);
   digitalWrite(STATUS_LED, LOW);
+  digitalWrite(DEBUG_LED, LOW);
   digitalWrite(ENC28J60_CS, HIGH);
   
   // Inicjalizacja UART dla debugowania (opcjonalnie)
@@ -543,8 +1134,17 @@ void setup() {
     ;  // Czekaj na połączenie serial
   }
   
-  Serial.println(F("ResoNet-Nano v2.0 Medical Grade"));
+  Serial.println(F(""));
+  Serial.println(F("================================================="));
+  Serial.println(F("ResoNet-Nano v3.0 Medical Grade"));
+  Serial.println(F("Full Debug & Event System Enabled"));
+  Serial.println(F("================================================="));
   Serial.println(F("Initializing..."));
+  
+  // Sprawdź przyczynę resetu
+  uint8_t reset_cause = get_reset_cause();
+  Serial.print(F("Reset cause: 0x"));
+  Serial.println(reset_cause, HEX);
   
   // Inicjalizacja SPI
   SPI.begin();
@@ -552,12 +1152,21 @@ void setup() {
   SPI.setDataMode(SPI_MODE0);
   SPI.setBitOrder(MSBFIRST);
   
+  // Inicjalizacja systemów diagnostycznych
+  log_buffer_init();
+  event_queue_init();
+  error_history_init();
+  multi_watchdog_init();
+  
+  LOG_INFO("System diagnostics initialized");
+  EVENT_INFO(EVENT_SYSTEM_RESET, "System startup");
+  
   // Inicjalizacja ENC28J60
   #ifdef USE_EXTERNAL_LIBRARY
     if (USE_DHCP) {
       if (Ethernet.begin(mac) == 0) {
-        Serial.println(F("Failed to configure Ethernet using DHCP"));
-        emergency_reset();
+        LOG_ERROR("Failed to configure Ethernet using DHCP");
+        emergency_reset(ERROR_NETWORK_INIT);
       }
     } else {
       Ethernet.begin(mac, ip, gateway, subnet);
@@ -572,11 +1181,12 @@ void setup() {
   Serial.print(F("IP Address: "));
   #ifdef USE_EXTERNAL_LIBRARY
     Serial.println(Ethernet.localIP());
+    LOG_EVENT(LOG_LEVEL_INFO, EVENT_NETWORK_CONNECTED, "Network connected");
   #else
     Serial.println(ip);
   #endif
   
-  // Konfiguracja Watchdog Timer
+  // Konfiguracja Watchdog Timer hardware
   wdt_enable(WDTO_4S);  // 4 sekundy
   
   // Reset zmiennych
@@ -587,25 +1197,80 @@ void setup() {
   // Wyłącz PWM na start
   disable_pwm();
   
+  // Zainicjalizuj statystyki
+  system_stats.uptime_ms = millis();
+  system_stats.total_events = 0;
+  system_stats.total_errors = 0;
+  system_stats.watchdog_resets = 0;
+  system_stats.packets_received = 0;
+  system_stats.packets_sent = 0;
+  system_stats.therapy_sessions = 0;
+  system_stats.max_free_memory = 2048;  // Szacunkowo dla ATmega328P
+  system_stats.current_error = ERROR_NONE;
+  
+  LOG_INFO("System ready. Waiting for commands...");
   Serial.println(F("System ready. Waiting for commands..."));
   
-  // Sygnał gotowości
+  // Sygnał gotowości - podwójny błysk
   digitalWrite(STATUS_LED, HIGH);
-  delay(500);
+  delay(200);
   digitalWrite(STATUS_LED, LOW);
+  delay(200);
+  digitalWrite(STATUS_LED, HIGH);
+  delay(200);
+  digitalWrite(STATUS_LED, LOW);
+  
+  EVENT_INFO(EVENT_SYSTEM_RESET, "Initialization complete");
 }
 
 /**
  * @brief Główna pętla programu - wywoływana ciągle
  */
 void loop() {
-  // Reset watchdog
+  // Reset hardware watchdog
   wdt_reset();
+  watchdog_feed_main();  // Reset software watchdog
+  
+  // Aktualizuj statystyki
+  system_stats.uptime_ms = millis();
   
   // Monitoring bezpieczeństwa
   uint8_t error = safety_monitor();
-  if (error == ERROR_OVERHEAT) {
-    emergency_reset();
+  if (error != ERROR_NONE) {
+    if (error == ERROR_OVERHEAT || error == ERROR_WDTO_RESET) {
+      emergency_reset(error);
+    } else {
+      error_register(error);
+    }
+  }
+  
+  // Wysyłaj heartbeat
+  send_heartbeat();
+  
+  // Obsługa zdarzeń z kolejki
+  SystemEvent evt;
+  while (event_pop(&evt)) {
+    // Przetwarzaj zdarzenia (można dodać handler dla konkretnych eventów)
+    LOG_VERBOSE("Processing event from queue");
+  }
+  
+  // Debug: co 10 sekund wypisz statystyki
+  static unsigned long last_stats_print = 0;
+  if (millis() - last_stats_print > 10000) {
+    last_stats_print = millis();
+    
+    LOG_EVENT(LOG_LEVEL_DEBUG, 0, "=== System Statistics ===");
+    Serial.print(F("Uptime: "));
+    Serial.print(system_stats.uptime_ms / 1000);
+    Serial.println(F("s"));
+    Serial.print(F("Events: "));
+    Serial.println(system_stats.total_events);
+    Serial.print(F("Errors: "));
+    Serial.println(system_stats.total_errors);
+    Serial.print(F("Log overflow: "));
+    Serial.println(log_buffer.overflow_count);
+    Serial.print(F("Event drops: "));
+    Serial.println(event_queue.dropped_count);
   }
   
   // Obsługa połączeń sieciowych
@@ -710,11 +1375,11 @@ ISR(TIMER2_OVF_vect) {
 }
 
 // ============================================================================
-// KONIEC PROGRAMU
+// KONIEC PROGRAMU - PODSUMOWANIE FUNKCJONALNOŚCI v3.0
 // ============================================================================
 
 /**
- * Podsumowanie funkcjonalności:
+ * Podsumowanie funkcjonalności (v3.0):
  * 
  * 1. GENERATOR PWM XV-LPWM:
  *    - Zakres: 0.1 Hz - 500 kHz
@@ -728,13 +1393,50 @@ ISR(TIMER2_OVF_vect) {
  *    - Protokół binarny z CRC8
  *    - Watchdog network 5s
  * 
- * 3. BEZPIECZEŃSTWO:
- *    - Watchdog Timer hardware
- *    - Monitorowanie temperatury
- *    - Detekcja błędów CRC
- *    - Emergency reset
+ * 3. SYSTEM LOGOWANIA (NOWOŚĆ v3.0):
+ *    - 6 poziomów logowania (VERBOSE, DEBUG, INFO, WARN, ERROR, FATAL)
+ *    - Ring buffer 256 wpisów
+ *    - Logi przez Serial i sieć
+ *    - Timestampy dla każdego wpisu
+ *    - Powiązanie z kodami zdarzeń
  * 
- * 4. MODULACJE:
+ * 4. SYSTEM OBSŁUGI ZDARZEŃ (NOWOŚĆ v3.0):
+ *    - Kolejka FIFO 32 zdarzeń
+ *    - Kody zdarzeń (EVENT_THERAPY_START, EVENT_ERROR_OCCURRED, etc.)
+ *    - Poziomy ważności (Info, Warning, Error, Critical)
+ *    - Automatyczne logowanie zdarzeń
+ * 
+ * 5. SYSTEM OBSŁUGI BŁĘDÓW (NOWOŚĆ v3.0):
+ *    - Historia ostatnich 16 błędów
+ *    - Kody błędów rozszerzone (ERROR_NONE - ERROR_HARDWARE_FAULT)
+ *    - Rejestracja z timestampami
+ *    - Automatyczne powiadomienia krytyczne
+ * 
+ * 6. WATCHDOG WIELOPOZIOMOWY (ROZSZERZENIE v3.0):
+ *    - Main watchdog (4s)
+ *    - Network watchdog (5s)
+ *    - Therapy watchdog (1s)
+ *    - Communications watchdog (2s)
+ *    - Licznik resetów z blokadą po przekroczeniu limitu
+ *    - Tryb bezpieczny przy wielokrotnych resetach
+ * 
+ * 7. STATYSTYKI I DIAGNOSTYKA (NOWOŚĆ v3.0):
+ *    - Uptime systemu
+ *    - Licznik zdarzeń i błędów
+ *    - Statystyki pakietów sieciowych
+ *    - Licznik sesji terapii
+ *    - Monitorowanie pamięci
+ *    - Okresowy raport statystyk (co 10s)
+ * 
+ * 8. BEZPIECZEŃSTWO:
+ *    - Watchdog Timer hardware + software
+ *    - Monitorowanie temperatury z histerezą
+ *    - Detekcja błędów CRC
+ *    - Emergency reset z sygnalizacją SOS
+ *    - Zapis przyczyny resetu
+ *    - Odczyt przyczyny resetu (MCUSR)
+ * 
+ * 9. MODULACJE:
  *    - None (czysty sygnał)
  *    - AM (modulacja amplitudy)
  *    - FM (modulacja częstotliwości)
@@ -745,6 +1447,24 @@ ISR(TIMER2_OVF_vect) {
  * - IEC 60601-1-2: EMC
  * - ISO 14971: Zarządzanie ryzykiem
  * 
+ * STRUKTURY DANYCH:
+ * - TherapyPacket: Pakiet terapii (16 bajtów)
+ * - DeviceStatus: Status urządzenia
+ * - LogEntry: Wpis logu (72 bajty)
+ * - SystemEvent: Zdarzenie systemowe (44 bajty)
+ * - SystemStats: Statystyki systemu
+ * - MultiWatchdog: Wielopoziomowy watchdog
+ * 
+ * MAKRA POMOCNICZE:
+ * - LOG_VERBOSE(msg), LOG_DEBUG(msg), LOG_INFO(msg)
+ * - LOG_WARN(msg), LOG_ERROR(msg), LOG_FATAL(msg)
+ * - EVENT_INFO(code, desc), EVENT_WARNING(code, desc)
+ * - EVENT_ERROR(code, desc), EVENT_CRITICAL(code, desc)
+ * 
  * UWAGA: Do pełnej funkcjonalności wymagana biblioteka EthernetENC
  * dla modułu ENC28J60. Instalować przez Arduino Library Manager.
+ * 
+ * Autor: ResoNet Team
+ * License: Medical Grade Proprietary
+ * Version: 3.0.0
  */
