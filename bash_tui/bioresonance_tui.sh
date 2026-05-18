@@ -89,6 +89,28 @@ declare -A FREQUENCIES_BY_DISEASE
 declare -a DISEASE_LIST
 declare -a FREQUENCY_DATA
 
+# Therapeutic presets database
+declare -a PRESET_LIST
+declare -A PRESET_DATA
+declare -a PRESET_FREQUENCIES
+
+# Therapy session management
+SESSION_ACTIVE=false
+SESSION_START_TIME=0
+SESSION_CURRENT_STEP=0
+SESSION_TOTAL_STEPS=0
+SESSION_SEQUENCE=()
+SESSION_STEP_START_TIME=0
+SESSION_PAUSED=false
+
+# Schedule system
+declare -a SCHEDULE_ENTRIES
+SCHEDULE_ENABLED=false
+
+# Offline mode
+OFFLINE_MODE=false
+CACHED_STATUS=""
+
 # ============================================================================
 # FUNKCJE POMOCNICZE
 # ============================================================================
@@ -144,6 +166,70 @@ load_frequencies() {
     done < "$freq_file"
     
     debug_log "Loaded $line_num frequencies"
+    return 0
+}
+
+# Load therapeutic presets from therapeutic_presets.md file
+load_presets() {
+    local preset_file="/workspace/therapeutic_presets.md"
+    
+    # Check if running from different directory
+    if [ ! -f "$preset_file" ]; then
+        preset_file="$(dirname "$0")/../therapeutic_presets.md"
+    fi
+    if [ ! -f "$preset_file" ]; then
+        preset_file="./therapeutic_presets.md"
+    fi
+    
+    if [ ! -f "$preset_file" ]; then
+        debug_log "Cannot find therapeutic_presets.md file"
+        return 1
+    fi
+    
+    debug_log "Loading presets from: $preset_file"
+    
+    # Parse therapeutic_presets.md
+    local preset_count=0
+    local in_data=false
+    while IFS= read -r line; do
+        # Skip comments, headers, and empty lines
+        [[ "$line" =~ ^[[:space:]]*# ]] && continue
+        [[ "$line" =~ ^[[:space:]]*$ ]] && continue
+        [[ "$line" =~ ^--- ]] && continue
+        
+        # Check for data section markers
+        if [[ "$line" == "PRESET_DATA_START" ]]; then
+            in_data=true
+            continue
+        fi
+        if [[ "$line" == "PRESET_DATA_END" ]]; then
+            in_data=false
+            continue
+        fi
+        if [[ "$line" =~ ^preset_name\| ]]; then
+            continue  # Skip header line
+        fi
+        
+        # Parse preset data lines only when in data section
+        if [ "$in_data" = true ] && [[ "$line" =~ ^([^|]+)\|([0-9]+)\|([^|]+)\|([^|]+)\|(.+)$ ]]; then
+            local preset_name="${BASH_REMATCH[1]}"
+            local duration_min="${BASH_REMATCH[2]}"
+            local frequencies="${BASH_REMATCH[3]}"
+            local category="${BASH_REMATCH[4]}"
+            local description="${BASH_REMATCH[5]}"
+            
+            # Store preset info
+            PRESET_LIST+=("$preset_name")
+            PRESET_DATA["${preset_name}_duration"]="$duration_min"
+            PRESET_DATA["${preset_name}_frequencies"]="$frequencies"
+            PRESET_DATA["${preset_name}_category"]="$category"
+            PRESET_DATA["${preset_name}_description"]="$description"
+            
+            ((preset_count++))
+        fi
+    done < "$preset_file"
+    
+    debug_log "Loaded $preset_count therapeutic presets"
     return 0
 }
 
@@ -672,6 +758,229 @@ select_therapy_program() {
     done
 }
 
+# Select therapeutic preset (multi-frequency sequence)
+select_therapeutic_preset() {
+    if [ ${#PRESET_LIST[@]} -eq 0 ]; then
+        log_message "Brak wczytanych presetów terapeutycznych!"
+        return
+    fi
+    
+    local current_idx=0
+    local visible_count=15
+    local scroll_offset=0
+    
+    while true; do
+        clear_screen
+        move_cursor 2 2
+        printf "${COLOR_BOLD}${COLOR_BG_BLUE} --- PRESETY TERAPEUTYCZNE --- ${COLOR_RESET}\n"
+        move_cursor 3 2
+        printf "${COLOR_CYAN}Strzałki: nawigacja, Enter: wybierz, D: szczegóły, Q: anuluj${COLOR_RESET}\n"
+        
+        # Display list with scrolling
+        local display_idx=0
+        for ((i=scroll_offset; i<${#PRESET_LIST[@]} && display_idx<visible_count; i++)); do
+            local row=$((5 + display_idx))
+            move_cursor $row 2
+            local preset_name="${PRESET_LIST[$i]}"
+            local duration="${PRESET_DATA[${preset_name}_duration]}"
+            
+            if [ $i -eq $current_idx ]; then
+                printf "${COLOR_BOLD}${COLOR_GREEN}> %-50s [%d min]${COLOR_RESET}" "$preset_name" "$duration"
+            else
+                printf "  %-50s [%d min]" "$preset_name" "$duration"
+            fi
+            ((display_idx++))
+        done
+        
+        # Show position info
+        move_cursor $((5 + visible_count + 1)) 2
+        printf "${COLOR_YELLOW}Pozycja: %d / %d${COLOR_RESET}" $((current_idx + 1)) ${#PRESET_LIST[@]}"
+        
+        # Read input
+        read -s -n 1 key
+        case $key in
+            $'\x1b')
+                read -s -n 2 rest
+                case $rest in
+                    '[A') # Up
+                        ((current_idx--))
+                        [ $current_idx -lt 0 ] && current_idx=0
+                        [ $current_idx -lt $scroll_offset ] && scroll_offset=$current_idx
+                        ;;
+                    '[B') # Down
+                        ((current_idx++))
+                        [ $current_idx -ge ${#PRESET_LIST[@]} ] && current_idx=$((${#PRESET_LIST[@]} - 1))
+                        [ $current_idx -ge $((scroll_offset + visible_count)) ] && scroll_offset=$((current_idx - visible_count + 1))
+                        ;;
+                esac
+                ;;
+            '') # Enter - Start sequential session
+                local preset_name="${PRESET_LIST[$current_idx]}"
+                start_sequential_session "$preset_name"
+                break
+                ;;
+            d|D) # Details
+                local preset_name="${PRESET_LIST[$current_idx]}"
+                show_preset_details "$preset_name"
+                ;;
+            q|Q)
+                break
+                ;;
+        esac
+    done
+}
+
+# Show preset details
+show_preset_details() {
+    local preset_name="$1"
+    
+    clear_screen
+    move_cursor 2 2
+    printf "${COLOR_BOLD}${COLOR_BG_BLUE} --- SZCZEGÓŁY PRESETU: %s --- ${COLOR_RESET}\n" "$preset_name"
+    
+    local duration="${PRESET_DATA[${preset_name}_duration]}"
+    local frequencies="${PRESET_DATA[${preset_name}_frequencies]}"
+    local category="${PRESET_DATA[${preset_name}_category]}"
+    local description="${PRESET_DATA[${preset_name}_description]}"
+    
+    move_cursor 4 2
+    printf "${COLOR_CYAN}Czas trwania: ${COLOR_WHITE}%d minut${COLOR_RESET}\n" "$duration"
+    move_cursor 5 2
+    printf "${COLOR_CYAN}Kategoria: ${COLOR_WHITE}%s${COLOR_RESET}\n" "$category"
+    move_cursor 6 2
+    printf "${COLOR_CYAN}Opis: ${COLOR_WHITE}%s${COLOR_RESET}\n" "$description"
+    
+    move_cursor 8 2
+    printf "${COLOR_BOLD}Sekwencja częstotliwości:${COLOR_RESET}\n"
+    
+    local row=9
+    IFS=';' read -ra FREQ_PAIRS <<< "$frequencies"
+    for pair in "${FREQ_PAIRS[@]}"; do
+        local freq=$(echo "$pair" | cut -d',' -f1)
+        local dur=$(echo "$pair" | cut -d',' -f2)
+        move_cursor $row 4
+        printf "${COLOR_GREEN}• %s Hz przez %d sekund${COLOR_RESET}\n" "$freq" "$dur"
+        ((row++))
+    done
+    
+    move_cursor $((row + 2)) 2
+    printf "${COLOR_YELLOW}Naciśnij dowolny klawisz...${COLOR_RESET}"
+    read -n 1 -s
+}
+
+# Start sequential therapy session
+start_sequential_session() {
+    local preset_name="$1"
+    
+    if [ -z "${PRESET_DATA[${preset_name}_frequencies]+x}" ]; then
+        error_log "Nieznany preset: $preset_name"
+        return
+    fi
+    
+    local frequencies="${PRESET_DATA[${preset_name}_frequencies]}"
+    local duration="${PRESET_DATA[${preset_name}_duration]}"
+    
+    # Parse frequency sequence
+    SESSION_SEQUENCE=()
+    IFS=';' read -ra FREQ_PAIRS <<< "$frequencies"
+    for pair in "${FREQ_PAIRS[@]}"; do
+        SESSION_SEQUENCE+=("$pair")
+    done
+    
+    SESSION_TOTAL_STEPS=${#SESSION_SEQUENCE[@]}
+    SESSION_CURRENT_STEP=0
+    SESSION_ACTIVE=true
+    SESSION_PAUSED=false
+    SESSION_START_TIME=$(date +%s)
+    SESSION_STEP_START_TIME=$SESSION_START_TIME
+    
+    log_message "Rozpoczęto sesję sekwencyjną: $preset_name (${SESSION_TOTAL_STEPS} kroków)"
+    
+    # Configure first channel and start
+    apply_session_step
+    
+    # Send START command to Arduino
+    send_command "START"
+}
+
+# Apply current session step
+apply_session_step() {
+    if [ $SESSION_CURRENT_STEP -ge ${#SESSION_SEQUENCE[@]} ]; then
+        end_session
+        return
+    fi
+    
+    local pair="${SESSION_SEQUENCE[$SESSION_CURRENT_STEP]}"
+    local freq=$(echo "$pair" | cut -d',' -f1)
+    local duration=$(echo "$pair" | cut -d',' -f2)
+    
+    # Configure channel 1 with current frequency
+    set_probe_field 1 freq "$freq"
+    set_probe_field 1 enabled "true"
+    send_probe_config 1
+    
+    SESSION_STEP_START_TIME=$(date +%s)
+    
+    log_message "Krok ${SESSION_CURRENT_STEP}: ${freq} Hz (${duration}s)"
+}
+
+# Update session state (called in main loop)
+update_session() {
+    if [ "$SESSION_ACTIVE" = false ] || [ "$SESSION_PAUSED" = true ]; then
+        return
+    fi
+    
+    if [ $SESSION_CURRENT_STEP -ge ${#SESSION_SEQUENCE[@]} ]; then
+        end_session
+        return
+    fi
+    
+    local pair="${SESSION_SEQUENCE[$SESSION_CURRENT_STEP]}"
+    local duration=$(echo "$pair" | cut -d',' -f2)
+    local now=$(date +%s)
+    local elapsed=$((now - SESSION_STEP_START_TIME))
+    
+    if [ $elapsed -ge $duration ]; then
+        # Move to next step
+        ((SESSION_CURRENT_STEP++))
+        if [ $SESSION_CURRENT_STEP -lt ${#SESSION_SEQUENCE[@]} ]; then
+            apply_session_step
+        else
+            end_session
+        fi
+    fi
+}
+
+# End current session
+end_session() {
+    SESSION_ACTIVE=false
+    send_command "STOP"
+    
+    local total_time=$(($(date +%s) - SESSION_START_TIME))
+    log_message "Sesja zakończona. Czas całkowity: ${total_time}s"
+    
+    # Disable all channels
+    for ch in 1 2 3 4 5 6 7 8; do
+        set_probe_field $ch enabled "false"
+    done
+}
+
+# Pause/Resume session
+toggle_session_pause() {
+    if [ "$SESSION_ACTIVE" = false ]; then
+        return
+    fi
+    
+    if [ "$SESSION_PAUSED" = true ]; then
+        SESSION_PAUSED=false
+        SESSION_STEP_START_TIME=$(($(date +%s) - $(date +%s -d "$elapsed seconds ago")))
+        log_message "Wznowiono sesję"
+    else
+        SESSION_PAUSED=true
+        log_message "Sesja wstrzymana"
+    fi
+}
+
 refresh_display() {
     draw_header
     draw_menu
@@ -1061,7 +1370,7 @@ handle_input() {
             edit_frequency $SELECTED_PROBE
             ;;
         'p'|'P')
-            select_therapy_program
+            select_therapeutic_preset
             ;;
         'i'|'I')
             edit_intensity $SELECTED_PROBE
@@ -1241,13 +1550,19 @@ main() {
     echo "Loaded ${#DISEASE_LIST[@]} therapy programs"
     echo ""
     
+    # Load therapeutic presets
+    echo "Loading therapeutic presets..."
+    load_presets
+    echo "Loaded ${#PRESET_LIST[@]} therapeutic presets"
+    echo ""
+    
     echo "Controls:"
     echo "  UP/DOWN   - Menu navigation"
     echo "  LEFT/RIGHT - Probe selection"
     echo "  1-8       - Quick actions"
     echo "  E         - Toggle probe"
     echo "  F         - Edit frequency"
-    echo "  P         - Select therapy program by disease"
+    echo "  P         - Therapeutic presets (sequential sessions)"
     echo "  I         - Edit intensity"
     echo "  M         - Edit modulation"
     echo "  S         - Refresh status"
