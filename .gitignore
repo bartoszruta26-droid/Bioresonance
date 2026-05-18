@@ -1,39 +1,42 @@
 ```
-# Build artifacts
+# Compiled and build artifacts
 *.o
 *.obj
+*.a
+*.so
+*.dll
+*.exe
 *.out
+
+# Dependencies
 build/
 dist/
 
-# Dependencies
-venv/
-.venv/
-node_modules/
-__pycache__/
-*.pyc
-
-# IDE and editor files
-.vscode/
-.idea/
-*.swp
-*.swo
-*.tmp
-
-# Logs
+# Logs and temp files
 *.log
+*.tmp
+*.swp
 
 # Environment
 .env
 .env.local
 *.env.*
 
-# Coverage and testing
-.coverage
+# Editors
+.vscode/
+.idea/
+
+# Coverage
 coverage/
 htmlcov/
+.coverage
 
-# System files
-.DS_Store
-Thumbs.db
+# C/C++ specific
+*.i
+*.ii
+*.s
+*.su
+*.gcda
+*.gcno
+*.gcov
 ```

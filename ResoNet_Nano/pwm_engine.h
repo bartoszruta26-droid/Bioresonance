@@ -1,7 +1,7 @@
 /**
  * @file pwm_engine.h
  * @brief Silnik generowania sygnałów PWM - Nagłówki
- * @version 4.1 (Poprawiona spójność typów)
+ * @version 4.0 (Modular Architecture with Pseudo-threading)
  * 
  * Generator XV-LPWM (0.1 Hz - 500 kHz, rozdzielczość 0.01 Hz)
  */
