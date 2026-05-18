@@ -1,39 +1,36 @@
 ```
-# Build artifacts
+# Compiled and build artifacts
 *.o
 *.obj
+*.elf
+*.hex
+*.bin
 *.out
-build/
-dist/
 
 # Dependencies
-venv/
-.venv/
-node_modules/
-__pycache__/
-*.pyc
+.pio/
+.platformio/
+lib/
+src/
 
-# IDE and editor files
-.vscode/
-.idea/
-*.swp
-*.swo
-*.tmp
-
-# Logs
+# Logs and temp files
 *.log
+*.tmp
+*.swp
 
 # Environment
 .env
 .env.local
 *.env.*
 
-# Coverage and testing
-.coverage
-coverage/
-htmlcov/
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
 
-# System files
-.DS_Store
-Thumbs.db
+# Build outputs
+build/
+dist/
+output/
 ```

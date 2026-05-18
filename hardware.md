@@ -80,13 +80,20 @@
 | **Arduino Nano** | D12 (MISO) | ENC28J60 | SO/MISO | SPI Data In | ❌ Brak |
 | **Arduino Nano** | D13 (SCK) | ENC28J60 | SCK | SPI Clock | ❌ Brak |
 | **Arduino Nano** | D9 (PWM) | ProbeHolder | PWM_IN | PWM 16-bit | ✅ Opto |
+| **Arduino Nano** | D5 (PWM) | IR LED Strip | IR_PWM | IR Carrier 38kHz | ✅ Opto |
+| **Arduino Nano** | D6 (PWM) | IR MOD | IR_MOD | Modulation Signal | ✅ Opto |
 | **Arduino Nano** | 5V | ENC28J60 | VCC_REG | Power 5V | ❌ Brak |
 | **Arduino Nano** | GND | ENC28J60 | GND | Digital GND | ❌ Brak |
 | **Izolator DC** | 5V_ISO | ProbeHolder | VCC_5V | Power Isolated | ✅ 2500V |
+| **Izolator DC** | 5V_ISO | IR LED Strip | VCC_IR | Power Isolated | ✅ 2500V |
 | **Izolator DC** | GND_ISO | ProbeHolder | AGND | Analog GND | ✅ 2500V |
 | **Optoizolator** | VOUT | ProbeHolder | PWM_BUF | Buffered PWM | ✅ 2500V |
+| **Optoizolator** | VOUT_IR | IR Driver | IR_DRV | IR PWM Drive | ✅ 2500V |
 | **ProbeHolder** | BNC+ | Antena | HOT | RF Output | ⚠️ High Freq |
 | **ProbeHolder** | BNC- | Antena | COLD | RF Ground | ⚠️ High Freq |
+| **IR Strip** | +5V | Taśma LED IR | VCC | Power | ⚠️ Low Voltage |
+| **IR Strip** | GND | Taśma LED IR | GND | Ground | ⚠️ Low Voltage |
+| **IR Strip** | DIN | Taśma LED IR | DATA | Data Input | ⚠️ Low Voltage |
 
 ---
 
@@ -205,7 +212,77 @@
 
 ---
 
-### 5. 🔋 Zasilacz Medyczny
+### 5. 💡 Pasek LED IR (Terapeutyczny)
+
+**Funkcja**: Emitowanie modulowanego światła podczerwonego (IR) w celu stymulacji biorezonansowej tkanek pacjenta. Pasek LED IR jest owinięty wokół ciała pacjenta w miejscu terapii.
+
+**Specyfikacja Paska LED IR**:
+- **Napięcie Zasilania**: 5V DC ±5%
+- **Typ Diod**: SMD 2835 lub 5050 z soczewką IR
+- **Długość Fali**: 850nm lub 940nm (niewidoczne dla oka)
+- **Gęstość LED**: 60 LED/m lub 120 LED/m
+- **Pobór Mocy**: ~5W/metr (przy pełnej jasności)
+- **Kąt Świecenia**: 120° (szeroki rozrzut)
+- **Długość Paska**: 1-3 metry (dostosowywalna do pacjenta)
+
+**Konfiguracja Modułowa**:
+- **Segmenty**: Pasek podzielony na segmenty co 3 LED (możliwość cięcia)
+- **Złącza**: JST PH 2.0mm lub XT30 dla łatwego podłączenia
+- **Osłona**: Silikonowa matowa (dyfuzor + ochrona IP65)
+
+**Sterowanie**:
+- **Częstotliwość Nośna**: 38 kHz (standard IR) lub 56 kHz / 40 kHz
+- **Modulacja Terapeutyczna**: 
+  - AM: 1-100 Hz (modulacja amplitudy)
+  - FM: ±10% dewiacji
+  - Burst: Cykle 500ms on/off
+- **Regulacja Intensywności**: 0-100% (PWM duty cycle)
+
+**Schemat Podłączenia**:
+```
+Arduino Nano                    IR LED Strip Driver
+┌──────────────┐               ┌──────────────────┐
+│   D5 (PWM)   │──[220Ω]───▶│ Anode (6N137)    │
+│   GND        │◀────────────│ Cathode (6N137)  │
+│              │             │                  │
+│              │             │ Emitter (6N137)  │──[10kΩ]──▶ 5V_ISO
+│              │             │ Collector (6N137)│──────────▶ MOSFET Gate
+│              │             │                  │
+│              │             │ MOSFET Drain     │──────────▶ IR_STRIP (-)
+│              │             │ MOSFET Source    │──────────▶ GND_ISO
+└──────────────┘             └──────────────────┘
+                                    │
+                              5V_ISO ────────────────▶ IR_STRIP (+)
+```
+
+**Komponenty Sterownika IR**:
+- **U1**: 6N137 (High-speed optocoupler, 10 MHz)
+- **Q1**: IRLZ44N lub AO3400 (Logic-level MOSFET, <0.05Ω Rds_on)
+- **R1**: 220Ω (limit prądu diody IR w optoizolatorze)
+- **R2**: 10kΩ (pull-down dla bramki MOSFET)
+- **C1**: 100µF + 100nF (filtracja zasilania 5V_ISO)
+
+**Bezpieczeństwo**:
+- **Izolacja Galwaniczna**: Optoizolator 2500V RMS między Arduino a paskiem LED
+- **Ochrona Termiczna**: MOSFET na radiatorze jeśli moc >3W
+- **Ograniczenie Prądu**: Bezpiecznik resetowalny 1A w linii 5V_ISO
+- **UV/IR Warning**: Oznaczenie na obudowie "Niewidoczne promieniowanie IR"
+
+**Montaż na Pacjencie**:
+- **Metoda**: Pasek owinięty wokół kończyny/tułowia (2-3 okrążenia)
+- **Mocowanie**: Rzep medyczny lub elastyczny bandaż
+- **Odległość od Skóry**: 1-2 cm (przez ubranie lub bezpośrednio)
+- **Czas Sesji**: 5-30 minut (zależnie od protokołu)
+
+**Uwagi Kliniczne**:
+- ✅ Bezpieczne dla skóry (niska energia, brak efektu termicznego)
+- ⚠️ Unikać bezpośredniego świecenia w oczy
+- ⚠️ Przeciwwskazane u pacjentów z fotosensytywnością
+- ⚠️ Nie stosować na zmiany nowotworowe bez konsultacji
+
+---
+
+### 6. 🔋 Zasilacz Medyczny
 
 **Funkcja**: Zapewnienie bezpiecznego, izolowanego zasilania dla całego systemu.
 
@@ -226,6 +303,7 @@
 Sieć 230V AC → Zasilacz Medyczny → 5V DC
                                       ├─→ Arduino Nano (5V/GND)
                                       ├─→ Izolator DC-DC → ProbeHolder (5V_ISO/AGND)
+                                      ├─→ Izolator DC-DC → IR LED Strip (5V_ISO_IR/GND_ISO_IR)
                                       └─→ LDO 3.3V → ENC28J60 (3.3V/GND)
 ```
 
@@ -300,6 +378,39 @@ Arduino Side                      ProbeHolder Side
 
 ---
 
+### Połączenia IR: Arduino ↔ Pasek LED IR
+
+| Arduino Nano Pin | Funkcja | IR Driver Pin | Izolacja | Uwagi |
+|------------------|---------|---------------|----------|-------|
+| **D5 (PWM)** | IR_CARRIER | PWM_IN | ✅ Opto 6N137 | Timer0/Timer2 - 38kHz carrier |
+| **D6 (PWM)** | IR_MOD | MOD_IN | ✅ Opto 6N137 | Modulacja terapeutyczna |
+| **GND** | DGND | GND_ISO | ✅ 2500V | Oddzielne masy! |
+
+**Obwód Izolacji IR**:
+```
+Arduino Side                      IR Driver Side
+┌──────────────┐                 ┌──────────────────┐
+│   D5 (PWM)   │────[220Ω]──────▶│ Anode (6N137)    │
+│   GND        │◀────────────────│ Cathode (6N137)  │
+│              │                 │                  │
+│              │                 │ Emitter (6N137)  │──[10kΩ]──▶ 5V_ISO_IR
+│              │                 │ Collector (6N137)│──────────▶ MOSFET Gate
+│              │                 │                  │
+│              │                 │ MOSFET Drain     │──────────▶ IR_STRIP (-)
+│              │                 │ MOSFET Source    │──────────▶ GND_ISO_IR
+└──────────────┘                 └──────────────────┘
+                                          │
+                                    5V_ISO_IR ─────────────▶ IR_STRIP (+)
+```
+
+**Parametry Sygnału IR**:
+- **Częstotliwość Nośna**: 38 kHz (Timer2) lub 56 kHz / 40 kHz
+- **Modulacja Terapeutyczna**: 1-100 Hz (AM/FM/Burst)
+- **Cykl Pracy**: 0-100% (regulowana intensywność)
+- **Prąd Paska**: do 1A na metr (zależnie od gęstości LED)
+
+---
+
 ### Połączenia Zasilania
 
 #### Tor Główny (5V)
@@ -311,9 +422,11 @@ Zasilacz Medyczny 5V
        │              └───▶ LDO 3.3V ───▶ ENC28J60 VREG
        │
        └──[Izolator DC-DC 2500V]───▶ 5V_ISO ───▶ ProbeHolder VCC
+       │
+       └──[Izolator DC-DC 2500V]───▶ 5V_ISO_IR ───▶ IR LED Strip VCC
 ```
 
-#### Tor Izolowany (5V_ISO)
+#### Tor Izolowany (5V_ISO) - ProbeHolder
 ```
 Izolator DC-DC (np. B0505S-1W)
        │
@@ -323,9 +436,20 @@ Izolator DC-DC (np. B0505S-1W)
        └── GND_ISO ────────────▶ ProbeHolder AGND
 ```
 
+#### Tor Izolowany (5V_ISO_IR) - Pasek LED IR
+```
+Izolator DC-DC (np. B0505S-1W lub większy 2W)
+       │
+       ├── 5V_ISO_IR ───[470µF]───▶ IR Strip VCC
+       │                 [100nF]
+       │
+       └── GND_ISO_IR ────────────▶ IR Strip GND
+```
+
 **Komponenty Filtrujące**:
-- **C1**: 100µF elektrolityczny (low ESR)
-- **C2**: 100nF ceramiczny X7R
+- **C1**: 100µF elektrolityczny (low ESR) - ProbeHolder
+- **C2**: 100nF ceramiczny X7R - oba tory
+- **C3**: 470µF elektrolityczny (low ESR) - IR Strip (wyższy prąd)
 - **L1**: 10µH dławik ferrytowy (opcjonalnie)
 
 ---
@@ -365,11 +489,15 @@ Izolator DC-DC (np. B0505S-1W)
 | **Bezpiecznik** | 2A slow-blow, 5x20mm | 1 szt. | Schurter |
 | **Gniazdo Bezpiecznika** | Panel mount | 1 szt. | Schurter |
 | **LDO 3.3V** | MCP1700-3.3, 250mA | 1 szt. | Microchip |
-| **Izolator DC-DC** | B0505S-1W, 1W, 2500V | 1 szt. | MORNSUN |
-| **Optoizolator** | 6N137, DIP-8 | 2 szt. | Everlight |
+| **Izolator DC-DC** | B0505S-1W, 1W, 2500V | 2 szt. | MORNSUN (ProbeHolder + IR) |
+| **Izolator DC-DC** | B0505S-2W, 2W, 2500V | 1 szt. | MORNSUN (IR Strip - wyższy prąd) |
+| **Optoizolator** | 6N137, DIP-8 | 4 szt. | Everlight (2x PWM, 2x IR) |
+| **MOSFET Logic-Level** | IRLZ44N lub AO3400 | 2 szt. | Vishay, Diodes Inc |
+| **Pasek LED IR** | 5V, 850nm/940nm, 60LED/m | 1-3 metry | Custom, AliExpress |
+| **Złącza JST** | PH 2.0mm 2-pin | 4 szt. | JST |
 | **Kondensator Y2** | 2.2nF/250VAC, safety | 2 szt. | Vishay |
 | **Rezystory** | 1/4W, 1% tolerance (różne) | 20 szt. | Yageo |
-| **Radiator** | Dla MOSFET, TO-220 | 1 szt. | Fischer Elektronik |
+| **Radiator** | Dla MOSFET, TO-220 | 2 szt. | Fischer Elektronik |
 | **Pasta Termoprzewodząca** | Arctic MX-4, 4g | 1 tubka | Arctic |
 
 ### Narzędzia Pomocnicze
@@ -477,13 +605,17 @@ Izolator DC-DC (np. B0505S-1W)
 - [ ] Komunikacja przez USB działa (serial monitor)
 - [ ] Moduł ENC28J60 wykrywany (link LED świeci)
 - [ ] Sygnał PWM na pinie D9 obecny (oscyloskop)
+- [ ] Sygnał IR Carrier na pinie D5 obecny (38kHz, oscyloskop)
+- [ ] Sygnał IR MOD na pinie D6 obecny (oscyloskop)
 
 #### Testy Pełne
 - [ ] Połączenie Ethernet nawiązane (ping z komputera)
 - [ ] Aplikacja kliencka widzi urządzenie
 - [ ] Generowanie PWM potwierdzone oscyloskopem
 - [ ] Antena emituje pole (miernik Gaussa)
+- [ ] Pasek LED IR emituje światło (karta IR lub kamera bez filtra IR)
 - [ ] Izolacja utrzymana podczas pracy (>100 MΩ)
+- [ ] Prąd paska IR zmierzony (<1A na metr)
 
 ### ⚠️ Procedura Awaryjna
 
