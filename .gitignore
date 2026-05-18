@@ -1,23 +1,49 @@
 ```
-# CMake build artifacts
-gui/build/
-gui/CMakeCache.txt
-CMakeFiles/
-CMakeCache.txt
-Makefile
-cmake_install.cmake
-*.cmake
+# Compiled and build artifacts
 *.o
-*.d
-*.bin
+*.obj
 *.out
-
-# Executables
-bioresonance_gui
+*.exe
+*.dll
+*.so
+*.a
 
 # Dependencies
-imgui_lib/
+node_modules/
+venv/
+.venv/
+__pycache__/
+.mypy_cache/
+.pytest_cache/
+target/
+.gradle/
 
-# Logs
+# Logs and temp files
 *.log
+*.tmp
+*.swp
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Build directories
+build/
+dist/
 ```
