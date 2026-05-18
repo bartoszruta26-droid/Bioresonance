@@ -635,6 +635,21 @@
                         <button class="btn btn-danger" onclick="stopTherapy()" id="stopBtn">⏹ Stop Terapii</button>
                         <button class="btn btn-warning" onclick="sendAllConfigs()">📤 Wyślij Wszystkie</button>
                         <button class="btn btn-primary" onclick="refreshStatus()">🔄 Odśwież Status</button>
+                        <button class="btn btn-primary" onclick="selectTherapyProgram()" id="therapyBtn">💊 Wybór Programu Terapii</button>
+                    </div>
+                </div>
+                
+                <!-- THERAPY SELECTION MODAL -->
+                <div id="therapyModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:2000; justify-content:center; align-items:center;">
+                    <div style="background:white; border-radius:15px; padding:30px; max-width:800px; width:90%; max-height:80vh; overflow-y:auto;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                            <h2 style="color:#2c3e50; margin:0;">💊 Wybierz Program Terapii</h2>
+                            <button class="btn btn-danger" onclick="closeTherapyModal()" style="padding:5px 15px;">✕ Zamknij</button>
+                        </div>
+                        <div style="margin-bottom:15px;">
+                            <input type="text" id="therapySearch" placeholder="Szukaj choroby..." style="width:100%; padding:12px; border:2px solid #dee2e6; border-radius:8px; font-size:14px;" onkeyup="filterTherapies()">
+                        </div>
+                        <div id="therapyList" style="display:grid; gap:10px; max-height:500px; overflow-y:auto;"></div>
                     </div>
                 </div>
                 
@@ -692,7 +707,9 @@
         let isConnected = false;
         let probeMode = 'SINGLE';
         let refreshInterval = null;
-        
+        let frequencyDatabase = [];  // Loaded from frequencies.md
+        let selectedProbeForTherapy = 1;
+
         // API endpoint
         const API_URL = 'api.php';
         
@@ -700,7 +717,8 @@
             probes: probes,
             currentChannel: currentChannel,
             isConnected: isConnected,
-            probeMode: probeMode
+            probeMode: probeMode,
+            frequencyDatabase: frequencyDatabase
         });
         
         // ============================================================================
@@ -1285,11 +1303,199 @@
                 debugLog("Pobieranie statusu urządzenia...", "INFO");
                 await refreshStatus();
                 
+                // Wczytaj częstotliwości z pliku frequencies.md
+                debugLog("Ładowanie bazy częstotliwości...", "INFO");
+                await loadFrequencies();
+                
                 debugLog("=== INICJALIZACJA ZAKOŃCZONA ===", "SUCCESS");
             } catch (error) {
                 debugLog("Błąd inicjalizacji: " + error.message, "ERROR", error);
                 showNotification('Błąd inicjalizacji aplikacji', true);
             }
+        }
+        
+        // ============================================================================
+        // ŁADOWANIE CZĘSTOTLIWOŚCI Z PLIKU FREQUENCIES.MD
+        // ============================================================================
+        
+        /**
+         * Wczytaj częstotliwości i choroby z pliku frequencies.md
+         */
+        async function loadFrequencies() {
+            debugLog("loadFrequencies called", "INFO");
+            
+            try {
+                const response = await fetch('frequencies.md');
+                if (!response.ok) {
+                    throw new Error('Nie można wczytać frequencies.md');
+                }
+                
+                const text = await response.text();
+                const lines = text.split('\n');
+                
+                frequencyDatabase = [];
+                
+                for (const line of lines) {
+                    // Skip comments, headers, empty lines
+                    if (line.trim().startsWith('#') || line.trim() === '' || 
+                        line.startsWith('---') || line.startsWith('===') ||
+                        line.includes('FREQUENCY_DATA') || line.includes('freq_hz|')) {
+                        continue;
+                    }
+                    
+                    // Parse frequency data: freq_hz|category|subcategory|description|modulation|carrier_khz
+                    const parts = line.split('|');
+                    if (parts.length >= 6) {
+                        const freq = parseInt(parts[0]);
+                        if (isNaN(freq)) continue;
+                        
+                        const category = parts[1];
+                        const subcategory = parts[2];
+                        const description = parts[3];
+                        const modulation = parts[4];
+                        const carrier = parseInt(parts[5]);
+                        
+                        // Extract disease name (before / separator)
+                        let diseaseName = description;
+                        const slashPos = description.indexOf('/');
+                        if (slashPos !== -1) {
+                            diseaseName = description.substring(0, slashPos).trim();
+                        }
+                        
+                        frequencyDatabase.push({
+                            frequency_hz: freq,
+                            category: category,
+                            subcategory: subcategory,
+                            description: description,
+                            disease_name: diseaseName,
+                            modulation: modulation,
+                            carrier_khz: carrier
+                        });
+                    }
+                }
+                
+                debugLog(`Wczytano ${frequencyDatabase.length} programów terapii`, "INFO");
+                showNotification(`Wczytano ${frequencyDatabase.length} programów terapii`);
+            } catch (error) {
+                debugLog("Błąd ładowania częstotliwości: " + error.message, "ERROR");
+                showNotification('Błąd ładowania frequencies.md: ' + error.message, true);
+            }
+        }
+        
+        // ============================================================================
+        // WYBÓR PROGRAMU TERAPII
+        // ============================================================================
+        
+        /**
+         * Otwórz modal wyboru programu terapii
+         */
+        function selectTherapyProgram() {
+            debugLog("selectTherapyProgram called", "INFO");
+            
+            if (frequencyDatabase.length === 0) {
+                showNotification('Brak wczytanych programów terapii!', true);
+                return;
+            }
+            
+            // Set selected probe to first enabled probe or channel 1
+            for (const channelId in probes) {
+                if (probes[channelId].enabled) {
+                    selectedProbeForTherapy = parseInt(channelId);
+                    break;
+                }
+            }
+            
+            renderTherapyList(frequencyDatabase);
+            document.getElementById('therapyModal').style.display = 'flex';
+        }
+        
+        /**
+         * Zamknij modal wyboru programu terapii
+         */
+        function closeTherapyModal() {
+            debugLog("closeTherapyModal called", "DEBUG");
+            document.getElementById('therapyModal').style.display = 'none';
+        }
+        
+        /**
+         * Renderuj listę terapii
+         */
+        function renderTherapyList(therapies) {
+            debugLog("renderTherapyList called", "DEBUG", { count: therapies.length });
+            
+            const container = document.getElementById('therapyList');
+            container.innerHTML = '';
+            
+            therapies.forEach((therapy, index) => {
+                const item = document.createElement('div');
+                item.style.cssText = 'padding:15px; background:#f8f9fa; border-radius:8px; cursor:pointer; transition:all 0.3s; border-left:4px solid #bdc3c7;';
+                item.onmouseover = function() { this.style.background='#e8f8f5'; this.style.transform='translateX(5px)'; };
+                item.onmouseout = function() { this.style.background='#f8f9fa'; this.style.transform='translateX(0)'; };
+                item.onclick = () => applyTherapy(therapy);
+                
+                item.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <strong style="color:#2c3e50; font-size:16px;">${therapy.disease_name}</strong>
+                            <div style="color:#7f8c8d; font-size:13px; margin-top:5px;">
+                                ${therapy.description}
+                            </div>
+                            <div style="color:#3498db; font-size:12px; margin-top:5px;">
+                                Częstotliwość: ${therapy.frequency_hz} Hz | Modulacja: ${therapy.modulation} | Kategoria: ${therapy.category}
+                            </div>
+                        </div>
+                        <div style="background:#3498db; color:white; padding:8px 15px; border-radius:20px; font-weight:bold;">
+                            ${therapy.frequency_hz} Hz
+                        </div>
+                    </div>
+                `;
+                
+                container.appendChild(item);
+            });
+        }
+        
+        /**
+         * Filtruj terapie po nazwie choroby
+         */
+        function filterTherapies() {
+            const searchTerm = document.getElementById('therapySearch').value.toLowerCase();
+            debugLog("filterTherapies called", "DEBUG", { searchTerm });
+            
+            const filtered = frequencyDatabase.filter(therapy => 
+                therapy.disease_name.toLowerCase().includes(searchTerm) ||
+                therapy.description.toLowerCase().includes(searchTerm) ||
+                therapy.category.toLowerCase().includes(searchTerm)
+            );
+            
+            renderTherapyList(filtered);
+        }
+        
+        /**
+         * Zastosuj wybraną terapię do aktualnej sondy
+         */
+        function applyTherapy(therapy) {
+            debugLog("applyTherapy called", "INFO", therapy);
+            
+            // Find the probe
+            const probe = probes[selectedProbeForTherapy];
+            if (!probe) {
+                showNotification('Nie znaleziono sondy!', true);
+                return;
+            }
+            
+            // Update probe configuration
+            probe.freq = therapy.frequency_hz;
+            probe.modulation = therapy.modulation;
+            probe.enabled = true;
+            
+            // Update UI
+            renderProbeList();
+            
+            // Send configuration to device
+            sendProbeConfig(selectedProbeForTherapy);
+            
+            showNotification(`Zastosowano terapię: ${therapy.disease_name} (${therapy.frequency_hz} Hz)`);
+            closeTherapyModal();
         }
         
         // Start aplikacji po załadowaniu strony DOM
