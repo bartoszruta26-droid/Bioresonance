@@ -13,6 +13,7 @@
 #include "imgui.h"
 #include "imgui_impl_sdl2.h"
 #include "imgui_impl_sdlrenderer2.h"
+#include "imgui_stdlib.h"
 
 #ifdef _WIN32
     #include <winsock2.h>
@@ -299,27 +300,40 @@ void GuiApp::renderProbePanel() {
     
     ProbeConfig* probe = probe_manager.getProbe(selected_probe);
     if (probe) {
-        ImGui::InputText("Nazwa", &probe->name[0], probe->name.size());
+        ImGui::InputText("Nazwa", &probe->name);
         
-        ImGui::SliderFloat("Częstotliwość (Hz)", 
-                          reinterpret_cast<float*>(&probe->frequency_hz_x100), 
-                          100.0f, 1000000.0f);
+        float freq_hz = static_cast<float>(probe->frequency_hz_x100) / 100.0f;
+        if (ImGui::SliderFloat("Częstotliwość (Hz)", &freq_hz, 100.0f, 1000000.0f)) {
+            probe->frequency_hz_x100 = static_cast<uint32_t>(freq_hz * 100.0f + 0.5f);
+        }
         
-        ImGui::SliderInt("Czas trwania (s)", (int*)&probe->duration_sec, 1, 3600);
+        int duration_sec = static_cast<int>(probe->duration_sec);
+        if (ImGui::SliderInt("Czas trwania (s)", &duration_sec, 1, 3600)) {
+            probe->duration_sec = static_cast<uint32_t>(duration_sec);
+        }
         
-        ImGui::SliderInt("Wypełnienie PWM (%)", (int*)&probe->duty_cycle, 0, 100);
+        int duty_cycle = static_cast<int>(probe->duty_cycle);
+        if (ImGui::SliderInt("Wypełnienie PWM (%)", &duty_cycle, 0, 100)) {
+            probe->duty_cycle = static_cast<uint8_t>(duty_cycle);
+        }
         
-        ImGui::SliderInt("Intensywność", (int*)&probe->intensity_level, 0, 4095);
+        int intensity = static_cast<int>(probe->intensity_level);
+        if (ImGui::SliderInt("Intensywność", &intensity, 0, 4095)) {
+            probe->intensity_level = static_cast<uint16_t>(intensity);
+        }
+        
+        int mod_freq = static_cast<int>(probe->modulation_freq_hz);
+        if (probe->modulation != ModulationType::NONE) {
+            if (ImGui::SliderInt("Częst. modulacji (Hz)", &mod_freq, 1, 100)) {
+                probe->modulation_freq_hz = static_cast<uint8_t>(mod_freq);
+            }
+        }
         
         // Modulation type combo
         const char* modulation_types[] = {"Brak", "AM", "FM", "BURST", "SWEEP"};
         int current_mod = (int)probe->modulation;
         if (ImGui::Combo("Modulacja", &current_mod, modulation_types, 5)) {
             probe->modulation = (ModulationType)current_mod;
-        }
-        
-        if (probe->modulation != ModulationType::NONE) {
-            ImGui::SliderInt("Częst. modulacji (Hz)", (int*)&probe->modulation_freq_hz, 1, 100);
         }
         
         ImGui::Separator();

@@ -1,38 +1,21 @@
 ```
-# Compiled and build artifacts
+# CMake build artifacts
+build/
+CMakeCache.txt
+CMakeFiles/
+
+# Executables
+bioresonance_gui
+
+# Object files
 *.o
 *.obj
-*.out
-*.exe
-*.dll
-*.so
-*.a
+*.d
 
-# Dependencies
-node_modules/
-venv/
-.venv/
-__pycache__/
-.mypy_cache/
-.pytest_cache/
-target/
-.gradle/
+# Temporary files
+*.tmp
+*.swp
 
-# Logs and temp files
+# Logs
 *.log
-*.tmp
-*.swp
-
-# Environment
-.env
-.env.local
-.env.*
-
-# OS generated files
-.DS_Store
-Thumbs.db
-
-# Temp files
-*.tmp
-*.swp
 ```
