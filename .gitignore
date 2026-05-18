@@ -1,1 +1,1 @@
-Nothing needs to be added to the .gitignore file since only a shell script file was modified and no build artifacts, dependencies, or temporary files were detected in the changes.
+Nothing should be ignored since the changes only include source/config files (.sh, .md) with no build artifacts, dependencies, or temp files.
