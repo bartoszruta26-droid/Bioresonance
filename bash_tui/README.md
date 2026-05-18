@@ -32,6 +32,8 @@ sudo pacman -S gnu-netcat bc
 
 ## 🚀 Uruchomienie
 
+### Tryb TUI (Interaktywny)
+
 ```bash
 cd /workspace/bash_tui
 
@@ -46,7 +48,55 @@ chmod +x bioresonance_tui.sh
 
 # Z podaniem IP i portu
 ./bioresonance_tui.sh 192.168.1.100 5001
+
+# Tryb verbose/debug
+./bioresonance_tui.sh -v 192.168.1.100
+./bioresonance_tui.sh --debug
 ```
+
+### Tryb Bezpośredni (Direct Control Mode)
+
+Tryb bezpośredni pozwala na sterowanie efektorami z linii poleceń bez uruchamiania interfejsu TUI. Idealny do skryptów i automatyzacji.
+
+```bash
+# Podstawowa składnia:
+./bioresonance_tui.sh -c channel:frequency[:duty:intensity:modulation]
+
+# Przykłady:
+
+# Aktywuj kanał 1 (Cewka Płaska) z częstotliwością 727 Hz
+./bioresonance_tui.sh -c 1:727
+
+# Kanał 1, 727 Hz, cykl pracy 50%
+./bioresonance_tui.sh -c 1:727:50
+
+# Kanał 1, 727 Hz, 50% duty, intensywność 2048
+./bioresonance_tui.sh -c 1:727:50:2048
+
+# Kanał 1 z modulacją AM
+./bioresonance_tui.sh -c 1:727:50:2048:AM
+
+# Wiele kanałów jednocześnie
+./bioresonance_tui.sh -c 1:727 -c 2:10000 -c 5:78.3
+
+# Z customowym adresem IP
+./bioresonance_tui.sh 192.168.1.50 -c 1:727:50:2048:NONE
+
+# Pełna konfiguracja z modulacją FM
+./bioresonance_tui.sh -c 3:5000:60:3000:FM
+```
+
+#### Format argumentu `-c` / `--control`:
+
+```
+channel:frequency[:duty:intensity:modulation]
+```
+
+- **channel** (wymagane): Numer kanału 1-8
+- **frequency** (wymagane): Częstotliwość w Hz (może być dziesiętna, np. 78.3)
+- **duty** (opcjonalne, domyślnie 50): Cykl pracy w zakresie 0-100%
+- **intensity** (opcjonalne, domyślnie 2048): Intensywność w zakresie 0-4095
+- **modulation** (opcjonalne, domyślnie NONE): Typ modulacji (NONE, AM, FM, BURST, SWEEP)
 
 ## 🎮 Sterowanie
 
@@ -178,7 +228,7 @@ Aplikacja wyświetla na bieżąco:
 
 ## 📝 Przykłady Użycia
 
-### Sesja podstawowa - cewka płaska
+### Sesja podstawowa - cewka płaska (TUI)
 ```bash
 # 1. Uruchom TUI
 ./bioresonance_tui.sh 192.168.1.100
@@ -190,12 +240,51 @@ Aplikacja wyświetla na bieżąco:
 # 6. Po zakończeniu naciśnij '4'
 ```
 
-### Terapia wielokanałowa
+### Terapia wielokanałowa (TUI)
 ```bash
 # 1. Aktywuj kanały 1, 3, 5 (E dla każdego)
 # 2. Ustaw różne częstotliwości (F)
 # 3. Wybierz tryb MULTI_CHANNEL (klawisz 2)
 # 4. Start terapii (klawisz 3)
+```
+
+### Sterowanie bezpośrednie z linii poleceń (Direct Control Mode)
+
+#### Podstawowe użycie
+```bash
+# Aktywuj kanał 1 z częstotliwością 727 Hz
+./bioresonance_tui.sh -c 1:727
+
+# Kanał 1 z pełną konfiguracją
+./bioresonance_tui.sh -c 1:727:50:2048:NONE
+
+# Wiele kanałów jednocześnie
+./bioresonance_tui.sh -c 1:727 -c 2:10000 -c 5:78.3
+```
+
+#### Skrypt automatyzujący sesję
+```bash
+#!/bin/bash
+# Przykładowy skrypt uruchamiający terapię
+
+DEVICE="192.168.1.100"
+
+# Uruchom terapię na kanałach 1 i 5
+./bioresonance_tui.sh $DEVICE \
+    -c 1:727:50:2048:NONE \
+    -c 5:78.3:50:2048:NONE
+
+echo "Terapia rozpoczęta"
+```
+
+#### Integracja z innymi narzędziami
+```bash
+# Uruchom terapię na podstawie pliku konfiguracyjnego
+while IFS=: read -r channel freq duty intensity mod; do
+    controls+=("-c" "$channel:$freq:$duty:$intensity:$mod")
+done < config.txt
+
+./bioresonance_tui.sh "${controls[@]}"
 ```
 
 ## 🛠️ Różnice względem wersji C++

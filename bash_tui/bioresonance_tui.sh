@@ -172,16 +172,24 @@ set_probe_field() {
             freq="$value" 
             ;;
         duty) 
-            # Validate duty cycle 0-100
-            if [ "$value" -lt 0 ] || [ "$value" -gt 100 ] 2>/dev/null; then
+            # Validate duty cycle is numeric and in range 0-100
+            if [[ ! "$value" =~ ^[0-9]+$ ]]; then
+                error_log "Duty cycle must be numeric: $value"
+                return 1
+            fi
+            if [ "$value" -lt 0 ] || [ "$value" -gt 100 ]; then
                 error_log "Duty cycle out of range (0-100): $value"
                 return 1
             fi
             duty="$value" 
             ;;
         intensity) 
-            # Validate intensity 0-4095
-            if [ "$value" -lt 0 ] || [ "$value" -gt 4095 ] 2>/dev/null; then
+            # Validate intensity is numeric and in range 0-4095
+            if [[ ! "$value" =~ ^[0-9]+$ ]]; then
+                error_log "Intensity must be numeric: $value"
+                return 1
+            fi
+            if [ "$value" -lt 0 ] || [ "$value" -gt 4095 ]; then
                 error_log "Intensity out of range (0-4095): $value"
                 return 1
             fi
@@ -720,6 +728,142 @@ stop_therapy() {
 }
 
 # ============================================================================
+# TRYB BEZPOŚREDNI (DIRECT CONTROL MODE)
+# ============================================================================
+
+parse_control_arg() {
+    local control="$1"
+    local channel freq duty intensity modulation
+    
+    # Parse channel:freq[:duty:intensity:modulation]
+    IFS=':' read -r channel freq duty intensity modulation <<< "$control"
+    
+    # Validate channel
+    if [ -z "$channel" ] || [[ ! "$channel" =~ ^[1-8]$ ]]; then
+        error_log "Invalid channel: $channel (must be 1-8)"
+        return 1
+    fi
+    
+    # Validate frequency (numeric, can be decimal)
+    if [ -z "$freq" ] || [[ ! "$freq" =~ ^[0-9]+\.?[0-9]*$ ]]; then
+        error_log "Invalid frequency: $freq"
+        return 1
+    fi
+    
+    # Set defaults
+    duty=${duty:-50}
+    intensity=${intensity:-2048}
+    modulation=${modulation:-NONE}
+    
+    # Validate duty cycle is numeric and in range 0-100
+    if [[ ! "$duty" =~ ^[0-9]+$ ]]; then
+        error_log "Duty cycle must be numeric: $duty"
+        return 1
+    fi
+    if [ "$duty" -lt 0 ] || [ "$duty" -gt 100 ]; then
+        error_log "Duty cycle out of range (0-100): $duty"
+        return 1
+    fi
+    
+    # Validate intensity is numeric and in range 0-4095
+    if [[ ! "$intensity" =~ ^[0-9]+$ ]]; then
+        error_log "Intensity must be numeric: $intensity"
+        return 1
+    fi
+    if [ "$intensity" -lt 0 ] || [ "$intensity" -gt 4095 ]; then
+        error_log "Intensity out of range (0-4095): $intensity"
+        return 1
+    fi
+    
+    # Validate modulation type
+    case "$modulation" in
+        NONE|AM|FM|BURST|SWEEP) ;;
+        *)
+            error_log "Invalid modulation: $modulation (must be NONE, AM, FM, BURST, or SWEEP)"
+            return 1
+            ;;
+    esac
+    
+    # Return parsed values via global variables
+    PARSED_CHANNEL="$channel"
+    PARSED_FREQ="$freq"
+    PARSED_DUTY="$duty"
+    PARSED_INTENSITY="$intensity"
+    PARSED_MODULATION="$modulation"
+    
+    debug_log "Parsed control: channel=$channel, freq=$freq, duty=$duty, intensity=$intensity, modulation=$modulation"
+    return 0
+}
+
+run_direct_control() {
+    info_log "Running in Direct Control Mode"
+    
+    # First, validate all control arguments before connecting
+    local validated_configs=()
+    for control in "${DIRECT_CONTROLS[@]}"; do
+        if ! parse_control_arg "$control"; then
+            echo "  ✗ Failed to parse: $control"
+            return 1
+        fi
+        # Store validated config
+        validated_configs+=("$PARSED_CHANNEL:$PARSED_FREQ:$PARSED_DUTY:$PARSED_INTENSITY:$PARSED_MODULATION")
+    done
+    
+    # Connect to device
+    if ! connect_to_device; then
+        error_log "Failed to connect to device"
+        return 1
+    fi
+    
+    local success_count=0
+    local fail_count=0
+    local idx=0
+    
+    for control in "${DIRECT_CONTROLS[@]}"; do
+        echo "Processing control: $control"
+        
+        # Re-parse to set global variables (we already validated above)
+        parse_control_arg "$control"
+        
+        # Update probe configuration
+        set_probe_field "$PARSED_CHANNEL" freq "$PARSED_FREQ"
+        set_probe_field "$PARSED_CHANNEL" duty "$PARSED_DUTY"
+        set_probe_field "$PARSED_CHANNEL" intensity "$PARSED_INTENSITY"
+        set_probe_field "$PARSED_CHANNEL" modulation "$PARSED_MODULATION"
+        set_probe_field "$PARSED_CHANNEL" enabled "true"
+        
+        # Send configuration to device
+        if send_probe_config "$PARSED_CHANNEL"; then
+            echo "  ✓ Channel $PARSED_CHANNEL configured: ${PARSED_FREQ} Hz, ${PARSED_DUTY}% duty, intensity ${PARSED_INTENSITY}, ${PARSED_MODULATION}"
+            ((success_count++))
+        else
+            echo "  ✗ Failed to send config for channel $PARSED_CHANNEL"
+            ((fail_count++))
+        fi
+        ((idx++))
+    done
+    
+    # Start therapy if any configurations succeeded
+    if [ $success_count -gt 0 ]; then
+        echo ""
+        echo "Starting therapy with $success_count channel(s)..."
+        send_command "t"
+        echo "Therapy started successfully."
+    fi
+    
+    echo ""
+    echo "Summary: $success_count successful, $fail_count failed"
+    
+    # Disconnect
+    disconnect_from_device
+    
+    if [ $fail_count -gt 0 ]; then
+        return 1
+    fi
+    return 0
+}
+
+# ============================================================================
 # OBSŁUGA WEJŚCIA
 # ============================================================================
 
@@ -821,6 +965,11 @@ show_help() {
     echo "  -v, --verbose   Enable verbose output (debug mode)"
     echo "  -d, --debug     Enable debug mode (same as verbose)"
     echo ""
+    echo "Direct Control Mode (bypasses TUI):"
+    echo "  Use -c or --control followed by channel:frequency[:duty:intensity:modulation]"
+    echo "  Example: -c 1:727:50:2048:NONE"
+    echo "  Channels: 1-8 (see probe configurations below)"
+    echo ""
     echo "Arguments:"
     echo "  ip_address      IP address of the Arduino Nano device (default: 192.168.1.100)"
     echo "  port            TCP port for communication (default: $DEFAULT_PORT)"
@@ -837,14 +986,36 @@ show_help() {
     echo "  H               Help"
     echo "  Q               Quit"
     echo ""
+    echo "Probe Configurations (Channels):"
+    echo "  1 - Flat Coil (Cewka Płaska)          Default: 727 Hz"
+    echo "  2 - Ferrite Rod (Cewka Ferrytowa)     Default: 10000 Hz"
+    echo "  3 - Capacitive Plate (Płyta Kapacyt.) Default: 5000 Hz"
+    echo "  4 - Pen Applicator (Aplikator Punkt.) Default: 25000 Hz"
+    echo "  5 - EMF Mat (Mata EMF)                Default: 78.3 Hz"
+    echo "  6 - Local Pad (Podkładka Lokalna)     Default: 1000 Hz"
+    echo "  7 - Ring Applicator (Pierścień)       Default: 500 Hz"
+    echo "  8 - Custom (Niestandardowa)           Default: 10 Hz"
+    echo ""
     echo "Examples:"
-    echo "  $0                          # Use default IP and port"
-    echo "  $0 192.168.1.50             # Connect to specific IP"
-    echo "  $0 192.168.1.50 5002        # Connect to specific IP and port"
-    echo "  $0 -v 192.168.1.50          # Verbose mode with specific IP"
-    echo "  $0 --debug                  # Debug mode with defaults"
+    echo "  TUI Mode:"
+    echo "    $0                          # Use default IP and port"
+    echo "    $0 192.168.1.50             # Connect to specific IP"
+    echo "    $0 192.168.1.50 5002        # Connect to specific IP and port"
+    echo "    $0 -v 192.168.1.50          # Verbose mode with specific IP"
+    echo "    $0 --debug                  # Debug mode with defaults"
+    echo ""
+    echo "  Direct Control Mode (no TUI):"
+    echo "    $0 -c 1:727                 # Activate channel 1 at 727 Hz"
+    echo "    $0 -c 1:727:50              # Channel 1, 727 Hz, 50% duty"
+    echo "    $0 -c 1:727:50:2048         # Channel 1, 727 Hz, 50% duty, intensity 2048"
+    echo "    $0 -c 1:727:50:2048:AM      # Channel 1 with AM modulation"
+    echo "    $0 -c 2:10000 -c 3:5000     # Multiple channels at once"
+    echo "    $0 192.168.1.50 -c 1:727    # Direct control with custom IP"
     echo ""
 }
+
+# Globalne zmienne do kontrolerów bezpośrednich
+declare -a DIRECT_CONTROLS
 
 main() {
     # Parse arguments
@@ -852,6 +1023,7 @@ main() {
         case "$1" in
             -h|--help)
                 show_help
+                trap - EXIT INT TERM
                 exit 0
                 ;;
             -v|--verbose)
@@ -863,6 +1035,14 @@ main() {
                 DEBUG=true
                 VERBOSE=true
                 shift
+                ;;
+            -c|--control)
+                if [ -z "$2" ]; then
+                    error_log "Opcja --control wymaga argumentu w formacie channel:freq[:duty:intensity:modulation]"
+                    exit 1
+                fi
+                DIRECT_CONTROLS+=("$2")
+                shift 2
                 ;;
             -*)
                 error_log "Nieznana opcja: $1"
@@ -883,6 +1063,12 @@ main() {
                 ;;
         esac
     done
+    
+    # Obsługa trybu bezpośredniego (Direct Control Mode)
+    if [ ${#DIRECT_CONTROLS[@]} -gt 0 ]; then
+        run_direct_control
+        exit $?
+    fi
     
     # Set defaults if not provided
     if [ -z "$DEVICE_IP" ]; then
