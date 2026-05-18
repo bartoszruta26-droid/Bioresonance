@@ -1064,11 +1064,15 @@
         async function saveProbeConfig() {
             if (!currentChannel) return;
             
+            // Zachowaj numer kanału przed wywołaniem saveProbeLocal(),
+            // ponieważ saveProbeLocal() zamyka edytor i czyści currentChannel
+            const channelToSend = currentChannel;
+            
             await saveProbeLocal();
             
             if (isConnected) {
                 try {
-                    const result = await apiCall('send_config', { channel: currentChannel });
+                    const result = await apiCall('send_config', { channel: channelToSend });
                     
                     if (result.success) {
                         showNotification('Wysłano konfigurację do urządzenia');
@@ -1081,8 +1085,6 @@
             } else {
                 showNotification('Brak połączenia z urządzeniem', true);
             }
-            
-            closeEditor();
         }
         
         // ============================================================================
