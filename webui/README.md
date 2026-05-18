@@ -1,10 +1,52 @@
-# ResoNet-Nano Web UI v2.0
+# 🌐 ResoNet-Nano Web UI v2.0
+
+![Wersja](https://img.shields.io/badge/Wersja-2.0-blue)
+![Platforma](https://img.shields.io/badge/Platforma-PHP%207.4%2B-green)
+![Status](https://img.shields.io/badge/Status-Zabezpieczony-success)
+![Kompatybilność](https://img.shields.io/badge/Kompatybilność-Firmware%20v4.0+-orange)
 
 Interfejs webowy do obsługi efektora Arduino Nano z Ethernet HAT.
 
 **Wersja 2.0 - Zabezpieczona**: Poprawiono bezpieczeństwo XSS, dodano obsługę błędów socketów, mechanizm sprzątania zasobów i rotację logów.
 
-## Struktura plików
+---
+
+## 📋 Spis Treści
+
+- [Struktura Plików](#-struktura-plików)
+- [Wymagania](#-wymagania)
+- [Instalacja](#-instalacja)
+- [Użycie](#-użycie)
+- [Funkcjonalności](#-funkcjonalności)
+- [API JSON](#-api-json)
+- [Format Komend TCP](#-format-komend-tcp-do-arduino)
+- [Bezpieczeństwo](#-bezpieczeństwo-v20)
+- [Debugowanie](#-debugowanie-v20)
+- [Rozwiązywanie Problemów](#-rozwiązywanie-problemów)
+
+---
+
+## 📁 Struktura Plików
+
+```mermaid
+flowchart LR
+    WebUI["📁 webui/"]
+    HTML["📄 index.html<br/>Interfejs UI<br/>CSS + JS"]
+    PHP["⚙️ api.php<br/>Backend PHP<br/>TCP Socket"]
+    LOG["📝 debug.log<br/>Auto-created"]
+    README["📖 README.md"]
+    
+    WebUI --> HTML
+    WebUI --> PHP
+    WebUI --> LOG
+    WebUI --> README
+    
+    style WebUI fill:#e1f5fe
+    style HTML fill:#fff3e0
+    style PHP fill:#f3e5f5
+    style LOG fill:#e8f5e9
+    style README fill:#ffebee
+```
 
 ```
 webui/
@@ -14,6 +56,9 @@ webui/
 └── README.md     # Ten plik
 ```
 
+---
+
+## 🔧 Wymagania
 ### Szczegóły Implementacji
 - **Frontend**: `index.html` (1506 linii) - HTML5 + CSS3 + Vanilla JavaScript ES6+
 - **Backend**: `api.php` (406 linii) - PHP 7.4+ z socketami TCP
@@ -78,52 +123,63 @@ sudo systemctl restart apache2
 ### Konfiguracja Końcówek (8 kanałów)
 
 Dla każdego kanału możesz skonfigurować:
-- **Nazwa**: Dowolna nazwa opisowa
-- **Typ**: 
-  - Cewka Płaska (FLAT_COIL)
-  - Cewka Ferrytowa (FERRITE_ROD)
-  - Płyta Kapacytacyjna (CAPACITIVE_PLATE)
-  - Aplikator Punktowy (PEN_APPLICATOR)
-  - Mata EMF (MAT_APPLICATOR)
-  - Podkładka Lokalna (LOCAL_PAD)
-  - Pierścień (RING_APPLICATOR)
-  - Niestandardowa (CUSTOM)
-- **Częstotliwość**: Wartość w Hz (np. 727.00)
-- **Duty Cycle**: Współczynnik wypełnienia 0-100%
-- **Intensywność**: Wartość 0-4095
-- **Modulacja**: Brak, AM, FM, Burst, Sweep
-- **Status**: Włącz/Wyłącz kanał
+
+| Pole | Opis | Zakres/Wartości |
+|------|------|-----------------|
+| 🏷️ **Nazwa** | Dowolna nazwa opisowa | Tekst |
+| 🔌 **Typ** | Rodzaj aplikatora | `FLAT_COIL`, `FERRITE_ROD`, `CAPACITIVE_PLATE`, `PEN_APPLICATOR`, `MAT_APPLICATOR`, `LOCAL_PAD`, `RING_APPLICATOR`, `CUSTOM` |
+| 📊 **Częstotliwość** | Wartość w Hz | np. `727.00` |
+| ⚡ **Duty Cycle** | Współczynnik wypełnienia | `0-100%` |
+| 📈 **Intensywność** | Wartość mocy | `0-4095` |
+| 📡 **Modulacja** | Typ modulacji | `Brak`, `AM`, `FM`, `Burst`, `Sweep` |
+| 🔘 **Status** | Stan kanału | `Włącz` / `Wyłącz` |
+
+---
 
 ### Tryby Pracy
 
-- **Pojedynczy**: Praca na jednym kanale
-- **Wielokanałowy**: Praca na wielu kanałach jednocześnie
+- 🎯 **Pojedynczy**: Praca na jednym kanale
+- 🎛️ **Wielokanałowy**: Praca na wielu kanałach jednocześnie
+
+---
 
 ### Sterowanie Terapią
 
-- **Start Terapii**: Rozpoczyna generowanie sygnałów na aktywnych kanałach
-- **Stop Terapii**: Zatrzymuje generowanie sygnałów
-- **Wyślij Wszystkie**: Wysyła konfiguracje wszystkich aktywnych kanałów do urządzenia
+- ▶️ **Start Terapii**: Rozpoczyna generowanie sygnałów na aktywnych kanałach
+- ⏹️ **Stop Terapii**: Zatrzymuje generowanie sygnałów
+- 📤 **Wyślij Wszystkie**: Wysyła konfiguracje wszystkich aktywnych kanałów do urządzenia
+
+---
 
 ### Monitorowanie Statusu
 
 Panel statusu wyświetla:
-- Temperaturę urządzenia
-- Wolną pamięć RAM
-- Czas pracy (uptime)
-- Stan PWM (ACTIVE/STOPPED)
-- Aktualną częstotliwość
-- Stan systemu bezpieczeństwa
+
+| Parametr | Opis |
+|----------|------|
+| 🌡️ Temperatura | Temperatura urządzenia |
+| 💾 Wolna pamięć RAM | Dostępna pamięć operacyjna |
+| ⏱️ Czas pracy (uptime) | Czas od uruchomienia |
+| ⚡ Stan PWM | `ACTIVE` / `STOPPED` |
+| 📊 Aktualna częstotliwość | Bieżąca wartość Hz |
+| 🛡️ System bezpieczeństwa | Status zabezpieczeń |
+
+---
 
 ### Dziennik Zdarzeń
 
 Automatycznie rejestruje wszystkie zdarzenia:
-- Połączenia/rozłączenia
-- Błędy
-- Zmiany konfiguracji
-- Komendy wysyłane do urządzenia
 
-## Debugowanie
+| Typ Zdarzenia | Opis |
+|---------------|------|
+| 🔌 Połączenia/rozłączenia | Status połączenia z Arduino |
+| ❌ Błędy | Wszystkie wystąpienia błędów |
+| ⚙️ Zmiany konfiguracji | Modyfikacje parametrów kanałów |
+| 📤 Komendy | Komendy wysyłane do urządzenia |
+
+---
+
+## 🐛 Debugowanie
 
 Aplikacja zawiera rozbudowany system debugowania:
 
@@ -312,10 +368,19 @@ const DEBUG = true;  // true = logi w konsoli, false = tylko błędy
 2. Sprawdź czerwone komunikaty błędów
 3. Upewnij się, że serwer PHP działa poprawnie
 
-## Autor
+## 👨‍💻 Autor
 
 ResoNet-Nano Team - na bazie funkcji z `bioresonance_tui.sh`
 
-## Licencja
+---
+
+## 📄 Licencja
 
 Open Source
+
+---
+
+**Wersja**: `2.0`  
+**Data**: `2024`  
+**Kompatybilność**: ResoNet-Nano Firmware `v4.0+`  
+**Wymagane PHP**: `7.4+`

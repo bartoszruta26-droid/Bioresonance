@@ -1,10 +1,93 @@
 # 🖥️ Bioresonance TUI - Terminalowy Interfejs Użytkownika (BASH)
 
+![Wersja](https://img.shields.io/badge/Wersja-1.0-blue)
+![Platforma](https://img.shields.io/badge/Platforma-BASH%204.0+-green)
+![Status](https://img.shields.io/badge/Status-Stabilny-success)
+![Kompatybilność](https://img.shields.io/badge/Kompatybilność-Firmware%20v4.0+-orange)
+
+## 📋 Spis Treści
+
+- [Opis](#-opis)
+- [Architektura Systemu](#-architektura-systemu)
+- [Wymagania](#-wymagania)
+- [Uruchomienie](#-uruchomienie)
+- [Sterowanie](#-sterowanie)
+- [Obsługiwane Końcówki](#-obsługiwane-końcówki-biorezonansowe)
+- [Tryby Pracy](#-tryby-pracy)
+- [Parametry Konfiguracyjne](#-parametry-konfiguracyjne)
+- [Panel Statusu](#-panel-statusu)
+- [Bezpieczeństwo](#-bezpieczeństwo)
+- [Przykłady Użycia](#-przykłady-użycia)
+- [Rozwiązywanie Problemów](#-rozwiązywanie-problemów)
+
+---
+
 ## 📋 Opis
 
 Profesjonalny terminalowy interfejs użytkownika (TUI) do sterowania systemem biorezonansu **ResoNet-Nano** z Arduino Nano i Ethernet HAT. Aplikacja umożliwia konfigurację i obsługę licznych końcówek biorezonansowych w trybie pojedynczym i wielokanałowym.
 
 **Wersja Bash** - implementacja w czystym shell script bez zależności od C++, Python czy innych języków kompilowanych.
+
+---
+
+## 🏗️ Architektura Systemu
+
+```mermaid
+blockDiagram
+    direction TB
+    
+    User["👤 Użytkownik (Terminal)"]
+    TUI["🖥️ BASH TUI Interface"]
+    NetCat["🌐 netcat (TCP/IP)"]
+    Ethernet["🔌 Ethernet HAT"]
+    Arduino["🧠 Arduino Nano MCU"]
+    PWM["⚡ PWM Generator"]
+    Effectors["🔋 Efektor: 8 Kanałów"]
+    
+    User -->|Klawisze/Nawigacja | TUI
+    TUI -->|Komendy TCP | NetCat
+    NetCat -->|Port 5001 | Ethernet
+    Ethernet -->|SPI | Arduino
+    Arduino -->|PWM Signals | PWM
+    PWM -->|Wyjścia | Effectors
+    
+    style User fill:#e1f5fe
+    style TUI fill:#fff3e0
+    style NetCat fill:#f3e5f5
+    style Ethernet fill:#e8f5e9
+    style Arduino fill:#ffebee
+    style PWM fill:#fff8e1
+    style Effectors fill:#fce4ec
+```
+
+```mermaid
+flowchart TD
+    Start["🚀 Start TUI"] --> Init["📦 Inicjalizacja\nSprawdź nc, bc, tput"]
+    Init --> Connect["🔌 Połączenie TCP\nz Arduino"]
+    Connect --> MainLoop["🔄 Główna Pętla\nRenderowanie UI"]
+    MainLoop --> Input{"⌨️ Input\nUżytkownika"}
+    
+    Input -->|↑↓←→| Navigate["🧭 Nawigacja\nMenu/Kanały"]
+    Input -->|1-5| QuickAction["⚡ Akcja Szybka"]
+    Input -->|E,F,I,M| Config["⚙️ Konfiguracja\nEfektora"]
+    Input -->|Q| Exit["🛑 Wyjście"]
+    
+    Navigate --> MainLoop
+    QuickAction --> MainLoop
+    Config --> SendCmd["📤 Wyślij Komendę\nTCP do Arduino"]
+    SendCmd --> Response["📥 Odbierz Odpowiedź"]
+    Response --> UpdateUI["🔄 Aktualizuj UI"]
+    UpdateUI --> MainLoop
+    
+    style Start fill:#e1f5fe
+    style Init fill:#fff3e0
+    style Connect fill:#f3e5f5
+    style MainLoop fill:#e8f5e9
+    style Input fill:#ffebee
+    style Exit fill:#ffcdd2
+```
+
+---
 
 ## 🔧 Wymagania
 
@@ -107,130 +190,151 @@ channel:frequency[:duty:intensity:modulation]
 ## 🎮 Sterowanie
 
 ### Nawigacja
+
 | Klawisz | Funkcja |
-|---------|---------|
-| `↑` `↓` | Nawigacja w menu głównym |
-| `←` `→` | Wybór kanału/końcówki |
-| `Q` | Wyjście z aplikacji |
+|:-------:|---------|
+| `↑` `↓` | 🧭 Nawigacja w menu głównym |
+| `←` `→` | 🔀 Wybór kanału/końcówki |
+| `Q`     | 🚪 Wyjście z aplikacji |
 
 ### Akcje Szybkie
+
 | Klawisz | Funkcja |
-|---------|---------|
-| `1` | Edycja częstotliwości wybranej końcówki |
-| `2` | Wybór trybu pracy |
-| `3` | Start terapii |
-| `4` | Stop terapii |
-| `5` | Odśwież status systemu |
-| `E` | Włącz/Wyłącz wybraną końcówkę |
-| `F` | Edycja częstotliwości |
-| `I` | Edycja intensywności |
-| `M` | Zmiana modulacji |
-| `S` | Odśwież status |
-| `H` | Wyświetl pomoc |
+|:-------:|---------|
+| `1`     | 🎛️ Edycja częstotliwości wybranej końcówki |
+| `2`     | 🔄 Wybór trybu pracy |
+| `3`     | ▶️ Start terapii |
+| `4`     | ⏹️ Stop terapii |
+| `5`     | 🔄 Odśwież status systemu |
+| `E`     | ⚡ Włącz/Wyłącz wybraną końcówkę |
+| `F`     | 🎚️ Edycja częstotliwości |
+| `I`     | 📈 Edycja intensywności |
+| `M`     | 📡 Zmiana modulacji |
+| `S`     | 🔄 Odśwież status |
+| `H`     | ❓ Wyświetl pomoc |
+
+---
 
 ## 🔌 Obsługiwane Końcówki Biorezonansowe
 
 ### 1. **Cewka Płaska (Flat Coil)**
-- **Zastosowanie**: Terapia powierzchniowa, punkty akupunkturowe
-- **Domyślna częstotliwość**: 727 Hz
-- **Kanał**: 1
+- **Zastosowanie**: 🎯 Terapia powierzchniowa, punkty akupunkturowe
+- **Domyślna częstotliwość**: `727 Hz`
+- **Kanał**: `1`
 
 ### 2. **Cewka Ferrytowa (Ferrite Rod)**
-- **Zastosowanie**: Terapia głęboka, narządy wewnętrzne
-- **Domyślna częstotliwość**: 10 kHz
-- **Kanał**: 2
+- **Zastosowanie**: 🎯 Terapia głęboka, narządy wewnętrzne
+- **Domyślna częstotliwość**: `10 kHz`
+- **Kanał**: `2`
 
 ### 3. **Płyta Kapacytacyjna (Capacitive Plate)**
-- **Zastosowanie**: Aplikacje ogólnoustrojowe
-- **Domyślna częstotliwość**: 5 kHz
-- **Kanał**: 3
+- **Zastosowanie**: 🎯 Aplikacje ogólnoustrojowe
+- **Domyślna częstotliwość**: `5 kHz`
+- **Kanał**: `3`
 
 ### 4. **Aplikator Punktowy (Pen Applicator)**
-- **Zastosowanie**: Terapia punktowa, precyzyjna
-- **Domyślna częstotliwość**: 25 kHz
-- **Kanał**: 4
+- **Zastosowanie**: 🎯 Terapia punktowa, precyzyjna
+- **Domyślna częstotliwość**: `25 kHz`
+- **Kanał**: `4`
 
 ### 5. **Mata EMF (EMF Mat)**
-- **Zastosowanie**: Terapia całego ciała
-- **Domyślna częstotliwość**: 78.3 Hz (rezonans Schumanna)
-- **Kanał**: 5
+- **Zastosowanie**: 🎯 Terapia całego ciała
+- **Domyślna częstotliwość**: `78.3 Hz` (rezonans Schumanna)
+- **Kanał**: `5`
 
 ### 6. **Podkładka Lokalna (Local Pad)**
-- **Zastosowanie**: Aplikacje lokalne na konkretne obszary
-- **Domyślna częstotliwość**: 1 kHz
-- **Kanał**: 6
+- **Zastosowanie**: 🎯 Aplikacje lokalne na konkretne obszary
+- **Domyślna częstotliwość**: `1 kHz`
+- **Kanał**: `6`
 
 ### 7. **Pierścień (Ring Applicator)**
-- **Zastosowanie**: Kończyny, palce
-- **Domyślna częstotliwość**: 500 Hz
-- **Kanał**: 7
+- **Zastosowanie**: 🎯 Kończyny, palce
+- **Domyślna częstotliwość**: `500 Hz`
+- **Kanał**: `7`
 
 ### 8. **Konfiguracja Niestandardowa (Custom)**
-- **Zastosowanie**: Dowolna konfiguracja użytkownika
-- **Domyślna częstotliwość**: 10 Hz
-- **Kanał**: 8
+- **Zastosowanie**: 🎯 Dowolna konfiguracja użytkownika
+- **Domyślna częstotliwość**: `10 Hz`
+- **Kanał**: `8`
+
+---
 
 ## 🔄 Tryby Pracy
 
 ### Pojedyncza (SINGLE)
-- Tylko jedna aktywna końcówka w danym czasie
+- 🎯 Tylko jedna aktywna końcówka w danym czasie
 
 ### Dual Niezależny (DUAL_INDEPENDENT)
-- Dwie niezależne końcówki pracujące jednocześnie
-- Każda z własną konfiguracją częstotliwości
+- 🔀 Dwie niezależne końcówki pracujące jednocześnie
+- ⚙️ Każda z własną konfiguracją częstotliwości
 
 ### Dual Sync (DUAL_SYNC)
-- Dwie zsynchronizowane końcówki
-- Ta sama częstotliwość, faza synchronizowana
+- 🔗 Dwie zsynchronizowane końcówki
+- 📊 Ta sama częstotliwość, faza synchronizowana
 
 ### Wielokanałowa (MULTI_CHANNEL)
-- Do 8 końcówek pracujących jednocześnie
-- Każda z indywidualną konfiguracją
+- 🎛️ Do 8 końcówek pracujących jednocześnie
+- ⚙️ Każda z indywidualną konfiguracją
 
 ### Sekwencyjna (SEQUENTIAL)
-- Rotacyjne włączanie końcówek w zadanej sekwencji
-- Automatyczne przełączanie co określony czas
+- 🔄 Rotacyjne włączanie końcówek w zadanej sekwencji
+- ⏱️ Automatyczne przełączanie co określony czas
+
+---
 
 ## ⚙️ Parametry Konfiguracyjne
 
 ### Częstotliwość
-- Zakres: 0.1 Hz - 500 kHz
-- Rozdzielczość: 0.01 Hz
-- Jednostka: Hz
+- 📊 **Zakres**: `0.1 Hz` - `500 kHz`
+- 🎯 **Rozdzielczość**: `0.01 Hz`
+- 📏 **Jednostka**: Hz
 
 ### Cykl Pracy (Duty Cycle)
-- Zakres: 1% - 99%
-- Domyślnie: 50%
+- 📊 **Zakres**: `1%` - `99%`
+- 🔧 **Domyślnie**: `50%`
 
 ### Intensywność
-- Zakres: 0 - 4095 (12-bit)
-- Domyślnie: 2048
+- 📊 **Zakres**: `0` - `4095` (12-bit)
+- 🔧 **Domyślnie**: `2048`
 
 ### Modulacje
-- **NONE**: Brak modulacji
-- **AM**: Modulacja amplitudy (1 Hz)
-- **FM**: Modulacja częstotliwości (±10%, 0.5 Hz)
-- **BURST**: Impulsowa (500ms on/off)
-- **SWEEP**: Przemiatający zakres
+
+| Typ | Opis | Parametry |
+|:---:|------|-----------|
+| `NONE` | 🚫 Brak modulacji | - |
+| `AM`   | 📈 Modulacja amplitudy | `1 Hz` |
+| `FM`   | 📡 Modulacja częstotliwości | `±10%`, `0.5 Hz` |
+| `BURST`| 💥 Impulsowa | `500ms on/off` |
+| `SWEEP`| 🔄 Przemiatający zakres | - |
+
+---
 
 ## 📊 Panel Statusu
 
 Aplikacja wyświetla na bieżąco:
-- Temperaturę MCU Arduino
-- Wolną pamięć RAM
-- Czas pracy (uptime)
-- Stan PWM (ACTIVE/STOPPED)
-- Aktualną częstotliwość
-- Status połączenia sieciowego
-- Stan systemu bezpieczeństwa
+
+| Parametr | Opis |
+|----------|------|
+| 🌡️ Temperatura MCU | Temperatura procesora Arduino |
+| 💾 Wolna pamięć RAM | Dostępna pamięć operacyjna |
+| ⏱️ Czas pracy (uptime) | Czas od uruchomienia systemu |
+| ⚡ Stan PWM | `ACTIVE` / `STOPPED` |
+| 📊 Aktualna częstotliwość | Bieżąca wartość Hz |
+| 🌐 Status połączenia | Stan połączenia sieciowego |
+| 🛡️ System bezpieczeństwa | Status zabezpieczeń |
+
+---
 
 ## 🔐 Bezpieczeństwo
 
 ⚠️ **WAŻNE**: Przed użyciem urządzenia medycznego:
-1. Sprawdź izolację galwaniczną
-2. Zweryfikuj parametry wyjściowe oscyloskopem
-3. Przestrzegaj norm IEC 60601-1
-4. Konsultuj się z profesjonalistą
+
+1. 🔌 **Sprawdź izolację galwaniczną**
+2. 📊 **Zweryfikuj parametry wyjściowe oscyloskopem**
+3. 📋 **Przestrzegaj norm IEC 60601-1**
+4. 👨‍⚕️ **Konsultuj się z profesjonalistą**
+
+---
 
 ## 📝 Przykłady Użycia
 
@@ -296,13 +400,15 @@ done < config.txt
 ## 🛠️ Różnice względem wersji C++
 
 | Cecha | Wersja C++ | Wersja BASH |
-|-------|-----------|-------------|
-| Wydajność | Wysoka | Średnia |
-| Zależności | ncurses | netcat, bc, tput |
-| Kompilacja | Wymagana | Nie wymaga |
-| Portowalność | Ograniczona | Wysoka |
-| Modyfikacje | Trudniejsze | Łatwe |
-| Debugowanie | Trudne | Łatwe |
+|:------|:-----------|:------------|
+| 🚀 Wydajność | Wysoka | Średnia |
+| 📦 Zależności | ncurses | netcat, bc, tput |
+| 🔨 Kompilacja | Wymagana | Nie wymaga |
+| 🌍 Portowalność | Ograniczona | Wysoka |
+| ✏️ Modyfikacje | Trudniejsze | Łatwe |
+| 🐛 Debugowanie | Trudne | Łatwe |
+
+---
 
 ## 🐛 Rozwiązywanie Problemów
 
@@ -336,6 +442,8 @@ Rozwiązanie: Upewnij się, że terminal obsługuje kolory ANSI.
 Spróbuj ustawić: export TERM=xterm-256color
 ```
 
+---
+
 ## 📄 Licencja
 
 MIT License - patrz główny plik LICENSE projektu ResoNet-Nano.
@@ -346,7 +454,7 @@ ResoNet Development Team - Profesjonalne Systemy Biorezonansu
 
 ---
 
-**Wersja**: 1.0 (BASH)  
-**Data**: 2024  
-**Kompatybilność**: ResoNet-Nano Firmware v4.0+  
-**Wymagany bash**: 4.0+
+**Wersja**: `1.0` (BASH)  
+**Data**: `2024`  
+**Kompatybilność**: ResoNet-Nano Firmware `v4.0+`  
+**Wymagany bash**: `4.0+`

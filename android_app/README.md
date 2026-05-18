@@ -1,6 +1,11 @@
-# ResoNet Nano - Aplikacja Android
+# 📱 ResoNet Nano - Aplikacja Android
 
-## 📱 Kompletna Aplikacja Android do Obsługi Efektorów Arduino Nano
+![Version](https://img.shields.io/badge/version-1.0-blue.svg)
+![Platform](https://img.shields.io/badge/platform-Android-green.svg)
+![Language](https://img.shields.io/badge/language-Kotlin-orange.svg)
+![Architecture](https://img.shields.io/badge/architecture-MVVM-purple.svg)
+
+## 📋 Kompletna Aplikacja Android do Obsługi Efektorów Arduino Nano
 
 Aplikacja implementuje **pełną funkcjonalność** z:
 - `bash_tui/bioresonance_tui.sh` (1600 linii)
@@ -9,6 +14,18 @@ Aplikacja implementuje **pełną funkcjonalność** z:
 - `gui/src/*.cpp` (2764 linii C++)
 - `ResoNet_Nano/ResoNet_Nano.ino` i powiązane pliki C++
 
+---
+
+## 📑 Spis Treści
+- [Architektura](#-architektura)
+- [Struktura Plików](#-struktura-plików)
+- [Funkcjonalności](#-funkcjonalności)
+- [Protokół Komunikacyjny](#-protokół-komunikacyjny)
+- [Jak Użyć](#-jak-użyć)
+- [Porównanie](#-porównanie-z-innymi-interfejsami)
+- [Rozszerzenia](#-rozszerzenia-todo)
+
+---
 ### Szczegóły Implementacji
 - **Kotlin**: 1838 linii w 7 plikach `.kt`
   - `MainViewModel.kt` (436 linii) - ViewModel z pełną logiką biznesową
@@ -24,43 +41,70 @@ Aplikacja implementuje **pełną funkcjonalność** z:
 
 ## 🏗️ Architektura
 
-### Warstwy aplikacji:
+### Diagram Blokowy Systemu
+
+```mermaid
+blockDiagram
+    direction TB
+    
+    subgraph UI["Warstwa UI"]
+        A[MainActivity.kt<br/>• Widżety Material Design<br/>• Observables LiveData]
+    end
+    
+    subgraph VM["Warstwa ViewModel"]
+        B[MainViewModel.kt<br/>• Zarządzanie stanem<br/>• Logika biznesowa]
+    end
+    
+    subgraph MGR["Menadżery"]
+        C1[TherapySessionManager.kt]
+        C2[FrequencyDatabase.kt]
+        C3[ScheduleManager.kt]
+    end
+    
+    subgraph COMM["Komunikacja"]
+        D[ArduinoCommunication.kt<br/>• Port 5001<br/>• Protokół tekstowy]
+    end
+    
+    subgraph HW["Sprzęt"]
+        E[Arduino Nano + Ethernet HAT<br/>• PWM Engine<br/>• Safety System<br/>• Device Detector]
+    end
+    
+    A --> B
+    B --> C1
+    B --> C2
+    B --> C3
+    C1 --> D
+    C2 --> D
+    C3 --> D
+    D --> E
+    
+    style UI fill:#e1f5ff
+    style VM fill:#fff4e1
+    style MGR fill:#f0e1ff
+    style COMM fill:#e1ffe1
+    style HW fill:#ffe1e1
 ```
-┌─────────────────────────────────────┐
-│        MainActivity.kt              │  ← UI (Activity + ViewBinding)
-│        - Widżety Material Design    │
-│        - Observables LiveData       │
-└─────────────────────────────────────┘
-                  ↓
-┌─────────────────────────────────────┐
-│       MainViewModel.kt              │  ← ViewModel (MVVM)
-│        - Zarządzanie stanem         │
-│        - Biznes logika              │
-└─────────────────────────────────────┘
-                  ↓
-┌─────────────────────────────────────┐
-│   TherapySessionManager.kt          │  ← Menadżer sesji
-│   FrequencyDatabase.kt              │  ← Baza częstotliwości
-│   ScheduleManager.kt                │  ← Harmonogram
-└─────────────────────────────────────┘
-                  ↓
-┌─────────────────────────────────────┐
-│  ArduinoCommunication.kt            │  ← Komunikacja TCP
-│        - Port 5001                  │
-│        - Protokół tekstowy          │
-└─────────────────────────────────────┘
-                  ↓
-┌─────────────────────────────────────┐
-│     Arduino Nano + Ethernet HAT     │  ← Urządzenie fizyczne
-│        - PWM Engine                 │
-│        - Safety System              │
-│        - Device Detector            │
-└─────────────────────────────────────┘
+
+### Przepływ Danych
+
+```mermaid
+flowchart TD
+    Start[Użytkownik] --> UI[Interfejs UI]
+    UI --> VM[MainViewModel]
+    VM --> Session{TherapySession}
+    Session -->|Konfiguracja| Freq[Baza Częstotliwości]
+    Session -->|Harmonogram| Sched[ScheduleManager]
+    Session -->|Komenda| Comm[ArduinoCommunication]
+    Comm -->|TCP:5001| Arduino[Arduino Nano]
+    Arduino -->|Status| Comm
+    Comm -->|Aktualizacja| VM
+    VM -->|Renderowanie| UI
 ```
 
 ## 📁 Struktura Plików
 
-### Kotlin (1813 linii):
+### 📂 Kotlin (1813 linii)
+
 | Plik | Linie | Opis |
 |------|-------|------|
 | `Types.kt` | 105 | Enumy: EffectorType, ModulationType, SystemState, LogLevel, EventType |
@@ -71,7 +115,8 @@ Aplikacja implementuje **pełną funkcjonalność** z:
 | `FrequencyDatabase.kt` | 319 | **NOWE**: Baza 500+ częstotliwości z frequencies.md |
 | `TherapySessionManager.kt` | 301 | **NOWE**: Menadżer sesji, timery, sekwencje |
 
-### XML Layouts:
+### 📂 XML Layouts
+
 | Plik | Opis |
 |------|------|
 | `activity_main.xml` | Główny layout z kartami Material Design |
@@ -79,21 +124,25 @@ Aplikacja implementuje **pełną funkcjonalność** z:
 | `colors.xml` | Paleta kolorów |
 | `themes.xml` | Motyw aplikacji |
 
-### Konfiguracja:
+### 📂 Konfiguracja
+
 | Plik | Opis |
 |------|------|
 | `build.gradle` (root) | Konfiguracja projektu |
 | `build.gradle` (app) | Zależności: Material, Lifecycle, Coroutines |
 | `AndroidManifest.xml` | Uprawnienia INTERNET, ACCESS_NETWORK_STATE |
 
+---
+
 ## 🎯 Funkcjonalności
 
-### 1. Połączenie z Arduino
+### 1️⃣ Połączenie z Arduino
 - TCP/IP przez Ethernet HAT (port 5001)
 - Automatyczne wykrywanie połączenia
 - Obsługa błędów i retry
 
-### 2. 8 Kanałów Efektorów (jak w bash_tui)
+### 2️⃣ 8 Kanałów Efektorów
+
 | Kanał | Efektor | Domyślna Freq |
 |-------|---------|---------------|
 | 1 | Cewka Płaska | 727 Hz |
@@ -105,14 +154,15 @@ Aplikacja implementuje **pełną funkcjonalność** z:
 | 7 | Pierścień | 500 Hz |
 | 8 | Niestandardowy | 10 Hz |
 
-### 3. Parametry Każdego Kanału:
-- Częstotliwość (0.1 Hz - 500 kHz)
-- Duty Cycle (0-100%)
-- Intensywność (0-4095)
-- Modulacja (NONE, AM, FM, BURST)
+### 3️⃣ Parametry Każdego Kanału
+- Częstotliwość: `0.1 Hz - 500 kHz`
+- Duty Cycle: `0-100%`
+- Intensywność: `0-4095` (12-bit)
+- Modulacja: `NONE`, `AM`, `FM`, `BURST`
 - Włącz/Wyłącz
 
-### 4. Monitorowanie Statusu (jak w webui):
+### 4️⃣ Monitorowanie Statusu
+
 ```kotlin
 SystemStatus(
     uptimeSeconds: Long,
@@ -126,14 +176,15 @@ SystemStatus(
 )
 ```
 
-### 5. Baza Częstotliwości (NEW!)
+### 5️⃣ Baza Częstotliwości
 - Ładowanie z `frequencies.md`
 - 500+ częstotliwości terapeutycznych
 - Kategorie: kości, stawy, mięśnie, nerwy, itd.
 - Wyszukiwanie po nazwie choroby
 - Presety terapeutyczne
 
-### 6. Presety Terapeutyczne (NEW!)
+### 6️⃣ Presety Terapeutyczne
+
 ```kotlin
 TherapyPresets.BONE_HEALING      // Gojenie Kości
 TherapyPresets.JOINT_REPAIR      // Regeneracja Stawów
@@ -142,38 +193,41 @@ TherapyPresets.NERVE_PAIN        // Ból Nerwowy
 TherapyPresets.DETOX_GENERAL     // Detoksykacja
 ```
 
-### 7. Sesje Terapeutyczne (NEW!)
+### 7️⃣ Sesje Terapeutyczne
 - Sekwencyjne zmiany częstotliwości
 - Timer odliczający czas
 - Pauza/Wznów/Stop
 - Podsumowanie sesji
 
-### 8. Harmonogram (NEW!)
+### 8️⃣ Harmonogram
 - Planowanie sesji na przyszłość
 - Powtarzanie w wybrane dni
 - Powiadomienia (do implementacji)
 
-### 9. Logi Systemowe
+### 9️⃣ Logi Systemowe
 - Poziomy: VERBOSE, DEBUG, INFO, WARNING, ERROR, FATAL
 - Historia do 50 wpisów
 - Eksport (do implementacji)
+
+---
 
 ## 🔌 Protokół Komunikacyjny
 
 Zgodny z `ResoNet_Nano.ino`:
 
-```
-CONFIG:1,72700,50,2048,0    - Konfiguracja kanału 1
-s                           - Pobierz status
-START                       - Start terapii
-STOP                        - Stop terapii
-d                           - Skanuj urządzenia
-l                           - Pobierz logi
-e                           - Statystyki zdarzeń
-```
+| Komenda | Opis |
+|---------|------|
+| `CONFIG:1,72700,50,2048,0` | Konfiguracja kanału 1 |
+| `s` | Pobierz status |
+| `START` | Start terapii |
+| `STOP` | Stop terapii |
+| `d` | Skanuj urządzenia |
+| `l` | Pobierz logi |
+| `e` | Statystyki zdarzeń |
 
 ### Przykład odpowiedzi statusu:
-```
+
+```text
 === System Status ===
 Uptime: 1234s
 Temperature: 35.2C
@@ -185,26 +239,34 @@ Effector: Helmholtz
 Safety State: IDLE
 ```
 
+---
+
 ## 🚀 Jak Użyć
 
-### 1. Otwórz w Android Studio
+### Krok 1: Otwórz w Android Studio
+
 ```bash
 cd /workspace/android_app
 # Otwórz folder w Android Studio
 ```
 
-### 2. Sync Gradle
-- Kliknij "Sync Project with Gradle Files"
+### Krok 2: Sync Gradle
 
-### 3. Podłącz Arduino
+- Kliknij **"Sync Project with Gradle Files"**
+
+### Krok 3: Podłącz Arduino
+
 - Podłącz Arduino Nano z Ethernet HAT do sieci
-- Zanotuj adres IP (np. 192.168.1.100)
+- Zanotuj adres IP (np. `192.168.1.100`)
 
-### 4. Uruchom Aplikację
-- Wpisz adres IP i port (5001)
-- Kliknij "Połącz"
-- Skonfiguruj kanały
-- Kliknij "START"
+### Krok 4: Uruchom Aplikację
+
+1. Wpisz adres IP i port (`5001`)
+2. Kliknij **"Połącz"**
+3. Skonfiguruj kanały
+4. Kliknij **"START"**
+
+---
 
 ## 📊 Porównanie z Inymi Interfejsami
 
@@ -226,13 +288,35 @@ cd /workspace/android_app
 
 ## 🔧 Rozszerzenia (TODO)
 
-1. **Powiadomienia Push** - przypomnienia o sesjach
-2. **Eksport danych** - PDF/CSV z historii terapii
-3. **Wykresy** - wizualizacja postępu
-4. **Profile użytkowników** - różne ustawienia dla osób
-5. **Bluetooth** - alternatywne łącze dla Nano BLE
-6. **Voice Control** - asystent głosowy
-7. **Dark Mode** - motyw ciemny
+```mermaid
+flowchart LR
+    A[Powiadomienia Push] --> B[Eksport Danych]
+    B --> C[Wykresy]
+    C --> D[Profile Użytkowników]
+    D --> E[Bluetooth/BLE]
+    E --> F[Voice Control]
+    F --> G[Dark Mode]
+    
+    style A fill:#ffe1e1
+    style B fill:#e1ffe1
+    style C fill:#e1f5ff
+    style D fill:#fff4e1
+    style E fill:#f0e1ff
+    style F fill:#e1ffe1
+    style G fill:#ffe1f5
+```
+
+| # | Funkcja | Opis | Status |
+|---|---------|------|--------|
+| 1 | Powiadomienia Push | Przypomnienia o sesjach | ⏳ TODO |
+| 2 | Eksport Danych | PDF/CSV z historii terapii | ⏳ TODO |
+| 3 | Wykresy | Wizualizacja postępu | ⏳ TODO |
+| 4 | Profile Użytkowników | Różne ustawienia dla osób | ⏳ TODO |
+| 5 | Bluetooth/BLE | Alternatywne łącze dla Nano BLE | ⏳ TODO |
+| 6 | Voice Control | Asystent głosowy | ⏳ TODO |
+| 7 | Dark Mode | Motyw ciemny | ⏳ TODO |
+
+---
 
 ## 📄 Licencja
 
@@ -241,3 +325,9 @@ MIT License - zgodnie z projektem ResoNet-Nano
 ## 👨‍💻 Autor
 
 Na podstawie projektu ResoNet-Nano z rozszerzeniami o pełną funkcjonalność Android.
+
+---
+
+**Wersja**: 1.0  
+**Data**: 2024  
+**Kompatybilność**: ResoNet-Nano Firmware v4.0+

@@ -1,4 +1,19 @@
-# Dokumentacja Arduino - ResoNet Nano
+# 📘 Dokumentacja Arduino - ResoNet Nano
+
+<div align="center">
+
+![Firmware Version](https://img.shields.io/badge/firmware-v4.0.0-blue)
+![Platform](https://img.shields.io/badge/platform-Arduino%20Nano-green)
+![Standard](https://img.shields.io/badge/standard-IEC%2060601--1-red)
+![Language](https://img.shields.io/badge/language-C%2B%2B%2017-orange)
+
+**Profesjonalny system generatora sygnałów medycznych klasy IEC 60601-1**
+
+[Architektura](#architektura-systemu) • [Moduły](#moduły-systemu) • [Pseudowielowątkowość](#pseudowielowątkowość) • [Konfiguracja](#konfiguracja-i-kompilacja) • [Bezpieczeństwo](#bezpieczeństwo-medyczne)
+
+</div>
+
+---
 
 ## 📋 Spis Treści
 
@@ -32,52 +47,128 @@
 
 ## Architektura Systemu
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    ResoNet_Nano.ino                         │
-│              (Główna Pętla z Task Schedulerem)              │
-└─────────────────────────────────────────────────────────────┘
-                              │
-        ┌─────────────────────┼─────────────────────┐
-        │                     │                     │
-        ▼                     ▼                     ▼
-┌───────────────┐   ┌───────────────┐   ┌───────────────┐
-│ safety_system │   │ logging_system│   │ event_system  │
-│   (50ms)      │   │   (100ms)     │   │   (50ms)      │
-└───────────────┘   └───────────────┘   └───────────────┘
-        │                     │                     │
-        ▼                     ▼                     ▼
-┌───────────────┐   ┌───────────────┐
-│ pwm_engine    │   │ network_system│
-│   (10ms)      │   │   (100ms)     │
-└───────────────┘   └───────────────┘
+### Diagram Blokowy Architektury
+
+```mermaid
+blockDiagram
+    title "ResoNet-Nano - Architektura Oprogramowania"
+    
+    block:Main["📄 ResoNet_Nano.ino<br/>Task Scheduler<br/>Setup + Loop"]
+        style fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    end
+    
+    block:Safety["🛡️ safety_system<br/>50ms<br/>Watchdog + Thermal"]
+        style fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    end
+    
+    block:Logging["📝 logging_system<br/>100ms<br/>Ring Buffer 256"]
+        style fill:#fff9c4,stroke:#f9a825,stroke-width:2px
+    end
+    
+    block:Events["⚡ event_system<br/>50ms<br/>FIFO 32 events"]
+        style fill:#e1bee7,stroke:#7b1fa2,stroke-width:2px
+    end
+    
+    block:PWM["🎛️ pwm_engine<br/>10ms<br/>0.1Hz-500kHz"]
+        style fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    end
+    
+    block:Network["🌐 network_system<br/>100ms<br/>ENC28J60 SPI"]
+        style fill:#b2dfdb,stroke:#00897b,stroke-width:2px
+    end
+    
+    Main --> Safety
+    Main --> Logging
+    Main --> Events
+    Main --> PWM
+    Main --> Network
+    
+    classDef default text-align:left,font-family:monospace;
 ```
 
-### Przepływ Danych
+### Przepływ Danych Systemu
 
-1. **Setup**: Inicjalizacja modułów w kolejności bezpieczeństwa
-2. **Loop**: Task Scheduler wykonuje zadania według priorytetów
-3. **Safety Check**: Ciągła walidacja stanu bezpieczeństwa
-4. **Serial Commands**: Obsługa komend debugujących
+```mermaid
+flowchart TD
+    subgraph Init["🔧 SETUP (Inicjalizacja)"]
+        S1["Inicjalizacja Modułów"]
+        S2["Konfiguracja Timerów"]
+        S3["Setup Sieciowy"]
+    end
+    
+    subgraph Loop["🔄 LOOP (Główna Pętla)"]
+        L1["Task Scheduler"]
+        L2["Safety Check"]
+        L3["Serial Commands"]
+    end
+    
+    subgraph Tasks["📊 Zadania Cykliczne"]
+        T1["TASK_SAFETY<br/>50ms<br/>🔴 Najwyższy"]
+        T2["TASK_PWM<br/>10ms<br/>🔴 Wysoki"]
+        T3["TASK_EVENTS<br/>50ms<br/>🟡 Średni"]
+        T4["TASK_LOGGING<br/>100ms<br/>🟡 Średni"]
+        T5["TASK_NETWORK<br/>100ms<br/>🟡 Średni"]
+        T6["TASK_STATS<br/>10s<br/>🟢 Niski"]
+    end
+    
+    Init --> Loop
+    Loop --> Tasks
+    
+    style Init fill:#ffe0b2,stroke:#f57c00,stroke-width:2px
+    style Loop fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Tasks fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+```
 
 ---
 
 ## Struktura Projektu
 
-```
-ResoNet_Nano/
-├── ResoNet_Nano.ino      # Główny plik Arduino (setup + loop)
-├── types.h               # Wspólne definicje typów i enumeracji
-├── safety_system.h       # Bezpieczeństwo - Nagłówki
-├── safety_system.cpp     # Bezpieczeństwo - Implementacja
-├── logging_system.h      # Logowanie - Nagłówki
-├── logging_system.cpp    # Logowanie - Implementacja
-├── event_system.h        # Zdarzenia - Nagłówki
-├── event_system.cpp      # Zdarzenia - Implementacja
-├── pwm_engine.h          # PWM - Nagłówki
-├── pwm_engine.cpp        # PWM - Implementacja
-├── network_system.h      # Sieć - Nagłówki
-└── network_system.cpp    # Sieć - Implementacja
+### Drzewo Plików
+
+```mermaid
+flowchart LR
+    subgraph Main["📄 ResoNet_Nano.ino"]
+        M1["setup + loop<br/>Task Scheduler"]
+    end
+    
+    subgraph Types["types.h"]
+        T1["Definicje typów<br/>Enum, Structs"]
+    end
+    
+    subgraph Safety["safety_system.*"]
+        S1["Watchdog<br/>Thermal<br/>E-Stop"]
+    end
+    
+    subgraph Logging["logging_system.*"]
+        L1["Ring Buffer<br/>256 entries<br/>6 levels"]
+    end
+    
+    subgraph Events["event_system.*"]
+        E1["FIFO Queue<br/>32 events<br/>Severity"]
+    end
+    
+    subgraph PWM["pwm_engine.*"]
+        P1["0.1Hz-500kHz<br/>AM/FM/Burst<br/>16-bit Timer"]
+    end
+    
+    subgraph Network["network_system.*"]
+        N1["ENC28J60<br/>UDP/TCP<br/>CRC8"]
+    end
+    
+    Main --> Types
+    Main --> Safety
+    Main --> Logging
+    Main --> Events
+    Main --> PWM
+    Main --> Network
+    
+    style Main fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Types fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Safety fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style Logging fill:#fff9c4,stroke:#f9a825,stroke-width:2px
+    style Events fill:#e1bee7,stroke:#7b1fa2,stroke-width:2px
+    style PWM fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style Network fill:#b2dfdb,stroke:#00897b,stroke-width:2px
 ```
 
 ### Opis Plików
@@ -228,9 +319,41 @@ typedef struct {
 
 ## Pseudowielowątkowość
 
-### Task Scheduler
+### Task Scheduler - Diagram Przepływu
 
-System wykorzystuje **kooperacyjne wielozadaniowość** z 6 zadaniami (pseudo-wątkami):
+```mermaid
+flowchart TD
+    subgraph Scheduler["🔄 TASK SCHEDULER"]
+        S1["Sprawdź millis"]
+        S2{"Czas zadania?"}
+        S3["Wykonaj zadanie"]
+        S4["Mierz czas µs"]
+        S5["Zaktualizuj max_execution_time"]
+    end
+    
+    subgraph Tasks["📊 ZADANIA"]
+        T1["TASK_SAFETY<br/>50ms<br/>🔴 Priorytet"]
+        T2["TASK_PWM<br/>10ms<br/>🔴 Krytyczny"]
+        T3["TASK_EVENTS<br/>50ms<br/>🟡 Średni"]
+        T4["TASK_LOGGING<br/>100ms<br/>🟡 Średni"]
+        T5["TASK_NETWORK<br/>100ms<br/>🟡 Średni"]
+        T6["TASK_STATS<br/>10s<br/>🟢 Niski"]
+    end
+    
+    S1 --> S2
+    S2 -->|TAK| S3
+    S2 -->|NIE| S1
+    S3 --> S4
+    S4 --> S5
+    S5 --> S1
+    
+    Scheduler --> Tasks
+    
+    style Scheduler fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Tasks fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+```
+
+### Tabela Zadań
 
 | Zadanie | Interwał | Priorytet | Odpowiedzialność |
 |---------|----------|-----------|------------------|

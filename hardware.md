@@ -19,18 +19,9 @@
 
 - [Schemat Połączeń i Pinout](#-schemat-połączeń-i-pinout)
   - [Diagram Blokowy Systemu](#diagram-blokowy-systemu)
-  - [Tabela Połączeń Głównych](#tabela-połączeń-głównych)
+  - [Schemat Elektryczny Połączeń](#schemat-elektryczny-połączeń)
 - [Opis Elementów Sprzętowych](#-opis-elementów-sprzętowych)
-  - [Jednostka Centralna (Arduino Nano)](#1-arduino-nano-medical-grade)
-  - [Moduł Ethernet (ENC28J60)](#2-moduł-ethernet-enc28j60-industrial)
-  - [ProbeHolder (Moduł Wyjściowy)](#3-probeholder-moduł-wyjściowy)
-  - [Antena EMF](#4-antena-emf-emitter)
-  - [Zasilacz Medyczny](#5-zasilacz-medyczny)
 - [Szczegółowe Połączenia Pinów](#-szczegółowe-połączenia-pinów)
-  - [Połączenia SPI: Arduino ↔ ENC28J60](#połączenia-spi-arduino--enc28j60)
-  - [Połączenia PWM: Arduino ↔ ProbeHolder](#połączenia-pwm-arduino--probeholder)
-  - [Połączenia Zasilania](#połączenia-zasilania)
-  - [Połączenia Sygnałowe i Izolacji](#połączenia-sygnałowe-i-izolacji)
 - [Elementy Dodatkowe i Akcesoria](#-elementy-dodatkowe-i-akcesoria)
 - [Elementy Mechaniczne i Obudowa](#-elementy-mechaniczne-i-obudowa)
 - [Bezpieczeństwo Montażu i Testy](#-bezpieczeństwo-montażu-i-testy)
@@ -42,58 +33,110 @@
 
 ### 📊 Diagram Blokowy Systemu
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         RESONET-NANO SYSTEM                             │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│  ┌──────────────┐      ┌──────────────┐      ┌──────────────┐          │
-│  │   ZASILACZ   │─────▶│   ARDUINO    │─────▶│  ENC28J60    │          │
-│  │   MEDYCZNY   │      │     NANO     │      │   ETHERNET   │          │
-│  │   5V/2A      │      │  (ATmega328) │      │   MODULE     │          │
-│  └──────────────┘      └──────┬───────┘      └──────┬───────┘          │
-│         │                     │                     │                   │
-│         │            ┌────────┴────────┐            │                   │
-│         │            │                 │            │                   │
-│         ▼            ▼                 ▼            ▼                   │
-│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐   │
-│  │   IZOLACJA   │ │   OPTOIZO-   │ │   TRANSFOR-  │ │   SIEĆ       │   │
-│  │   DC-DC      │ │   LATORY     │ │   MATORY     │ │   TCP/IP     │   │
-│  │   2500V      │ │   6N137      │ │   SYGNAŁOWE  │ │   CLIENTS    │   │
-│  └──────────────┘ └──────┬───────┘ └──────┬───────┘ └──────────────┘   │
-│                          │                 │                            │
-│                          ▼                 ▼                            │
-│                   ┌──────────────┐ ┌──────────────┐                     │
-│                   │  PROBEHOLDER │ │    ANTENA    │                     │
-│                   │   (OUTPUT)   │ │     EMF      │                     │
-│                   └──────────────┘ └──────────────┘                     │
-│                                                                         │
-└─────────────────────────────────────────────────────────────────────────┘
+```mermaid
+blockDiagram
+    title "RESO-NANO SYSTEM - Architektura Sprzętowa"
+    
+    block:Zasilacz["⚡ ZASILACZ MEDYCZNY\n5V/2A, IEC 60601-1"]
+        style fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    end
+    
+    block:Arduino["🧠 ARDUINO NANO\nATmega328P, 16MHz"]
+        style fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    end
+    
+    block:Ethernet["🌐 ENC28J60\nETHERNET MODULE\nSPI, 10Mbps"]
+        style fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+    end
+    
+    block:IzolacjaDC["🔒 IZOLACJA DC-DC\n2500V RMS\nB0505S-1W"]
+        style fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    end
+    
+    block:Opto["🔒 OPTOIZOLATORY\n6N137/HCPL-2630\n10 MHz"]
+        style fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    end
+    
+    block:ProbeHolder["🔬 PROBEHOLDER\nMOSFET + LC Filter\nBNC Output"]
+        style fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    end
+    
+    block:Antena["📡 ANTENA EMF\nFlat/Ferrite Coil\n50-200µH"]
+        style fill:#fff8e1,stroke:#fbc02d,stroke-width:2px
+    end
+    
+    block:IR["💡 IR LED STRIP\n850nm/940nm\n5V, 60 LED/m"]
+        style fill:#e0f7fa,stroke:#00838f,stroke-width:2px
+    end
+    
+    Zasilacz --> Arduino : "5V DC\nGND"
+    Arduino --> Ethernet : "SPI\nD10-D13"
+    Arduino --> Opto : "PWM\nD9, D5"
+    Zasilacz --> IzolacjaDC : "5V IN"
+    IzolacjaDC --> ProbeHolder : "5V_ISO\nAGND"
+    IzolacjaDC --> IR : "5V_ISO_IR"
+    Opto --> ProbeHolder : "PWM_BUF\nIzolowane"
+    ProbeHolder --> Antena : "RF Out\nBNC"
+    Opto --> IR : "IR_PWM\n38kHz"
+    
+    classDef default text-align:left,font-family:monospace;
 ```
 
-### 📐 Tabela Połączeń Głównych
+### 🔌 Schemat Elektryczny Połączeń
 
-| Źródło | Pin Źródłowy | Cel | Pin Docelowy | Typ Sygnału | Izolacja |
-|--------|--------------|-----|--------------|-------------|----------|
-| **Arduino Nano** | D10 (SS) | ENC28J60 | CS | SPI Chip Select | ❌ Brak |
-| **Arduino Nano** | D11 (MOSI) | ENC28J60 | SI/MOSI | SPI Data Out | ❌ Brak |
-| **Arduino Nano** | D12 (MISO) | ENC28J60 | SO/MISO | SPI Data In | ❌ Brak |
-| **Arduino Nano** | D13 (SCK) | ENC28J60 | SCK | SPI Clock | ❌ Brak |
-| **Arduino Nano** | D9 (PWM) | ProbeHolder | PWM_IN | PWM 16-bit | ✅ Opto |
-| **Arduino Nano** | D5 (PWM) | IR LED Strip | IR_PWM | IR Carrier 38kHz | ✅ Opto |
-| **Arduino Nano** | D6 (PWM) | IR MOD | IR_MOD | Modulation Signal | ✅ Opto |
-| **Arduino Nano** | 5V | ENC28J60 | VCC_REG | Power 5V | ❌ Brak |
-| **Arduino Nano** | GND | ENC28J60 | GND | Digital GND | ❌ Brak |
-| **Izolator DC** | 5V_ISO | ProbeHolder | VCC_5V | Power Isolated | ✅ 2500V |
-| **Izolator DC** | 5V_ISO | IR LED Strip | VCC_IR | Power Isolated | ✅ 2500V |
-| **Izolator DC** | GND_ISO | ProbeHolder | AGND | Analog GND | ✅ 2500V |
-| **Optoizolator** | VOUT | ProbeHolder | PWM_BUF | Buffered PWM | ✅ 2500V |
-| **Optoizolator** | VOUT_IR | IR Driver | IR_DRV | IR PWM Drive | ✅ 2500V |
-| **ProbeHolder** | BNC+ | Antena | HOT | RF Output | ⚠️ High Freq |
-| **ProbeHolder** | BNC- | Antena | COLD | RF Ground | ⚠️ High Freq |
-| **IR Strip** | +5V | Taśma LED IR | VCC | Power | ⚠️ Low Voltage |
-| **IR Strip** | GND | Taśma LED IR | GND | Ground | ⚠️ Low Voltage |
-| **IR Strip** | DIN | Taśma LED IR | DATA | Data Input | ⚠️ Low Voltage |
+```mermaid
+flowchart TD
+    subgraph Zasilanie["⚡ SYSTEM ZASILANIA"]
+        Z1["<b>ZASILACZ SIECIOWY</b><br/>230V AC → 5V DC<br/>IEC 60601-1 Medical"]
+        Z2["<b>FILTR LC</b><br/>10µH + 100µF<br/>Filtracja zakłóceń"]
+        Z3["<b>IZOLATOR DC-DC</b><br/>2500V RMS<br/>B0505S-1W"]
+    end
+    
+    subgraph Sterowanie["🎛️ SYSTEM STEROWANIA"]
+        A1["<b>ARDUINO NANO</b><br/>ATmega328P<br/>Pin D9: PWM<br/>Pin D10-13: SPI"]
+        A2["<b>ENC28J60</b><br/>Ethernet Module<br/>3.3V LDO<br/>SPI Interface"]
+    end
+    
+    subgraph Wyjście["🔌 SYSTEM WYJŚCIOWY"]
+        O1["<b>OPTOIZOLATOR</b><br/>6N137/HCPL-2630<br/>10 MHz bandwidth"]
+        O2["<b>MOSFET DRIVER</b><br/>IRF540N<br/>100V, 33A"]
+        O3["<b>FILTR DOLNOPRZEPUSTOWY</b><br/>LC: 100µH + 100nF<br/>Butterworth 2nd order"]
+        O4["<b>ZŁĄCZE BNC</b><br/>50Ω impedance<br/>RF output"]
+    end
+    
+    subgraph Efektor["📶 EFEKTOR"]
+        E1["<b>ANTENA EMF</b><br/>Flat Coil / Ferrite<br/>50-200µH<br/>1-100µT @ 1cm"]
+    end
+    
+    subgraph IR_System["💡 SYSTEM PODCZERWIENI"]
+        IR1["<b>OPTOIZOLATOR IR</b><br/>6N137<br/>Isolation 2500V"]
+        IR2["<b>MOSFET IR</b><br/>IRLZ44N<br/>Logic-level"]
+        IR3["<b>IR LED STRIP</b><br/>850nm/940nm<br/>60 LED/m, 5V"]
+    end
+    
+    Z1 --> Z2 --> Z3
+    Z3 --> A1
+    A1 <-->|SPI<br/>D10-CS<br/>D11-MOSI<br/>D12-MISO<br/>D13-SCK| A2
+    A1 -->|PWM<br/>D9| O1
+    A1 -->|IR PWM<br/>D5| IR1
+    O1 --> O2 --> O3 --> O4
+    O4 --> E1
+    IR1 --> IR2 --> IR3
+    
+    style Z1 fill:#bbdefb,stroke:#1976d2,stroke-width:2px
+    style Z2 fill:#bbdefb,stroke:#1976d2,stroke-width:2px
+    style Z3 fill:#ffcdd2,stroke:#c62828,stroke-width:3px
+    style A1 fill:#ffe0b2,stroke:#f57c00,stroke-width:2px
+    style A2 fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style O1 fill:#ffcdd2,stroke:#c62828,stroke-width:3px
+    style O2 fill:#fff9c4,stroke:#f9a825,stroke-width:2px
+    style O3 fill:#e1bee7,stroke:#7b1fa2,stroke-width:2px
+    style O4 fill:#b2dfdb,stroke:#00897b,stroke-width:2px
+    style E1 fill:#fff3e0,stroke:#ef6c00,stroke-width:2px
+    style IR1 fill:#ffcdd2,stroke:#c62828,stroke-width:3px
+    style IR2 fill:#fff9c4,stroke:#f9a825,stroke-width:2px
+    style IR3 fill:#e0f7fa,stroke:#00838f,stroke-width:2px
+```
 
 ---
 
@@ -239,20 +282,44 @@
 - **Regulacja Intensywności**: 0-100% (PWM duty cycle)
 
 **Schemat Podłączenia**:
-```
-Arduino Nano                    IR LED Strip Driver
-┌──────────────┐               ┌──────────────────┐
-│   D5 (PWM)   │──[220Ω]───▶│ Anode (6N137)    │
-│   GND        │◀────────────│ Cathode (6N137)  │
-│              │             │                  │
-│              │             │ Emitter (6N137)  │──[10kΩ]──▶ 5V_ISO
-│              │             │ Collector (6N137)│──────────▶ MOSFET Gate
-│              │             │                  │
-│              │             │ MOSFET Drain     │──────────▶ IR_STRIP (-)
-│              │             │ MOSFET Source    │──────────▶ GND_ISO
-└──────────────┘             └──────────────────┘
-                                    │
-                              5V_ISO ────────────────▶ IR_STRIP (+)
+
+```mermaid
+flowchart LR
+    subgraph Arduino["Arduino Nano"]
+        A1["D5 PWM"]
+        A2["GND"]
+    end
+    
+    subgraph Opto["Optoizolator 6N137"]
+        O1["Anode"]
+        O2["Cathode"]
+        O3["Emitter"]
+        O4["Collector"]
+    end
+    
+    subgraph MOSFET["MOSFET Driver"]
+        M1["Gate"]
+        M2["Drain"]
+        M3["Source"]
+    end
+    
+    subgraph IRStrip["IR LED Strip"]
+        I1["+5V"]
+        I2["- GND"]
+    end
+    
+    A1 -->|220Ω| O1
+    A2 --> O2
+    O3 -->|10kΩ| PULLUP["5V_ISO Pull-up"]
+    O4 --> M1
+    M2 --> I2
+    M3 --> GND_ISO["GND_ISO"]
+    I1 --> PWR_ISO["5V_ISO"]
+    
+    style Arduino fill:#ffe0b2,stroke:#f57c00,stroke-width:2px
+    style Opto fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style MOSFET fill:#fff9c4,stroke:#f9a825,stroke-width:2px
+    style IRStrip fill:#e0f7fa,stroke:#00838f,stroke-width:2px
 ```
 
 **Komponenty Sterownika IR**:
@@ -301,20 +368,44 @@ Arduino Nano                    IR LED Strip Driver
 - **Modulacja**: AM/FM/Burst jak w terapii EMF
 
 **Schemat Podłączenia**:
-```
-Arduino Nano                    Piezo Driver
-┌──────────────┐               ┌──────────────────┐
-│   D7         │──[220Ω]───▶│ Anode (6N137)    │
-│   GND        │◀────────────│ Cathode (6N137)  │
-│              │             │                  │
-│              │             │ Emitter (6N137)  │──[10kΩ]──▶ 5V_ISO
-│              │             │ Collector (6N137)│──────────▶ MOSFET Gate
-│              │             │                  │
-│              │             │ MOSFET Drain     │──────────▶ PIEZO (+)
-│              │             │ MOSFET Source    │──────────▶ GND_ISO
-└──────────────┘             └──────────────────┘
-                                     │
-                               5V_ISO ────────────────▶ PIEZO VCC
+
+```mermaid
+flowchart LR
+    subgraph Arduino["Arduino Nano"]
+        A1["D7 PWM"]
+        A2["GND"]
+    end
+    
+    subgraph Opto["Optoizolator 6N137"]
+        O1["Anode"]
+        O2["Cathode"]
+        O3["Emitter"]
+        O4["Collector"]
+    end
+    
+    subgraph MOSFET["MOSFET Driver"]
+        M1["Gate"]
+        M2["Drain"]
+        M3["Source"]
+    end
+    
+    subgraph Piezo["Piezo Speaker"]
+        P1["+ VCC"]
+        P2["- GND"]
+    end
+    
+    A1 -->|220Ω| O1
+    A2 --> O2
+    O3 -->|10kΩ| PULLUP["5V_ISO Pull-up"]
+    O4 --> M1
+    M2 --> P2
+    M3 --> GND_ISO["GND_ISO"]
+    P1 --> PWR_ISO["5V_ISO"]
+    
+    style Arduino fill:#ffe0b2,stroke:#f57c00,stroke-width:2px
+    style Opto fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style MOSFET fill:#fff9c4,stroke:#f9a825,stroke-width:2px
+    style Piezo fill:#b2dfdb,stroke:#00897b,stroke-width:2px
 ```
 
 **Piny Arduino**:
@@ -384,12 +475,39 @@ void vibrator_stop();                  // Zatrzymaj wibracje
 - **XP Power JCA0512S05**: 5W, izolacja 1500VDC
 
 **Konfiguracja Systemu**:
-```
-Sieć 230V AC → Zasilacz Medyczny → 5V DC
-                                      ├─→ Arduino Nano (5V/GND)
-                                      ├─→ Izolator DC-DC → ProbeHolder (5V_ISO/AGND)
-                                      ├─→ Izolator DC-DC → IR LED Strip (5V_ISO_IR/GND_ISO_IR)
-                                      └─→ LDO 3.3V → ENC28J60 (3.3V/GND)
+
+```mermaid
+flowchart LR
+    subgraph AC["AC Mains"]
+        AC1["230V AC<br/>50/60Hz"]
+    end
+    
+    subgraph PSU["ZASILACZ MEDYCZNY"]
+        P1["IEC 60601-1<br/>5V DC, 2A"]
+    end
+    
+    subgraph Distribution["ROZDZIAŁ ZASILANIA"]
+        D1["Arduino Nano<br/>5V/GND"]
+        D2["Izolator DC-DC<br/>2500V RMS"]
+        D3["LDO 3.3V<br/>ENC28J60"]
+    end
+    
+    subgraph Isolated["STRONA IZOLOWANA"]
+        I1["ProbeHolder<br/>5V_ISO/AGND"]
+        I2["IR LED Strip<br/>5V_ISO_IR"]
+    end
+    
+    AC1 --> P1
+    P1 --> D1
+    P1 --> D2
+    P1 --> D3
+    D2 --> I1
+    D2 --> I2
+    
+    style AC fill:#ffebee,stroke:#c62828,stroke-width:2px
+    style PSU fill:#ffcdd2,stroke:#c62828,stroke-width:3px
+    style Distribution fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Isolated fill:#fce4ec,stroke:#c2185b,stroke-width:2px
 ```
 
 **Uwagi Bezpieczeństwa**:
@@ -965,18 +1083,43 @@ void adaptBasedOnHRV(float hrvScore, float lfHfRatio) {
 | **-** | RESET | Pin 1 (RST) | Biały | Opcjonalny, pull-up |
 
 **Schemat Połączeń SPI**:
-```
-Arduino Nano                    ENC28J60 Module
-┌──────────────┐               ┌──────────────────┐
-│   ATmega328  │               │   ENC28J60 Chip  │
-│              │               │                  │
-│   D10 (PB2)  │──────────────▶│ CS (Pin 2)       │
-│   D11 (PB3)  │──────────────▶│ SI/MOSI (Pin 5)  │
-│   D12 (PB4)  │◀──────────────│ SO/MISO (Pin 6)  │
-│   D13 (PB5)  │──────────────▶│ SCK (Pin 4)      │
-│   5V         │───[LDO 3.3V]─▶│ VREG (Pin 8)     │
-│   GND        │──────────────▶│ GND (Pin 3)      │
-└──────────────┘               └──────────────────┘
+
+```mermaid
+flowchart LR
+    subgraph Arduino["Arduino Nano<br/>ATmega328P"]
+        A1["D10 PB2<br/>SS/CS"]
+        A2["D11 PB3<br/>MOSI"]
+        A3["D12 PB4<br/>MISO"]
+        A4["D13 PB5<br/>SCK"]
+        A5["5V VCC"]
+        A6["GND"]
+    end
+    
+    subgraph LDO["LDO 3.3V<br/>MCP1700"]
+        L1["3.3V OUT"]
+    end
+    
+    subgraph ENC28J60["ENC28J60 Module"]
+        E1["Pin 2 CS"]
+        E2["Pin 5 SI/MOSI"]
+        E3["Pin 6 SO/MISO"]
+        E4["Pin 4 SCK"]
+        E5["Pin 8 VREG"]
+        E6["Pin 3 GND"]
+    end
+    
+    A1 -->|Yellow| E1
+    A2 -->|Green| E2
+    A3 -->|Blue| E3
+    A4 -->|Orange| E4
+    A5 --> LDO
+    LDO --> L1
+    L1 --> E5
+    A6 -->|Black| E6
+    
+    style Arduino fill:#ffe0b2,stroke:#f57c00,stroke-width:2px
+    style LDO fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style ENC28J60 fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
 ```
 
 **Wskazówki**:
@@ -994,16 +1137,37 @@ Arduino Nano                    ENC28J60 Module
 | **GND** | DGND | GND_ISO | ✅ 2500V | Oddzielne masy! |
 
 **Obwód Izolacji PWM**:
-```
-Arduino Side                      ProbeHolder Side
-┌──────────────┐                 ┌──────────────────┐
-│   D9 (PWM)   │────[220Ω]──────▶│ Anode (6N137)    │
-│   GND        │◀────────────────│ Cathode (6N137)  │
-│              │                 │                  │
-│              │                 │ Emitter (6N137)  │──[10kΩ]──▶ 5V_ISO
-│              │                 │ Collector (6N137)│──────────▶ PWM_BUF
-│              │                 │   VCC (6N137)    │──[100nF]─▶ GND_ISO
-└──────────────┘                 └──────────────────┘
+
+```mermaid
+flowchart LR
+    subgraph Arduino["Arduino Side<br/>DGND"]
+        A1["D9 PWM<br/>OC1A"]
+        A2["GND"]
+    end
+    
+    subgraph Opto["Optoizolator 6N137<br/>2500V Isolation"]
+        O1["Anode Pin 1"]
+        O2["Cathode Pin 2"]
+        O3["Emitter Pin 4"]
+        O4["Collector Pin 5"]
+        O5["VCC Pin 8"]
+    end
+    
+    subgraph ProbeHolder["ProbeHolder Side<br/>AGND / 5V_ISO"]
+        P1["PWM_BUF Output"]
+        P2["5V_ISO"]
+        P3["GND_ISO"]
+    end
+    
+    A1 -->|220Ω| O1
+    A2 --> O2
+    O3 -->|10kΩ Pull-up| P2
+    O4 --> P1
+    O5 -->|100nF| P3
+    
+    style Arduino fill:#ffe0b2,stroke:#f57c00,stroke-width:2px
+    style Opto fill:#ffcdd2,stroke:#c62828,stroke-width:3px
+    style ProbeHolder fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
 ```
 
 **Parametry PWM**:
