@@ -128,14 +128,54 @@
                 android:columnCount="2"
                 android:rowCount="4">
 
-                <TextView android:id="@+id/tvUptime" android:text="Czas pracy: 0s"/>
-                <TextView android:id="@+id/tvTemperature" android:text="Temp: 0°C"/>
-                <TextView android:id="@+id/tvMemory" android:text="Mem: 0 B"/>
-                <TextView android:id="@+id/tvPwmStatus" android:text="PWM: STOP"/>
-                <TextView android:id="@+id/tvFrequency" android:text="Freq: 0 Hz"/>
-                <TextView android:id="@+id/tvNetworkStatus" android:text="Sieć: ROZŁĄCZONA"/>
-                <TextView android:id="@+id/tvEffectorType" android:text="Efektor: Brak"/>
-                <TextView android:id="@+id/tvSafetyStatus" android:text="Bezpieczeństwo: OK"/>
+                <TextView
+                    android:id="@+id/tvUptime"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:text="Czas pracy: 0s"/>
+                <TextView
+                    android:id="@+id/tvTemperature"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:text="Temp: 0°C"/>
+                <TextView
+                    android:id="@+id/tvMemory"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:text="Mem: 0 B"/>
+                <TextView
+                    android:id="@+id/tvPwmStatus"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:text="PWM: STOP"/>
+                <TextView
+                    android:id="@+id/tvFrequency"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:text="Freq: 0 Hz"/>
+                <TextView
+                    android:id="@+id/tvNetworkStatus"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:text="Sieć: ROZŁĄCZONA"/>
+                <TextView
+                    android:id="@+id/tvEffectorType"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:text="Efektor: Brak"/>
+                <TextView
+                    android:id="@+id/tvSafetyStatus"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:text="Bezpieczeństwo: OK"/>
             </GridLayout>
 
             <Button
