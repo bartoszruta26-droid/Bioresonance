@@ -9,7 +9,11 @@
 # Obsługuje liczne końcówki biorezonansowe w trybie pojedynczym i wielokanałowym.
 # Implementacja w czystym bashu bez zależności od C++/Python.
 # 
-# Uruchomienie: ./bioresonance_tui.sh <ip_address> [port]
+# Uruchomienie: ./bioresonance_tui.sh [OPTIONS] <ip_address> [port]
+# Options:
+#   -h, --help      Show help message
+#   -v, --verbose   Enable verbose output (debug mode)
+#   -d, --debug     Enable debug mode (same as verbose)
 # ============================================================================
 
 set -u
@@ -22,6 +26,10 @@ DEFAULT_PORT=5001
 TIMEOUT_SEC=2
 REFRESH_RATE=0.1
 
+# Verbose/Debug mode
+VERBOSE=false
+DEBUG=false
+
 # Kolory ANSI
 COLOR_RESET="\033[0m"
 COLOR_BOLD="\033[1m"
@@ -32,6 +40,7 @@ COLOR_BLUE="\033[34m"
 COLOR_MAGENTA="\033[35m"
 COLOR_CYAN="\033[36m"
 COLOR_WHITE="\033[37m"
+COLOR_BLACK="\033[30m"
 COLOR_BG_BLUE="\033[44m"
 COLOR_BG_WHITE="\033[47m"
 
@@ -79,6 +88,29 @@ PROBE_MODE="SINGLE"
 # FUNKCJE POMOCNICZE
 # ============================================================================
 
+# Debug logging function - only outputs when DEBUG or VERBOSE is true
+debug_log() {
+    if [ "$DEBUG" = true ] || [ "$VERBOSE" = true ]; then
+        local timestamp=$(date +"%H:%M:%S")
+        echo -e "${COLOR_CYAN}[DEBUG $timestamp]${COLOR_RESET} $1" >&2
+    fi
+}
+
+# Error logging function - always outputs to stderr
+error_log() {
+    local timestamp=$(date +"%H:%M:%S")
+    echo -e "${COLOR_RED}[ERROR $timestamp]${COLOR_RESET} $1" >&2
+    log_message "ERROR: $1"
+}
+
+# Info logging function - outputs when VERBOSE is true
+info_log() {
+    if [ "$VERBOSE" = true ]; then
+        local timestamp=$(date +"%H:%M:%S")
+        echo -e "${COLOR_GREEN}[INFO $timestamp]${COLOR_RESET} $1" >&2
+    fi
+}
+
 log_message() {
     local timestamp=$(date +"%H:%M:%S")
     LOG_MESSAGES[$LOG_COUNT]="[$timestamp] $1"
@@ -90,6 +122,7 @@ log_message() {
         done
         ((LOG_COUNT--))
     fi
+    debug_log "Logged: $1"
 }
 
 get_probe_field() {
@@ -112,7 +145,12 @@ set_probe_field() {
     local channel=$1
     local field=$2
     local value=$3
-    local data="${PROBES[$channel]}"
+    
+    # Validate channel exists
+    if [ -z "${PROBES[$channel]+x}" ]; then
+        error_log "Invalid channel: $channel"
+        return 1
+    fi
     
     local name=$(get_probe_field $channel name)
     local type=$(get_probe_field $channel type)
@@ -125,13 +163,39 @@ set_probe_field() {
     case $field in
         name) name="$value" ;;
         type) type="$value" ;;
-        freq) freq="$value" ;;
-        duty) duty="$value" ;;
-        intensity) intensity="$value" ;;
+        freq) 
+            # Validate frequency is numeric
+            if [[ ! "$value" =~ ^[0-9]+\.?[0-9]*$ ]]; then
+                error_log "Invalid frequency format: $value"
+                return 1
+            fi
+            freq="$value" 
+            ;;
+        duty) 
+            # Validate duty cycle 0-100
+            if [ "$value" -lt 0 ] || [ "$value" -gt 100 ] 2>/dev/null; then
+                error_log "Duty cycle out of range (0-100): $value"
+                return 1
+            fi
+            duty="$value" 
+            ;;
+        intensity) 
+            # Validate intensity 0-4095
+            if [ "$value" -lt 0 ] || [ "$value" -gt 4095 ] 2>/dev/null; then
+                error_log "Intensity out of range (0-4095): $value"
+                return 1
+            fi
+            intensity="$value" 
+            ;;
         modulation) modulation="$value" ;;
         enabled) enabled="$value" ;;
+        *)
+            error_log "Unknown field: $field"
+            return 1
+            ;;
     esac
     
+    debug_log "Setting probe $channel.$field = $value"
     PROBES[$channel]="$name:$type:$freq:$duty:$intensity:$modulation:$enabled"
 }
 
@@ -168,10 +232,11 @@ get_modulation_name() {
 
 connect_to_device() {
     log_message "Łączenie z urządzeniem $DEVICE_IP:$DEVICE_PORT..."
+    debug_log "Attempting connection to $DEVICE_IP:$DEVICE_PORT"
     
     # Sprawdź czy ip/netcat jest dostępny
     if ! command -v nc &> /dev/null; then
-        log_message "Błąd: nc (netcat) nie jest zainstalowany!"
+        error_log "nc (netcat) nie jest zainstalowany!"
         CONNECTED=false
         return 1
     fi
@@ -183,15 +248,17 @@ connect_to_device() {
     if timeout $TIMEOUT_SEC bash -c "echo '' | nc -w 1 $DEVICE_IP $DEVICE_PORT" 2>/dev/null; then
         CONNECTED=true
         log_message "Połączono z $DEVICE_IP:$DEVICE_PORT"
+        info_log "Successfully connected to device"
         return 0
     else
         CONNECTED=false
-        log_message "Błąd połączenia z urządzeniem!"
+        error_log "Błąd połączenia z urządzeniem $DEVICE_IP:$DEVICE_PORT"
         return 1
     fi
 }
 
 disconnect_from_device() {
+    debug_log "Disconnecting from device"
     CONNECTED=false
     if [ -n "$SOCKET_FD" ] && [ -e "$SOCKET_FD" ]; then
         rm -f "$SOCKET_FD" 2>/dev/null
@@ -202,11 +269,17 @@ disconnect_from_device() {
 send_command() {
     local cmd=$1
     if [ "$CONNECTED" = false ]; then
+        debug_log "Cannot send command - not connected: $cmd"
         return 1
     fi
     
+    debug_log "Sending command: $cmd"
     echo "$cmd" | nc -w 1 $DEVICE_IP $DEVICE_PORT 2>/dev/null
-    return 0
+    local ret=$?
+    if [ $ret -ne 0 ]; then
+        error_log "Failed to send command: $cmd"
+    fi
+    return $ret
 }
 
 send_probe_config() {
@@ -738,24 +811,100 @@ trap cleanup EXIT INT TERM
 # MAIN
 # ============================================================================
 
+show_help() {
+    echo "ResoNet-Nano Bioresonance TUI (BASH) v1.0"
+    echo ""
+    echo "Usage: $0 [OPTIONS] <ip_address> [port]"
+    echo ""
+    echo "Options:"
+    echo "  -h, --help      Show this help message and exit"
+    echo "  -v, --verbose   Enable verbose output (debug mode)"
+    echo "  -d, --debug     Enable debug mode (same as verbose)"
+    echo ""
+    echo "Arguments:"
+    echo "  ip_address      IP address of the Arduino Nano device (default: 192.168.1.100)"
+    echo "  port            TCP port for communication (default: $DEFAULT_PORT)"
+    echo ""
+    echo "Controls:"
+    echo "  UP/DOWN         Menu navigation"
+    echo "  LEFT/RIGHT      Probe selection"
+    echo "  1-8             Quick actions"
+    echo "  E               Toggle probe on/off"
+    echo "  F               Edit frequency"
+    echo "  I               Edit intensity"
+    echo "  M               Edit modulation"
+    echo "  S               Refresh status"
+    echo "  H               Help"
+    echo "  Q               Quit"
+    echo ""
+    echo "Examples:"
+    echo "  $0                          # Use default IP and port"
+    echo "  $0 192.168.1.50             # Connect to specific IP"
+    echo "  $0 192.168.1.50 5002        # Connect to specific IP and port"
+    echo "  $0 -v 192.168.1.50          # Verbose mode with specific IP"
+    echo "  $0 --debug                  # Debug mode with defaults"
+    echo ""
+}
+
 main() {
     # Parse arguments
-    if [ $# -lt 1 ]; then
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -h|--help)
+                show_help
+                exit 0
+                ;;
+            -v|--verbose)
+                VERBOSE=true
+                DEBUG=true
+                shift
+                ;;
+            -d|--debug)
+                DEBUG=true
+                VERBOSE=true
+                shift
+                ;;
+            -*)
+                error_log "Nieznana opcja: $1"
+                echo "Użyj '$0 --help' aby uzyskać pomoc."
+                exit 1
+                ;;
+            *)
+                # Pozycyjne argumenty
+                if [ -z "$DEVICE_IP" ]; then
+                    DEVICE_IP="$1"
+                elif [ -z "$DEVICE_PORT" ]; then
+                    DEVICE_PORT="$1"
+                else
+                    error_log "Za dużo argumentów: $1"
+                    exit 1
+                fi
+                shift
+                ;;
+        esac
+    done
+    
+    # Set defaults if not provided
+    if [ -z "$DEVICE_IP" ]; then
         DEVICE_IP="192.168.1.100"
-    else
-        DEVICE_IP="$1"
+        info_log "Użyto domyślnego IP: $DEVICE_IP"
     fi
     
-    if [ $# -lt 2 ]; then
+    if [ -z "$DEVICE_PORT" ]; then
         DEVICE_PORT=$DEFAULT_PORT
-    else
-        DEVICE_PORT="$2"
+        info_log "Użyto domyślnego portu: $DEVICE_PORT"
     fi
+    
+    debug_log "Starting TUI with DEVICE_IP=$DEVICE_IP, DEVICE_PORT=$DEVICE_PORT"
+    debug_log "VERBOSE=$VERBOSE, DEBUG=$DEBUG"
     
     # Welcome message
     clear_screen
     echo "=== ResoNet-Nano Bioresonance TUI (BASH) ==="
     echo "Connecting to: $DEVICE_IP:$DEVICE_PORT"
+    if [ "$VERBOSE" = true ]; then
+        echo "Verbose mode: ENABLED"
+    fi
     echo ""
     echo "Controls:"
     echo "  UP/DOWN   - Menu navigation"
@@ -776,6 +925,7 @@ main() {
     hide_cursor
     clear_screen
     log_message "Uruchomiono TUI"
+    info_log "TUI initialized successfully"
     
     # Connect
     connect_to_device
