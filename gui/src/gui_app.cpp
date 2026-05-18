@@ -201,11 +201,8 @@ void GuiApp::onStartTherapy() {
     }
 }
 
-/**
- * @brief Oblicza checksum dla pakietu terapeutycznego
- */
-static uint8_t calculateChecksum(const TherapyPacket& packet) {
-    uint8_t* data = (uint8_t*)&packet;
+uint8_t GuiApp::calculateChecksum(const TherapyPacket& packet) {
+    const uint8_t* data = reinterpret_cast<const uint8_t*>(&packet);
     uint8_t checksum = 0;
     // Sum all bytes except the last one (checksum itself)
     for (size_t i = 0; i < sizeof(TherapyPacket) - 1; i++) {
@@ -293,9 +290,9 @@ void GuiApp::renderProbePanel() {
     ImGui::Text("Końcówki");
     ImGui::Separator();
     
-    // Create a copy of probes to avoid iterating while potentially modifying
-    auto probes_copy = probe_manager.getProbesMap();
-    for (const auto& [id, config] : probes_copy) {
+    // Use const reference to avoid copying the entire map
+    const auto& probes_map = probe_manager.getProbesMap();
+    for (const auto& [id, config] : probes_map) {
         bool is_selected = (selected_probe == id);
         
         if (ImGui::Selectable(config.name.c_str(), is_selected)) {
@@ -388,22 +385,14 @@ void GuiApp::renderFrequencyBrowser() {
     
     // Search bar
     if (ImGui::InputText("##Search", search_buffer, sizeof(search_buffer), ImGuiInputTextFlags_EnterReturnsTrue)) {
-        try {
-            filtered_results = frequency_loader.searchByDisease(search_buffer);
-            search_triggered = true;
-        } catch (...) {
-            addLog("Błąd podczas wyszukiwania");
-        }
+        filtered_results = frequency_loader.searchByDisease(search_buffer);
+        search_triggered = true;
     }
     ImGui::SameLine();
     
     if (ImGui::Button("Szukaj choroby")) {
-        try {
-            filtered_results = frequency_loader.searchByDisease(search_buffer);
-            search_triggered = true;
-        } catch (...) {
-            addLog("Błąd podczas wyszukiwania");
-        }
+        filtered_results = frequency_loader.searchByDisease(search_buffer);
+        search_triggered = true;
     }
     ImGui::SameLine();
     
@@ -559,7 +548,7 @@ void GuiApp::run() {
         
         renderUI();
         
-        ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData());
+        ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
         SDL_RenderPresent(renderer);
         
         // Limit to 60 FPS

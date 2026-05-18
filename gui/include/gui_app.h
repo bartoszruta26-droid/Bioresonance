@@ -63,6 +63,7 @@ public:
     bool init();
     void run();
     void stop();
+    bool isRunning() const { return running; }
     
     bool connectToDevice(const std::string& ip, int port);
     void disconnectFromDevice();
@@ -74,6 +75,9 @@ public:
     void onFrequencySelected(uint32_t frequency_hz);
     void onStartTherapy();
     void onStopTherapy();
+    
+    // Utility methods
+    static uint8_t calculateChecksum(const TherapyPacket& packet);
 };
 
 #endif // GUI_APP_H

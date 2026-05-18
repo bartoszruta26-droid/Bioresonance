@@ -80,9 +80,14 @@ ProbeConfig* ProbeManager::getProbe(int channel_id) {
     return (it != probes.end()) ? &it->second : nullptr;
 }
 
-std::vector<ProbeConfig*> ProbeManager::getAllProbes() {
-    std::vector<ProbeConfig*> result;
-    for (auto& pair : probes) {
+const ProbeConfig* ProbeManager::getProbe(int channel_id) const {
+    auto it = probes.find(channel_id);
+    return (it != probes.end()) ? &it->second : nullptr;
+}
+
+std::vector<const ProbeConfig*> ProbeManager::getAllProbes() const {
+    std::vector<const ProbeConfig*> result;
+    for (const auto& pair : probes) {
         if (pair.second.enabled) {
             result.push_back(&pair.second);
         }
@@ -105,12 +110,12 @@ void ProbeManager::enableProbe(int channel_id, bool enable) {
     }
 }
 
-bool ProbeManager::isProbeEnabled(int channel_id) {
-    ProbeConfig* probe = getProbe(channel_id);
+bool ProbeManager::isProbeEnabled(int channel_id) const {
+    const ProbeConfig* probe = getProbe(channel_id);
     return probe && probe->enabled;
 }
 
-std::string ProbeManager::getProbeTypeName(ProbeType type) {
+std::string ProbeManager::getProbeTypeName(ProbeType type) const {
     switch (type) {
         case ProbeType::FLAT_COIL: return "Cewka Płaska";
         case ProbeType::FERRITE_ROD: return "Cewka Ferrytowa";
@@ -125,7 +130,7 @@ std::string ProbeManager::getProbeTypeName(ProbeType type) {
     }
 }
 
-std::string ProbeManager::getModeName(ProbeMode mode) {
+std::string ProbeManager::getModeName(ProbeMode mode) const {
     switch (mode) {
         case ProbeMode::SINGLE: return "Pojedyncza";
         case ProbeMode::DUAL_INDEPENDENT: return "Dual Niezależny";

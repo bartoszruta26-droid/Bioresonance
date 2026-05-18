@@ -22,17 +22,18 @@ public:
     
     void initializeDefaultProbes();
     ProbeConfig* getProbe(int channel_id);
-    std::vector<ProbeConfig*> getAllProbes();
+    const ProbeConfig* getProbe(int channel_id) const;
+    std::vector<const ProbeConfig*> getAllProbes() const;
     void setProbeMode(ProbeMode mode);
     ProbeMode getProbeMode() const;
     void enableProbe(int channel_id, bool enable);
-    bool isProbeEnabled(int channel_id);
-    std::string getProbeTypeName(ProbeType type);
-    std::string getModeName(ProbeMode mode);
+    bool isProbeEnabled(int channel_id) const;
+    std::string getProbeTypeName(ProbeType type) const;
+    std::string getModeName(ProbeMode mode) const;
     
     // GUI-specific methods
     int getProbeCount() const { return probes.size(); }
-    std::map<int, ProbeConfig>& getProbesMap() { return probes; }
+    const std::map<int, ProbeConfig>& getProbesMap() const { return probes; }
 };
 
 #endif // PROBE_MANAGER_H

@@ -230,11 +230,18 @@ public:
     
     /**
      * @brief Opublikuj zdarzenie (asynchronicznie - queue)
+     * Thread-safe version with proper memory management
      */
     void publishAsync(const Event& event) {
-        std::lock_guard<std::mutex> lock(queue_mutex_);
-        event_queue_.push(event);
+        // Create a copy of event to avoid dangling references
+        Event event_copy = event;
         
+        {
+            std::lock_guard<std::mutex> lock(queue_mutex_);
+            event_queue_.push(event_copy);
+        }
+        
+        // Start processing thread if not already running
         if (!processing_thread_.joinable() || !processing_active_) {
             startProcessingThread();
         }
@@ -311,24 +318,25 @@ private:
     void processEventQueue() {
         while (processing_active_) {
             Event event;
+            bool has_event = false;
+            
             {
                 std::lock_guard<std::mutex> lock(queue_mutex_);
-                if (event_queue_.empty()) {
-                    // Wait a bit before checking again
-                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-                    continue;
+                if (!event_queue_.empty()) {
+                    event = event_queue_.front();
+                    event_queue_.pop();
+                    has_event = true;
                 }
-                event = event_queue_.front();
-                event_queue_.pop();
+            }
+            
+            if (!has_event) {
+                // Wait a bit before checking again
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                continue;
             }
             
             // Process based on priority
-            if (event.priority == EventPriority::CRITICAL) {
-                publish(event);  // Immediate processing
-            } else {
-                // Could add delay for lower priority events
-                publish(event);
-            }
+            publish(event);  // Call publish which has its own lock
         }
     }
     

@@ -3,6 +3,7 @@ project(BioresonanceGUI VERSION 1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Opcje buildu
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
@@ -41,6 +42,9 @@ set(HEADERS
     include/probe_manager.h
     include/frequency_loader.h
     include/types.h
+    include/logger.h
+    include/event_system.h
+    include/error_handler.h
 )
 
 # Główna aplikacja
@@ -78,7 +82,7 @@ elseif(UNIX)
         target_include_directories(bioresonance_gui PRIVATE ${X11_INCLUDE_DIR})
         target_link_libraries(bioresonance_gui PRIVATE ${X11_LIBRARIES})
     endif()
-    target_link_libraries(bioresonance_gui PRIVATE dl)
+    target_link_libraries(bioresonance_gui PRIVATE dl pthread)
 endif()
 
 # Instalacja
