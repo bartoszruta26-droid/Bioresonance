@@ -80,9 +80,11 @@ System spełnia rygorystyczne standardy medyczne:
 
 ## 🔌 Dokumentacja Sprzętowa - Połączenia i Elementy
 
-Pełna dokumentacja sprzętowa zawierająca schematy połączeń, opisy elementów, tabele pinów, elementy dodatkowe i mechaniczne została przeniesiona do dedykowanego pliku:
+Pełna dokumentacja sprzętowa zawierająca schematy połączeń, opisy elementów, tabele pinów, elementy dodatkowe i mechaniczne została przeniesiona do dedykowanych plików:
 
-👉 **[hardware.md](./hardware.md)** - Kompletna dokumentacja sprzętowa
+👉 **[hardware.md](./hardware.md)** - Kompletna dokumentacja sprzętowa (połączenia, elementy, montaż)
+
+👉 **[docs/README_EFFECTORS_SENSORS.md](./docs/README_EFFECTORS_SENSORS.md)** - Dokumentacja efektorów i sensorów
 
 ### 📋 Zawartość hardware.md:
 
@@ -92,6 +94,26 @@ Pełna dokumentacja sprzętowa zawierająca schematy połączeń, opisy element�
 - **Elementy Dodatkowe**: Akcesoria montażowe, narzędzia, rozszerzenia opcjonalne
 - **Elementy Mechaniczne**: Obudowy, uchwyty, panele frontowe, chłodzenie
 - **Bezpieczeństwo**: Checklisty testowe, procedury awaryjne, harmonogram konserwacji
+
+### 📋 Zawartość docs/README_EFFECTORS_SENSORS.md:
+
+- **Efektory**: Cewka Helmholtza, Aplikator Uszny, Elektrody Kontaktowe, Aplikator Okrężny
+- **Sensory**: Biofeedback Sensor (GSR, HRV, Temperatura)
+- **Wykrywanie Podłączenia**: Algorytmy automatycznej detekcji urządzeń
+- **Integracja z Arduino**: Przykłady kodu i konfiguracja pinów
+
+### Obsługiwane Efektory i Sensory
+
+| Typ | Nazwa | Częstotliwość | Zastosowanie | Status |
+|-----|-------|---------------|--------------|--------|
+| **Efektor** | 🧲 Cewka Helmholtza | 0.1Hz - 500kHz | Badania naukowe | ✅ Gotowy |
+| **Efektor** | 🦻 Aplikator Uszny | 1kHz - 500kHz | Terapia uszu | ✅ Gotowy |
+| **Efektor** | 🔌 Elektrody Kontaktowe | DC - 100kHz | TENS, EMS | ✅ Gotowy |
+| **Efektor** | 📡 Aplikator Okrężny | 1Hz - 200kHz | Kończyny, tułów | ✅ Gotowy |
+| **Efektor** | 💡 Matrix LED + EMF | 400-700nm + EMF | Terapia fotoniczna | 🔄 W przygotowaniu |
+| **Efektor** | 🌡️ Termo-EMF Probe | EMF + thermal | Terapia cieplna | 🔄 W przygotowaniu |
+| **Efektor** | 🔊 Wibracyjna Końcówka | Audio + piezo + EMF | Masaż wibracyjny | 🔄 W przygotowaniu |
+| **Sensor** | 📈 Biofeedback | GSR, HRV, Temp | Adaptacja terapii | ✅ Gotowy |
 
 ### ⚡ Kluczowe Połączenia (skrócony podgląd):
 
