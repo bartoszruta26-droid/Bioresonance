@@ -8,11 +8,18 @@ Interfejs webowy do obsługi efektora Arduino Nano z Ethernet HAT.
 
 ```
 webui/
-├── index.html    # Główny plik HTML z interfejsem użytkownika (CSS + JavaScript)
-├── api.php       # Backend PHP obsługujący komunikację TCP z Arduino (v2.0)
+├── index.html    # Główny plik HTML z interfejsem użytkownika (CSS + JavaScript) - 1506 linii
+├── api.php       # Backend PHP obsługujący komunikację TCP z Arduino (v2.0) - 406 linii
 ├── debug.log     # Plik logów debugowania (tworzony automatycznie)
 └── README.md     # Ten plik
 ```
+
+### Szczegóły Implementacji
+- **Frontend**: `index.html` (1506 linii) - HTML5 + CSS3 + Vanilla JavaScript ES6+
+- **Backend**: `api.php` (406 linii) - PHP 7.4+ z socketami TCP
+- **Łączna liczba linii**: ~1912 linii kodu
+- **Technologie**: WebSockets, REST API, Session Management
+- **Bezpieczeństwo**: XSS protection, IP validation, command sanitization, resource cleanup
 
 ## Wymagania
 

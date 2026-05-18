@@ -3,10 +3,24 @@
 ## 📱 Kompletna Aplikacja Android do Obsługi Efektorów Arduino Nano
 
 Aplikacja implementuje **pełną funkcjonalność** z:
-- `bash_tui/bioresonance_tui.sh` (1285 linii)
-- `tui/bioresonance_tui.cpp` (1057 linii)  
-- `webui/index.html` (1506 linii)
+- `bash_tui/bioresonance_tui.sh` (1600 linii)
+- `tui/bioresonance_tui.cpp` (1061 linii)  
+- `webui/index.html` (1506 linii) + `api.php` (406 linii)
+- `gui/src/*.cpp` (2764 linii C++)
 - `ResoNet_Nano/ResoNet_Nano.ino` i powiązane pliki C++
+
+### Szczegóły Implementacji
+- **Kotlin**: 1838 linii w 7 plikach `.kt`
+  - `MainViewModel.kt` (436 linii) - ViewModel z pełną logiką biznesową
+  - `ArduinoCommunication.kt` (337 linii) - Komunikacja TCP, parsowanie odpowiedzi Arduino
+  - `FrequencyDatabase.kt` (319 linii) - Baza 500+ częstotliwości z frequencies.md
+  - `TherapySessionManager.kt` (301 linii) - Menadżer sesji, timery, sekwencje
+  - `MainActivity.kt` (221 linii) - Główna aktywność z UI
+  - `Models.kt` (119 linii) - Modele danych
+  - `Types.kt` (105 linii) - Enumy i typy
+- **XML Layouts**: 4 pliki (activity_main.xml, strings.xml, colors.xml, themes.xml)
+- **Architektura**: MVVM (Model-View-ViewModel) z LiveData i Coroutines
+- **Łączna liczba linii**: ~1838 linii Kotlin + XML
 
 ## 🏗️ Architektura
 
