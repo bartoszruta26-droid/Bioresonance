@@ -19,10 +19,36 @@
 // --- Definicje Pinów (Zgodne z hardware.md) ---
 #define PIN_PWM_OUTPUT      9   // Timer1 OC1A
 #define PIN_ENC28J60_CS     10  // Chip Select dla Ethernet
-#define PIN_ENC28J60_INT    2   // Interrupt dla Ethernet
+#define PIN_ENC28J60_MOSI   11  // SPI MOSI
+#define PIN_ENC28J60_MISO   12  // SPI MISO
+#define PIN_ENC28J60_SCK    13  // SPI Clock
+#define PIN_ENC28J60_INT    2   // Interrupt dla Ethernet (nieużywany w polling)
 #define PIN_TEMP_SENSOR     A0  // Czujnik temperatury
 #define PIN_EMERGENCY_STOP  3   // Wejście fizyczne E-Stop (LOW = aktywne)
 #define LED_BUILTIN_PIN     13
+
+// --- Stałe Systemowe (Zgodne z README.md i hardware.md) ---
+#define FREQ_MIN_HZ         0.1f
+#define FREQ_MAX_HZ         500000.0f
+#define FREQ_RESOLUTION_HZ  0.01f
+
+#define TEMP_CRITICAL_C     85.0f
+#define TEMP_WARNING_C      75.0f
+#define TEMP_HYSTERESIS_C   5.0f
+
+#define DUTY_CYCLE_MIN      1.0f
+#define DUTY_CYCLE_MAX      99.0f
+
+// --- Watchdog Timeouts (ms) ---
+#define WDT_MAIN_TIMEOUT_MS     5000
+#define WDT_NETWORK_TIMEOUT_MS  10000
+#define WDT_THERAPY_TIMEOUT_MS  1000
+#define WDT_COMMS_TIMEOUT_MS    30000
+
+// --- EEPROM Addresses ---
+#define EEPROM_RESET_COUNT_ADDR 0
+#define EEPROM_LOCKOUT_FLAG_ADDR 1
+#define EEPROM_MAGIC_BYTE       0xA5
 
 // --- Enumeracje Stanów Systemu ---
 typedef enum {

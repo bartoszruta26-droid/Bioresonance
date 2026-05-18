@@ -13,10 +13,12 @@
 #include <avr/wdt.h>
 
 // ============================================================================
-// KONFIGURACJA WATCHDOGA
+// KONFIGURACJA WATCHDOGA (Zgodne z types.h)
 // ============================================================================
 
-#define WDT_TIMEOUT_MS 2000
+#include "types.h"  // Import stałych systemowych
+
+#define WDT_TIMEOUT_MS WDT_MAIN_TIMEOUT_MS
 #define WDT_RESET_THRESHOLD 5
 #define SAFE_MODE_THRESHOLD 3
 

@@ -13,12 +13,12 @@
 #include "types.h"
 
 // ============================================================================
-// KONFIGURACJA PWM
+// KONFIGURACJA PWM (Zgodne z types.h i README.md)
 // ============================================================================
 
-#define PWM_OUTPUT_PIN 9        // Timer1 Channel A (OC1A)
-#define PWM_MIN_FREQUENCY_HZ_X100 10      // 0.1 Hz
-#define PWM_MAX_FREQUENCY_HZ_X100 5000000 // 500 kHz
+#define PWM_OUTPUT_PIN PIN_PWM_OUTPUT
+#define PWM_MIN_FREQUENCY_HZ_X100 ((uint32_t)(FREQ_MIN_HZ * 100))      // 0.1 Hz * 100 = 10
+#define PWM_MAX_FREQUENCY_HZ_X100 ((uint32_t)(FREQ_MAX_HZ * 100))      // 500 kHz * 100 = 50000000
 
 // Typy modulacji (używamy z types.h)
 // MODULATION_NONE = 0

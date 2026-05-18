@@ -8,10 +8,17 @@
 #define NETWORK_SYSTEM_H
 
 #include <Arduino.h>
+#include "types.h"  // Import definicji pinów i typów
 
 // ============================================================================
-// KONFIGURACJA SIECIOWA
+// KONFIGURACJA SIECIOWA (Zgodne z hardware.md)
 // ============================================================================
+
+// ENC28J60 Pinout
+#define PIN_ENC28J60_CS PIN_ENC28J60_CS
+#define PIN_ENC28J60_MOSI PIN_ENC28J60_MOSI
+#define PIN_ENC28J60_MISO PIN_ENC28J60_MISO
+#define PIN_ENC28J60_SCK PIN_ENC28J60_SCK
 
 #define UDP_PORT 5000
 #define TCP_PORT 5001

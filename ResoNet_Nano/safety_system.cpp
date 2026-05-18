@@ -11,6 +11,7 @@
  */
 
 #include "safety_system.h"
+#include "types.h"  // Import stałych temperaturowych
 #include <avr/eeprom.h>
 
 // ============================================================================
@@ -22,9 +23,9 @@ static volatile uint32_t layer_timers[4];
 static uint8_t wdt_reset_count = 0;
 static bool emergency_latch = false;
 
-// Adresy EEPROM
-#define EEPROM_WDT_COUNT_ADDR 0
-#define EEPROM_RESET_FLAG_ADDR 1
+// Adresy EEPROM (zgodne z types.h)
+#define EEPROM_WDT_COUNT_ADDR EEPROM_RESET_COUNT_ADDR
+#define EEPROM_RESET_FLAG_ADDR EEPROM_LOCKOUT_FLAG_ADDR
 
 // ============================================================================
 // FUNKCJE POMOCNICZE
@@ -147,11 +148,11 @@ void safety_loop() {
         last_temp_check = now;
         safety_status.temperature_x10 = measure_temperature();
         
-        // Sprawdź przegrzanie (>85°C = 850)
-        if (safety_status.temperature_x10 > 850) {
+        // Sprawdź przegrzanie (>TEMP_CRITICAL_C = 85.0°C = 850)
+        if (safety_status.temperature_x10 > ((uint16_t)(TEMP_CRITICAL_C * 10))) {
             safety_status.error_code = SAFE_ERROR_OVERHEAT;
             safety_status.safe_state = SAFE_STATE_CRITICAL;
-        } else if (safety_status.temperature_x10 > 700) {
+        } else if (safety_status.temperature_x10 > ((uint16_t)(TEMP_WARNING_C * 10))) {
             safety_status.safe_state = SAFE_STATE_WARNING;
         } else if (safety_status.safe_state != SAFE_STATE_LOCKOUT && 
                    safety_status.error_code != SAFE_ERROR_OVERHEAT) {
@@ -254,10 +255,10 @@ SafetyStatus* safety_get_status() {
 void safety_clear_latch() {
     // Można odblokować tylko jeśli temperatura OK i nie ma lockout
     if (safety_status.safe_state != SAFE_STATE_LOCKOUT &&
-        safety_status.temperature_x10 < 700) {
+        safety_status.temperature_x10 < ((uint16_t)(TEMP_WARNING_C * 10))) {
         emergency_latch = false;
         if (safety_status.error_code == SAFE_ERROR_OVERHEAT &&
-            safety_status.temperature_x10 < 700) {
+            safety_status.temperature_x10 < ((uint16_t)(TEMP_WARNING_C * 10))) {
             safety_status.error_code = SAFE_ERROR_NONE;
             safety_status.safe_state = SAFE_STATE_OK;
         }
@@ -274,8 +275,8 @@ uint16_t safety_get_temperature() {
 
 /**
  * @brief Sprawdza stan termiczny
- * @return true jeśli temperatura w normie
+ * @return true jeśli temperatura w normie (< TEMP_WARNING_C)
  */
 bool safety_check_thermal() {
-    return (safety_status.temperature_x10 < 700);
+    return (safety_status.temperature_x10 < ((uint16_t)(TEMP_WARNING_C * 10)));
 }

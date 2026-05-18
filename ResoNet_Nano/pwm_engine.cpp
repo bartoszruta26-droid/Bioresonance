@@ -218,15 +218,15 @@ void pwm_loop() {
 bool pwm_set_config(const PWMConfig* config) {
     if (!config) return false;
     
-    // Walidacja parametrów
+    // Walidacja parametrów (zgodnie z types.h)
     if (config->frequency_hz_x100 < PWM_MIN_FREQUENCY_HZ_X100 ||
         config->frequency_hz_x100 > PWM_MAX_FREQUENCY_HZ_X100) {
         LOG_ERROR("Frequency out of range");
         return false;
     }
     
-    if (config->duty_cycle > 100) {
-        LOG_ERROR("Duty cycle invalid");
+    if (config->duty_cycle > 100 || config->duty_cycle == 0) {
+        LOG_ERROR("Duty cycle invalid (must be 1-100%)");
         return false;
     }
     
