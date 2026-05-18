@@ -2,11 +2,14 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.0-blue)
+![Version](https://img.shields.io/badge/version-1.1-blue)
 ![Status](https://img.shields.io/badge/status-complete-green)
 ![Devices](https://img.shields.io/badge/devices-6%20effectors%2B%201%20sensor-orange)
+![Features](https://img.shields.io/badge/features-debug%2Cverbose%2CCLI-red)
 
 **Kompletny przewodnik po efektorach i sensorach systemu ResoNet Nano**
+
+*Z rozszerzoną obsługą debugowania, verbose mode, CLI i event handling*
 
 </div>
 
