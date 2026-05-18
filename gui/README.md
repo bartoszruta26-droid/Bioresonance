@@ -57,6 +57,18 @@ cmake --build .
 ./bioresonance_gui --ip 192.168.1.100 --port 5001
 ```
 
+### Szczegóły Implementacji
+- **Pliki źródłowe**: 
+  - `src/gui_app.cpp` (612 linii) - Główna logika GUI
+  - `src/network_client.cpp` (241 linii) - Komunikacja TCP/IP
+  - `src/probe_manager.cpp` (149 linii) - Zarządzanie końcówkami
+  - `src/frequency_loader.cpp` (125 linii) - Baza częstotliwości
+  - `src/main.cpp` (293 linie) - Punkt wejścia
+- **Pliki nagłówkowe**: 9 plików `.h` w katalogu `include/`
+- **Technologie**: SDL2 + Dear ImGui
+- **Standard**: C++17
+- **Całkowita liczba linii**: ~2764 linii kodu C++
+
 ## Struktura projektu
 
 ```
