@@ -174,17 +174,22 @@ flowchart TD
     ID_DRAIN --> IS_GND
     IR_OUT5V --> IS_VCC
     
-    style Zasilacz fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style Arduino fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style Ethernet fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
-    style IzolacjaDC fill:#fce4ec,stroke:#c2185b,stroke-width:2px
-    style IzolacjaDCIR fill:#fce4ec,stroke:#c2185b,stroke-width:2px
-    style OptoPWM fill:#ffcdd2,stroke:#c62828,stroke-width:2px
-    style OptoIR fill:#ffcdd2,stroke:#c62828,stroke-width:2px
-    style ProbeHolder fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    style Antena fill:#fff8e1,stroke:#fbc02d,stroke-width:2px
-    style IRDriver fill:#fff9c4,stroke:#f9a825,stroke-width:2px
-    style IRStrip fill:#e0f7fa,stroke:#00838f,stroke-width:2px
+    classDef power fill:#1565c0,stroke:#0d47a1,stroke-width:3px,color:#ffffff,font-weight:bold
+    classDef arduino fill:#e65100,stroke:#bf3603,stroke-width:3px,color:#ffffff,font-weight:bold
+    classDef ethernet fill:#2e7d32,stroke:#1b5e20,stroke-width:3px,color:#ffffff,font-weight:bold
+    classDef isolation fill:#c2185b,stroke:#880e4f,stroke-width:3px,color:#ffffff,font-weight:bold
+    classDef opto fill:#b71c1c,stroke:#880e4f,stroke-width:3px,color:#ffffff,font-weight:bold
+    classDef probe fill:#6a1b9a,stroke:#4a148c,stroke-width:3px,color:#ffffff,font-weight:bold
+    classDef antenna fill:#f9a825,stroke:#f57f17,stroke-width:3px,color:#000000,font-weight:bold
+    classDef ir fill:#006064,stroke:#00363a,stroke-width:3px,color:#ffffff,font-weight:bold
+    
+    class Zasilacz,IzolacjaDC,IzolacjaDCIR power
+    class Arduino arduino
+    class Ethernet ethernet
+    class OptoPWM,OptoIR opto
+    class ProbeHolder probe
+    class Antena antenna
+    class IRDriver,IRStrip ir
 ```
 
 ### 🔌 Schemat Elektryczny Połączeń
@@ -252,21 +257,18 @@ flowchart TD
     IR2 -->|Source→GND_ISO_IR| GND2
     IR2 -->|Drain→LED(-)| IR3
     
-    style Z1 fill:#bbdefb,stroke:#1976d2,stroke-width:2px
-    style Z2 fill:#bbdefb,stroke:#1976d2,stroke-width:2px
-    style Z3 fill:#ffcdd2,stroke:#c62828,stroke-width:3px
-    style Z4 fill:#ffcdd2,stroke:#c62828,stroke-width:3px
-    style A1 fill:#ffe0b2,stroke:#f57c00,stroke-width:2px
-    style A2 fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
-    style LDO fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
-    style O1 fill:#ffcdd2,stroke:#c62828,stroke-width:3px
-    style O2 fill:#fff9c4,stroke:#f9a825,stroke-width:2px
-    style O3 fill:#e1bee7,stroke:#7b1fa2,stroke-width:2px
-    style O4 fill:#b2dfdb,stroke:#00897b,stroke-width:2px
-    style E1 fill:#fff3e0,stroke:#ef6c00,stroke-width:2px
-    style IR1 fill:#ffcdd2,stroke:#c62828,stroke-width:3px
-    style IR2 fill:#fff9c4,stroke:#f9a825,stroke-width:2px
-    style IR3 fill:#e0f7fa,stroke:#00838f,stroke-width:2px
+    classDef power fill:#1565c0,stroke:#0d47a1,stroke-width:3px,color:#ffffff,font-weight:bold
+    classDef control fill:#e65100,stroke:#bf3603,stroke-width:3px,color:#ffffff,font-weight:bold
+    classDef isolation fill:#c2185b,stroke:#880e4f,stroke-width:3px,color:#ffffff,font-weight:bold
+    classDef output fill:#6a1b9a,stroke:#4a148c,stroke-width:3px,color:#ffffff,font-weight:bold
+    classDef ir fill:#006064,stroke:#00363a,stroke-width:3px,color:#ffffff,font-weight:bold
+    classDef antenna fill:#f9a825,stroke:#f57f17,stroke-width:3px,color:#000000,font-weight:bold
+    
+    class Z1,Z2,Z3,Z4 power
+    class A1,A2,LDO control
+    class O1,O2,O3,O4 output
+    class E1 antenna
+    class IR1,IR2,IR3 ir
 ```
 
 ---
@@ -448,10 +450,15 @@ flowchart LR
     M3 --> GND_ISO["GND_ISO_IR"]
     I1 --> PWR
     
-    style Arduino fill:#ffe0b2,stroke:#f57c00,stroke-width:2px
-    style Opto fill:#ffcdd2,stroke:#c62828,stroke-width:2px
-    style MOSFET fill:#fff9c4,stroke:#f9a825,stroke-width:2px
-    style IRStrip fill:#e0f7fa,stroke:#00838f,stroke-width:2px
+    classDef arduino fill:#e65100,stroke:#bf3603,stroke-width:3px,color:#ffffff,font-weight:bold
+    classDef opto fill:#b71c1c,stroke:#880e4f,stroke-width:3px,color:#ffffff,font-weight:bold
+    classDef mosfet fill:#f9a825,stroke:#f57f17,stroke-width:3px,color:#000000,font-weight:bold
+    classDef ir fill:#006064,stroke:#00363a,stroke-width:3px,color:#ffffff,font-weight:bold
+    
+    class Arduino arduino
+    class Opto opto
+    class MOSFET mosfet
+    class IRStrip ir
 ```
 
 **Komponenty Sterownika IR**:
@@ -535,10 +542,15 @@ flowchart LR
     M3 --> GND_ISO["GND_ISO"]
     P1 --> PWR
     
-    style Arduino fill:#ffe0b2,stroke:#f57c00,stroke-width:2px
-    style Opto fill:#ffcdd2,stroke:#c62828,stroke-width:2px
-    style MOSFET fill:#fff9c4,stroke:#f9a825,stroke-width:2px
-    style Piezo fill:#b2dfdb,stroke:#00897b,stroke-width:2px
+    classDef arduino fill:#e65100,stroke:#bf3603,stroke-width:3px,color:#ffffff,font-weight:bold
+    classDef opto fill:#b71c1c,stroke:#880e4f,stroke-width:3px,color:#ffffff,font-weight:bold
+    classDef mosfet fill:#f9a825,stroke:#f57f17,stroke-width:3px,color:#000000,font-weight:bold
+    classDef piezo fill:#00897b,stroke:#004d40,stroke-width:3px,color:#ffffff,font-weight:bold
+    
+    class Arduino arduino
+    class Opto opto
+    class MOSFET mosfet
+    class Piezo piezo
 ```
 
 **Piny Arduino**:
@@ -637,10 +649,15 @@ flowchart LR
     D2 --> I1
     D2 --> I2
     
-    style AC fill:#ffebee,stroke:#c62828,stroke-width:2px
-    style PSU fill:#ffcdd2,stroke:#c62828,stroke-width:3px
-    style Distribution fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style Isolated fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    classDef ac fill:#c62828,stroke:#b71c1c,stroke-width:3px,color:#ffffff,font-weight:bold
+    classDef psu fill:#c2185b,stroke:#880e4f,stroke-width:3px,color:#ffffff,font-weight:bold
+    classDef dist fill:#1565c0,stroke:#0d47a1,stroke-width:3px,color:#ffffff,font-weight:bold
+    classDef iso fill:#c2185b,stroke:#880e4f,stroke-width:3px,color:#ffffff,font-weight:bold
+    
+    class AC ac
+    class PSU psu
+    class Distribution dist
+    class Isolated iso
 ```
 
 **Uwagi Bezpieczeństwa**:
@@ -1250,9 +1267,13 @@ flowchart LR
     L1 --> E5
     A6 -->|Black| E6
     
-    style Arduino fill:#ffe0b2,stroke:#f57c00,stroke-width:2px
-    style LDO fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
-    style ENC28J60 fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+    classDef arduino fill:#e65100,stroke:#bf3603,stroke-width:3px,color:#ffffff,font-weight:bold
+    classDef ldo fill:#2e7d32,stroke:#1b5e20,stroke-width:3px,color:#ffffff,font-weight:bold
+    classDef enc fill:#2e7d32,stroke:#1b5e20,stroke-width:3px,color:#ffffff,font-weight:bold
+    
+    class Arduino arduino
+    class LDO ldo
+    class ENC28J60 enc
 ```
 
 **Wskazówki**:
@@ -1298,9 +1319,13 @@ flowchart LR
     O4 --> P1
     O5 -->|100nF| P3
     
-    style Arduino fill:#ffe0b2,stroke:#f57c00,stroke-width:2px
-    style Opto fill:#ffcdd2,stroke:#c62828,stroke-width:3px
-    style ProbeHolder fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef arduino fill:#e65100,stroke:#bf3603,stroke-width:3px,color:#ffffff,font-weight:bold
+    classDef opto fill:#b71c1c,stroke:#880e4f,stroke-width:3px,color:#ffffff,font-weight:bold
+    classDef probe fill:#6a1b9a,stroke:#4a148c,stroke-width:3px,color:#ffffff,font-weight:bold
+    
+    class Arduino arduino
+    class Opto opto
+    class ProbeHolder probe
 ```
 
 **Parametry PWM**:
