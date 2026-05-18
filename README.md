@@ -20,6 +20,7 @@
 - [Wstęp i Opis Projektu](#-wstęp-i-opis-projektu)
 - [Architektura Systemu i Standardy Medyczne](#-architektura-systemu-i-standardy-medyczne)
 - [Specyfikacja Sprzętowa](#-szczegółowa-specyfikacja-sprzętowa)
+- [Dokumentacja Sprzętowa - Połączenia i Elementy](#-dokumentacja-sprzętowa-połączenia-i-elementy)
 - [Oprogramowanie Układowe](#-oprogramowanie-układowe-firmware---architektura-real-time)
 - [Aplikacje Klienta](#-aplikacje-klienta-host-systems)
   - [Aplikacja Desktop C# (Linux/Windows)](#-aplikacja-desktop-c-cross-platform)
@@ -74,6 +75,36 @@ System spełnia rygorystyczne standardy medyczne:
 - **ISO 13485**: System zarządzania jakością dla producentów wyrobów medycznych.
 - **MDR (Medical Device Regulation UE 2017/745)**: Rozporządzenie dotyczące wyrobów medycznych w Unii Europejskiej.
 - **FDA 21 CFR Part 820**: Good Manufacturing Practice (GMP) dla urządzeń medycznych w USA.
+
+---
+
+## 🔌 Dokumentacja Sprzętowa - Połączenia i Elementy
+
+Pełna dokumentacja sprzętowa zawierająca schematy połączeń, opisy elementów, tabele pinów, elementy dodatkowe i mechaniczne została przeniesiona do dedykowanego pliku:
+
+👉 **[hardware.md](./hardware.md)** - Kompletna dokumentacja sprzętowa
+
+### 📋 Zawartość hardware.md:
+
+- **Schemat Połączeń**: Diagram blokowy systemu i tabela głównych połączeń
+- **Opis Elementów**: Arduino Nano, ENC28J60, ProbeHolder, anteny EMF, zasilacze medyczne
+- **Połączenia Pinów**: Szczegółowe tabele SPI, PWM, zasilania i izolacji
+- **Elementy Dodatkowe**: Akcesoria montażowe, narzędzia, rozszerzenia opcjonalne
+- **Elementy Mechaniczne**: Obudowy, uchwyty, panele frontowe, chłodzenie
+- **Bezpieczeństwo**: Checklisty testowe, procedury awaryjne, harmonogram konserwacji
+
+### ⚡ Kluczowe Połączenia (skrócony podgląd):
+
+| Źródło | Pin | Cel | Izolacja |
+|--------|-----|-----|----------|
+| Arduino D10 | CS | ENC28J60 | ❌ Brak |
+| Arduino D11 | MOSI | ENC28J60 | ❌ Brak |
+| Arduino D12 | MISO | ENC28J60 | ❌ Brak |
+| Arduino D13 | SCK | ENC28J60 | ❌ Brak |
+| Arduino D9 | PWM | ProbeHolder | ✅ Opto 6N137 |
+| Izolator DC | 5V_ISO | ProbeHolder | ✅ 2500V RMS |
+
+**⚠️ UWAGA**: Pełna dokumentacja zawiera szczegółowe schematy, diagramy i instrukcje montażu. Zapoznaj się z plikiem `hardware.md` przed rozpoczęciem montażu urządzenia.
 
 ---
 
