@@ -162,8 +162,11 @@ void GuiApp::onProbeSelected(int probe_id) {
 }
 
 void GuiApp::onProbeEnabledChanged(int probe_id, bool enabled) {
-    probe_manager.enableProbe(probe_id, enabled);
-    addLog("Końcówka " + std::to_string(probe_id) + (enabled ? " włączona" : " wyłączona"));
+    if (probe_manager.enableProbe(probe_id, enabled)) {
+        addLog("Końcówka " + std::to_string(probe_id) + (enabled ? " włączona" : " wyłączona"));
+    } else {
+        addLog("Błąd: Nie udało się zmienić stanu końcówki " + std::to_string(probe_id));
+    }
 }
 
 void GuiApp::onFrequencySelected(uint32_t frequency_hz) {
@@ -202,12 +205,26 @@ void GuiApp::onStartTherapy() {
 }
 
 uint8_t GuiApp::calculateChecksum(const TherapyPacket& packet) {
-    const uint8_t* data = reinterpret_cast<const uint8_t*>(&packet);
+    // Safe checksum calculation using explicit field access instead of raw memory
     uint8_t checksum = 0;
-    // Sum all bytes except the last one (checksum itself)
-    for (size_t i = 0; i < sizeof(TherapyPacket) - 1; i++) {
-        checksum += data[i];
-    }
+    checksum += static_cast<uint8_t>(packet.frequency_hz_x100 & 0xFF);
+    checksum += static_cast<uint8_t>((packet.frequency_hz_x100 >> 8) & 0xFF);
+    checksum += static_cast<uint8_t>((packet.frequency_hz_x100 >> 16) & 0xFF);
+    checksum += static_cast<uint8_t>((packet.frequency_hz_x100 >> 24) & 0xFF);
+    
+    checksum += static_cast<uint8_t>(packet.duration_sec & 0xFF);
+    checksum += static_cast<uint8_t>((packet.duration_sec >> 8) & 0xFF);
+    checksum += static_cast<uint8_t>((packet.duration_sec >> 16) & 0xFF);
+    checksum += static_cast<uint8_t>((packet.duration_sec >> 24) & 0xFF);
+    
+    checksum += packet.modulation_type;
+    checksum += packet.duty_cycle;
+    
+    checksum += static_cast<uint8_t>(packet.intensity_level & 0xFF);
+    checksum += static_cast<uint8_t>((packet.intensity_level >> 8) & 0xFF);
+    
+    checksum += packet.channel_id;
+    
     return checksum;
 }
 
@@ -299,8 +316,8 @@ void GuiApp::renderProbePanel() {
             onProbeSelected(id);
         }
         
-        // Show enabled checkbox
-        char checkbox_label[64];
+        // Show enabled checkbox - use fixed-size buffer with bounds checking
+        char checkbox_label[32];
         snprintf(checkbox_label, sizeof(checkbox_label), "##enable_%d", id);
         bool enabled = config.enabled;
         if (ImGui::Checkbox(checkbox_label, &enabled)) {
@@ -377,8 +394,9 @@ void GuiApp::renderProbePanel() {
 
 void GuiApp::renderFrequencyBrowser() {
     static char search_buffer[256] = "";
-    static std::vector<FrequencyEntry> filtered_results;
-    static bool search_triggered = false;
+    // Non-static vector to avoid thread safety issues with static STL containers
+    std::vector<FrequencyEntry> filtered_results;
+    bool search_triggered = false;
     
     ImGui::Text("Przeglądarka częstotliwości");
     ImGui::Separator();
@@ -454,8 +472,22 @@ void GuiApp::renderStatusPanel() {
             disconnectFromDevice();
         }
     } else {
+        // Static buffers to preserve state between frames
         static char ip_buffer[64] = "192.168.1.100";
         static int port_buffer = 5001;
+        
+        // Sync with current values if they changed externally
+        static std::string last_ip = device_ip;
+        static int last_port = device_port;
+        if (last_ip != device_ip) {
+            strncpy(ip_buffer, device_ip.c_str(), sizeof(ip_buffer) - 1);
+            ip_buffer[sizeof(ip_buffer) - 1] = '\0';
+            last_ip = device_ip;
+        }
+        if (last_port != device_port) {
+            port_buffer = device_port;
+            last_port = device_port;
+        }
         
         ImGui::InputText("IP urządzenia", ip_buffer, sizeof(ip_buffer));
         ImGui::SameLine();
@@ -463,7 +495,14 @@ void GuiApp::renderStatusPanel() {
         ImGui::SameLine();
         
         if (ImGui::Button("Połącz")) {
-            connectToDevice(ip_buffer, port_buffer);
+            // Validate IP before connecting
+            if (strlen(ip_buffer) == 0) {
+                addLog("Błąd: Puste IP urządzenia");
+            } else if (port_buffer < 1 || port_buffer > 65535) {
+                addLog("Błąd: Nieprawidłowy numer portu: " + std::to_string(port_buffer));
+            } else {
+                connectToDevice(ip_buffer, port_buffer);
+            }
         }
     }
     
@@ -508,6 +547,8 @@ void GuiApp::run() {
     running = true;
     
     SDL_Event event;
+    auto last_frame_time = std::chrono::steady_clock::now();
+    const auto target_frame_time = std::chrono::microseconds(16667); // ~60 FPS
     
     while (running) {
         while (SDL_PollEvent(&event)) {
@@ -551,8 +592,16 @@ void GuiApp::run() {
         ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
         SDL_RenderPresent(renderer);
         
-        // Limit to 60 FPS
-        std::this_thread::sleep_for(std::chrono::milliseconds(16));
+        // Frame timing - calculate delta time and limit to 60 FPS
+        auto current_frame_time = std::chrono::steady_clock::now();
+        auto frame_duration = current_frame_time - last_frame_time;
+        
+        if (frame_duration < target_frame_time) {
+            auto sleep_time = target_frame_time - frame_duration;
+            std::this_thread::sleep_for(sleep_time);
+        }
+        
+        last_frame_time = std::chrono::steady_clock::now();
     }
 }
 

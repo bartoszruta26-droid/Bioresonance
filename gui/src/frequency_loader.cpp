@@ -15,6 +15,7 @@ FrequencyLoader::FrequencyLoader() {
 bool FrequencyLoader::loadFromFile(const std::string& filepath) {
     std::ifstream freq_file(filepath);
     if (!freq_file.is_open()) {
+        LOG_WARNING("Failed to open frequency file: " + filepath);
         return false;
     }
     
@@ -58,14 +59,22 @@ bool FrequencyLoader::loadFromFile(const std::string& filepath) {
                 }
                 
                 frequency_database.push_back(entry);
-            } catch (...) {
-                // Not a valid frequency line, skip
+            } catch (const std::exception& e) {
+                // Log parsing errors for debugging
+                LOG_DEBUG("Skipping invalid frequency line: " + line + " - Error: " + e.what());
                 continue;
             }
         }
     }
     
     freq_file.close();
+    
+    if (frequency_database.empty()) {
+        LOG_WARNING("No valid frequency entries found in: " + filepath);
+    } else {
+        LOG_INFO("Loaded " + std::to_string(frequency_database.size()) + " frequencies from: " + filepath);
+    }
+    
     return !frequency_database.empty();
 }
 
