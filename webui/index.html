@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ResoNet-Nano Web UI - Sterowanie Efektorami Arduino</title>
+    <style>
+        /* ============================================================================
+           STYLE CSS - INTERFEJS UŻYTKOWNIKA
+           ============================================================================ */
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        /* HEADER */
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #e74c3c;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-indicator.connected {
+            background: #2ecc71;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* CONNECTION PANEL */
+        .connection-panel {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            border-bottom: 2px solid #e9ecef;
+            display: flex;
+            gap: 15px;
+            align-items: end;
+            flex-wrap: wrap;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .form-group label {
+            font-size: 12px;
+            font-weight: bold;
+            color: #495057;
+            text-transform: uppercase;
+        }
+        
+        .form-group input {
+            padding: 10px 15px;
+            border: 2px solid #dee2e6;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        
+        .btn {
+            padding: 10px 25px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+        }
+        
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+        
+        .btn-success {
+            background: #2ecc71;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #27ae60;
+        }
+        
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        
+        .btn-warning {
+            background: #f39c12;
+            color: white;
+        }
+        
+        .btn-warning:hover {
+            background: #e67e22;
+        }
+        
+        /* MAIN CONTENT */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 20px;
+            padding: 30px;
+        }
+        
+        /* PROBES SECTION */
+        .probes-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .probe-list {
+            display: grid;
+            gap: 15px;
+        }
+        
+        .probe-card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            border-left: 4px solid #bdc3c7;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .probe-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .probe-card.active {
+            border-left-color: #2ecc71;
+            background: #e8f8f5;
+        }
+        
+        .probe-card.inactive {
+            border-left-color: #f39c12;
+        }
+        
+        .probe-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .probe-name {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .probe-status {
+            font-size: 12px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+        
+        .probe-status.enabled {
+            background: #2ecc71;
+            color: white;
+        }
+        
+        .probe-status.disabled {
+            background: #95a5a6;
+            color: white;
+        }
+        
+        .probe-details {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            font-size: 13px;
+            color: #7f8c8d;
+        }
+        
+        .probe-detail-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .probe-detail-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            color: #95a5a6;
+        }
+        
+        .probe-detail-value {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        /* PROBE EDITOR */
+        .probe-editor {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .probe-editor.visible {
+            display: block;
+        }
+        
+        .editor-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .editor-field {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .editor-field label {
+            font-size: 12px;
+            font-weight: bold;
+            color: #495057;
+        }
+        
+        .editor-field input,
+        .editor-field select {
+            padding: 8px 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .editor-field input:focus,
+        .editor-field select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            width: 60px;
+            height: 30px;
+            background: #bdc3c7;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .toggle-switch.enabled {
+            background: #2ecc71;
+        }
+        
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+        
+        .toggle-switch.enabled::after {
+            transform: translateX(30px);
+        }
+        
+        /* SIDEBAR */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .status-panel,
+        .control-panel,
+        .logs-panel {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+        }
+        
+        .status-grid {
+            display: grid;
+            gap: 10px;
+        }
+        
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+        }
+        
+        .status-label {
+            font-size: 13px;
+            color: #7f8c8d;
+        }
+        
+        .status-value {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .control-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .control-buttons .btn {
+            width: 100%;
+            padding: 15px;
+            font-size: 16px;
+        }
+        
+        .logs-container {
+            max-height: 300px;
+            overflow-y: auto;
+            background: #2c3e50;
+            color: #2ecc71;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            word-wrap: break-word;
+        }
+        
+        /* MODE SELECTOR */
+        .mode-selector {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .mode-btn {
+            flex: 1;
+            padding: 8px;
+            border: 2px solid #dee2e6;
+            background: white;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .mode-btn.active {
+            background: #3498db;
+            color: white;
+            border-color: #3498db;
+        }
+        
+        /* RESPONSIVE */
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .probe-details {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        /* LOADING SPINNER */
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* NOTIFICATION */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            background: #2ecc71;
+            color: white;
+            border-radius: 5px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            z-index: 1000;
+            display: none;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        .notification.error {
+            background: #e74c3c;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- ============================================================================
+         STRUKTURA HTML - INTERFEJS UŻYTKOWNIKA
+         ============================================================================ -->
+    
+    <div class="container">
+        <!-- HEADER -->
+        <div class="header">
+            <h1>🔬 ResoNet-Nano Web UI</h1>
+            <div class="connection-status">
+                <div class="status-indicator" id="statusIndicator"></div>
+                <span id="statusText">Rozłączono</span>
+            </div>
+        </div>
+        
+        <!-- CONNECTION PANEL -->
+        <div class="connection-panel">
+            <div class="form-group">
+                <label for="deviceIp">Adres IP</label>
+                <input type="text" id="deviceIp" placeholder="np. 192.168.1.100" value="">
+            </div>
+            <div class="form-group">
+                <label for="devicePort">Port</label>
+                <input type="number" id="devicePort" placeholder="5001" value="5001" min="1" max="65535">
+            </div>
+            <button class="btn btn-primary" onclick="connectToDevice()">Połącz</button>
+            <button class="btn btn-danger" onclick="disconnectFromDevice()" id="disconnectBtn" style="display:none;">Rozłącz</button>
+        </div>
+        
+        <!-- MAIN CONTENT -->
+        <div class="main-content">
+            <!-- PROBES SECTION -->
+            <div class="probes-section">
+                <div class="section-title">
+                    <span>📡 Konfiguracja Końcówek</span>
+                    <div class="mode-selector">
+                        <button class="mode-btn active" data-mode="SINGLE" onclick="setProbeMode('SINGLE')">Pojedynczy</button>
+                        <button class="mode-btn" data-mode="MULTI" onclick="setProbeMode('MULTI')">Wielokanałowy</button>
+                    </div>
+                </div>
+                
+                <div class="probe-list" id="probeList">
+                    <!-- Probe cards will be loaded here by JavaScript -->
+                </div>
+                
+                <!-- PROBE EDITOR -->
+                <div class="probe-editor" id="probeEditor">
+                    <div class="section-title">
+                        <span id="editorTitle">Edycja Kanału</span>
+                        <button class="btn btn-danger" style="padding: 5px 15px; font-size: 12px;" onclick="closeEditor()">Zamknij</button>
+                    </div>
+                    
+                    <div class="editor-grid">
+                        <div class="editor-field">
+                            <label>Nazwa</label>
+                            <input type="text" id="editName">
+                        </div>
+                        
+                        <div class="editor-field">
+                            <label>Typ</label>
+                            <select id="editType">
+                                <option value="FLAT_COIL">Cewka Płaska</option>
+                                <option value="FERRITE_ROD">Cewka Ferrytowa</option>
+                                <option value="CAPACITIVE_PLATE">Płyta Kapacytacyjna</option>
+                                <option value="PEN_APPLICATOR">Aplikator Punktowy</option>
+                                <option value="MAT_APPLICATOR">Mata EMF</option>
+                                <option value="LOCAL_PAD">Podkładka Lokalna</option>
+                                <option value="RING_APPLICATOR">Pierścień</option>
+                                <option value="CUSTOM">Niestandardowa</option>
+                            </select>
+                        </div>
+                        
+                        <div class="editor-field">
+                            <label>Częstotliwość (Hz)</label>
+                            <input type="number" id="editFreq" step="0.01" min="0">
+                        </div>
+                        
+                        <div class="editor-field">
+                            <label>Duty Cycle (%)</label>
+                            <input type="number" id="editDuty" min="0" max="100">
+                        </div>
+                        
+                        <div class="editor-field">
+                            <label>Intensywność (0-4095)</label>
+                            <input type="number" id="editIntensity" min="0" max="4095">
+                        </div>
+                        
+                        <div class="editor-field">
+                            <label>Modulacja</label>
+                            <select id="editModulation">
+                                <option value="NONE">Brak</option>
+                                <option value="AM">AM</option>
+                                <option value="FM">FM</option>
+                                <option value="BURST">Burst</option>
+                                <option value="SWEEP">Sweep</option>
+                            </select>
+                        </div>
+                        
+                        <div class="editor-field">
+                            <label>Status</label>
+                            <div class="toggle-switch" id="editEnabled" onclick="toggleEditEnabled()"></div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 20px; display: flex; gap: 10px;">
+                        <button class="btn btn-success" onclick="saveProbeConfig()">Zapisz i Wyślij</button>
+                        <button class="btn btn-warning" onclick="saveProbeLocal()">Zapisz Lokalnie</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- SIDEBAR -->
+            <div class="sidebar">
+                <!-- STATUS PANEL -->
+                <div class="status-panel">
+                    <div class="section-title">📊 Status Systemu</div>
+                    <div class="status-grid">
+                        <div class="status-item">
+                            <span class="status-label">Temperatura</span>
+                            <span class="status-value" id="statusTemp">--°C</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Pamięć</span>
+                            <span class="status-value" id="statusMemory">-- B</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Uptime</span>
+                            <span class="status-value" id="statusUptime">-- s</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">PWM</span>
+                            <span class="status-value" id="statusPwm">--</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Częstotliwość</span>
+                            <span class="status-value" id="statusFreq">-- Hz</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Bezpieczeństwo</span>
+                            <span class="status-value" id="statusSafety">--</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- CONTROL PANEL -->
+                <div class="control-panel">
+                    <div class="section-title">🎛️ Sterowanie</div>
+                    <div class="control-buttons">
+                        <button class="btn btn-success" onclick="startTherapy()" id="startBtn">▶ Start Terapii</button>
+                        <button class="btn btn-danger" onclick="stopTherapy()" id="stopBtn">⏹ Stop Terapii</button>
+                        <button class="btn btn-warning" onclick="sendAllConfigs()">📤 Wyślij Wszystkie</button>
+                        <button class="btn btn-primary" onclick="refreshStatus()">🔄 Odśwież Status</button>
+                    </div>
+                </div>
+                
+                <!-- LOGS PANEL -->
+                <div class="logs-panel">
+                    <div class="section-title">📝 Dziennik Zdarzeń</div>
+                    <div class="logs-container" id="logsContainer">
+                        <div class="log-entry">Oczekiwanie na połączenie...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- NOTIFICATION -->
+    <div class="notification" id="notification"></div>
+    
+    <!-- ============================================================================
+         JAVASCRIPT - LOGIKA APLIKACJI
+         ============================================================================ -->
+    <script>
+        /**
+         * ============================================================================
+         * DEBUG MODE - Tryb Debugowania JavaScript
+         * ============================================================================
+         * Ustaw na true aby włączyć szczegółowe logowanie w konsoli przeglądarki
+         */
+        const DEBUG = true;
+        
+        // Funkcja pomocnicza do logowania debug
+        function debugLog(message, level = 'INFO', data = null) {
+            if (!DEBUG) return;
+            
+            const timestamp = new Date().toISOString().substr(19, 12);
+            const prefix = `[${timestamp}] [${level}]`;
+            
+            if (level === 'ERROR') {
+                console.error(`${prefix} ${message}`, data !== null ? data : '');
+            } else if (level === 'WARN' || level === 'WARNING') {
+                console.warn(`${prefix} ${message}`, data !== null ? data : '');
+            } else if (level === 'DEBUG') {
+                console.log(`${prefix} ${message}`, data !== null ? data : '');
+            } else {
+                console.info(`${prefix} ${message}`, data !== null ? data : '');
+            }
+        }
+        
+        debugLog("=== URUCHOMIENIE index.html ===", "START");
+        debugLog("User Agent: " + navigator.userAgent, "DEBUG");
+        debugLog("Window size: " + window.innerWidth + "x" + window.innerHeight, "DEBUG");
+        
+        // Global state
+        let probes = {};
+        let currentChannel = null;
+        let isConnected = false;
+        let probeMode = 'SINGLE';
+        let refreshInterval = null;
+        
+        // API endpoint
+        const API_URL = 'api.php';
+        
+        debugLog("Inicjalizacja stanu globalnego", "DEBUG", {
+            probes: probes,
+            currentChannel: currentChannel,
+            isConnected: isConnected,
+            probeMode: probeMode
+        });
+        
+        // ============================================================================
+        // FUNKCJE POMOCNICZE
+        // ============================================================================
+        
+        /**
+         * Wyświetl powiadomienie dla użytkownika
+         * @param {string} message - Wiadomość do wyświetlenia
+         * @param {boolean} isError - Czy to jest błąd
+         */
+        function showNotification(message, isError = false) {
+            debugLog("showNotification called", "DEBUG", { message, isError });
+            
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = 'notification' + (isError ? ' error' : '');
+            notification.style.display = 'block';
+            
+            debugLog("Powiadomienie wyświetlone", "DEBUG");
+            
+            setTimeout(() => {
+                notification.style.display = 'none';
+                debugLog("Powiadomienie ukryte", "DEBUG");
+            }, 3000);
+        }
+        
+        /**
+         * Wykonaj zapytanie API do backendu PHP
+         * @param {string} action - Nazwa akcji
+         * @param {object|null} data - Dane do wysłania
+         * @returns {Promise<object>} Wynik zapytania
+         */
+        async function apiCall(action, data = null) {
+            debugLog(`apiCall started: action=${action}`, "INFO", data);
+            
+            try {
+                const startTime = performance.now();
+                
+                const options = {
+                    method: data ? 'POST' : 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                };
+                
+                if (data) {
+                    options.body = JSON.stringify(data);
+                    debugLog("Wysyłanie danych JSON", "DEBUG", data);
+                }
+                
+                const url = `${API_URL}?action=${action}`;
+                debugLog(`Wykonanie fetch: ${options.method} ${url}`, "DEBUG");
+                
+                const response = await fetch(url, options);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                const endTime = performance.now();
+                
+                debugLog(`Odpowiedź API otrzymana w ${(endTime - startTime).toFixed(2)}ms`, "DEBUG", result);
+                
+                return result;
+            } catch (error) {
+                debugLog(`Błąd API: ${error.message}`, "ERROR", { action, error });
+                throw error;
+            }
+        }
+        
+        // ============================================================================
+        // POŁĄCZENIE Z URZĄDZENIEM
+        // ============================================================================
+        
+        /**
+         * Połącz z urządzeniem Arduino
+         */
+        async function connectToDevice() {
+            debugLog("connectToDevice called", "INFO");
+            
+            const ip = document.getElementById('deviceIp').value.trim();
+            const port = document.getElementById('devicePort').value;
+            
+            debugLog("Dane połączenia", "DEBUG", { ip, port });
+            
+            if (!ip) {
+                debugLog("Brak adresu IP", "WARNING");
+                showNotification('Podaj adres IP urządzenia', true);
+                return;
+            }
+            
+            // Walidacja adresu IP
+            const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
+            if (!ipRegex.test(ip)) {
+                debugLog("Nieprawidłowy format IP", "WARNING");
+                showNotification('Nieprawidłowy format adresu IP', true);
+                return;
+            }
+            
+            // Walidacja portu
+            if (port < 1 || port > 65535) {
+                debugLog("Nieprawidłowy numer portu", "WARNING");
+                showNotification('Port musi być w zakresie 1-65535', true);
+                return;
+            }
+            
+            try {
+                debugLog("Wywołanie API connect...", "INFO");
+                const result = await apiCall('connect', { ip, port });
+                
+                debugLog("Odpowiedź API connect", "DEBUG", result);
+                
+                if (result.success) {
+                    isConnected = true;
+                    updateConnectionStatus(true);
+                    showNotification('Połączono z urządzeniem');
+                    startAutoRefresh();
+                    debugLog("Połączenie nawiązane pomyślnie", "INFO");
+                } else {
+                    debugLog("Błąd połączenia: " + result.message, "ERROR");
+                    showNotification(result.message, true);
+                }
+            } catch (error) {
+                debugLog("Wyjątek podczas łączenia: " + error.message, "ERROR");
+                showNotification('Błąd połączenia: ' + error.message, true);
+            }
+        }
+        
+        /**
+         * Rozłącz z urządzeniem Arduino
+         */
+        async function disconnectFromDevice() {
+            debugLog("disconnectFromDevice called", "INFO");
+            
+            try {
+                const result = await apiCall('disconnect');
+                
+                debugLog("Odpowiedź API disconnect", "DEBUG", result);
+                
+                if (result.success) {
+                    isConnected = false;
+                    updateConnectionStatus(false);
+                    showNotification('Rozłączono z urządzeniem');
+                    stopAutoRefresh();
+                    debugLog("Rozłączono pomyślnie", "INFO");
+                }
+            } catch (error) {
+                debugLog("Wyjątek podczas rozłączania: " + error.message, "ERROR");
+                showNotification('Błąd rozłączania: ' + error.message, true);
+            }
+        }
+        
+        /**
+         * Aktualizuj wskaźnik statusu połączenia w UI
+         * @param {boolean} connected - Czy połączenie jest aktywne
+         */
+        function updateConnectionStatus(connected) {
+            debugLog("updateConnectionStatus called", "DEBUG", { connected });
+            
+            const indicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+            
+            if (connected) {
+                indicator.classList.add('connected');
+                statusText.textContent = 'Połączono';
+                disconnectBtn.style.display = 'inline-block';
+                debugLog("Status: Połączono", "DEBUG");
+            } else {
+                indicator.classList.remove('connected');
+                statusText.textContent = 'Rozłączono';
+                disconnectBtn.style.display = 'none';
+                debugLog("Status: Rozłączono", "DEBUG");
+            }
+        }
+        
+        // ============================================================================
+        // ŁADOWANIE I WYŚWIETLANIE KOŃCÓWEK
+        // ============================================================================
+        
+        async function loadProbes() {
+            try {
+                const result = await apiCall('get_probes');
+                
+                if (result.success) {
+                    probes = result.probes;
+                    probeMode = result.probe_mode || 'SINGLE';
+                    renderProbeList();
+                    updateModeButtons();
+                }
+            } catch (error) {
+                console.error('Error loading probes:', error);
+            }
+        }
+        
+        /**
+         * Funkcja do bezpiecznego escapowania HTML (ochrona przed XSS)
+         * @param {string} text - Tekst do zescapowania
+         * @returns {string} - Bezpieczny HTML
+         */
+        function escapeHtml(text) {
+            if (typeof text !== 'string') {
+                text = String(text);
+            }
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        /**
+         * Renderuje listę końcówek w panelu głównym
+         * Zastosowano escapeHtml dla wszystkich danych wejściowych od użytkownika
+         */
+        function renderProbeList() {
+            const container = document.getElementById('probeList');
+            container.innerHTML = '';
+            
+            for (let channel = 1; channel <= 8; channel++) {
+                const probe = probes[channel];
+                if (!probe) continue;
+                
+                const card = document.createElement('div');
+                card.className = `probe-card ${probe.enabled ? 'active' : 'inactive'}`;
+                card.onclick = () => openEditor(channel);
+                
+                // Zastosowano escapeHtml dla wszystkich pól wprowadzanych przez użytkownika
+                const safeName = escapeHtml(probe.name);
+                const safeTypeName = escapeHtml(getTypeName(probe.type));
+                
+                card.innerHTML = `
+                    <div class="probe-header">
+                        <span class="probe-name">Kanał ${channel}: ${safeName}</span>
+                        <span class="probe-status ${probe.enabled ? 'enabled' : 'disabled'}">
+                            ${probe.enabled ? 'AKTYWNA' : 'NIEAKTYWNA'}
+                        </span>
+                    </div>
+                    <div class="probe-details">
+                        <div class="probe-detail-item">
+                            <span class="probe-detail-label">Typ</span>
+                            <span class="probe-detail-value">${safeTypeName}</span>
+                        </div>
+                        <div class="probe-detail-item">
+                            <span class="probe-detail-label">Częstotliwość</span>
+                            <span class="probe-detail-value">${parseFloat(probe.freq).toFixed(2)} Hz</span>
+                        </div>
+                        <div class="probe-detail-item">
+                            <span class="probe-detail-label">Duty</span>
+                            <span class="probe-detail-value">${probe.duty}%</span>
+                        </div>
+                        <div class="probe-detail-item">
+                            <span class="probe-detail-label">Intensywność</span>
+                            <span class="probe-detail-value">${probe.intensity}</span>
+                        </div>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            }
+        }
+        
+        function getTypeName(type) {
+            const names = {
+                'FLAT_COIL': 'Cewka Płaska',
+                'FERRITE_ROD': 'Cewka Ferrytowa',
+                'CAPACITIVE_PLATE': 'Płyta Kapacytacyjna',
+                'PEN_APPLICATOR': 'Aplikator Punktowy',
+                'MAT_APPLICATOR': 'Mata EMF',
+                'LOCAL_PAD': 'Podkładka Lokalna',
+                'RING_APPLICATOR': 'Pierścień',
+                'CUSTOM': 'Niestandardowa'
+            };
+            return names[type] || type;
+        }
+        
+        function getModulationName(mod) {
+            const names = {
+                'NONE': 'Brak',
+                'AM': 'AM',
+                'FM': 'FM',
+                'BURST': 'Burst',
+                'SWEEP': 'Sweep'
+            };
+            return names[mod] || mod;
+        }
+        
+        // ============================================================================
+        // EDYTOR KOŃCÓWKI
+        // ============================================================================
+        
+        function openEditor(channel) {
+            currentChannel = channel;
+            const probe = probes[channel];
+            
+            document.getElementById('editorTitle').textContent = `Edycja Kanału ${channel}`;
+            document.getElementById('editName').value = probe.name;
+            document.getElementById('editType').value = probe.type;
+            document.getElementById('editFreq').value = probe.freq;
+            document.getElementById('editDuty').value = probe.duty;
+            document.getElementById('editIntensity').value = probe.intensity;
+            document.getElementById('editModulation').value = probe.modulation;
+            
+            const enabledToggle = document.getElementById('editEnabled');
+            enabledToggle.className = `toggle-switch ${probe.enabled ? 'enabled' : ''}`;
+            
+            document.getElementById('probeEditor').classList.add('visible');
+            document.getElementById('probeEditor').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function closeEditor() {
+            currentChannel = null;
+            document.getElementById('probeEditor').classList.remove('visible');
+        }
+        
+        function toggleEditEnabled() {
+            const toggle = document.getElementById('editEnabled');
+            toggle.classList.toggle('enabled');
+        }
+        
+        async function saveProbeLocal() {
+            if (!currentChannel) return;
+            
+            const data = {
+                channel: currentChannel,
+                field: 'name',
+                value: document.getElementById('editName').value
+            };
+            
+            await apiCall('set_probe', data);
+            
+            data.field = 'type';
+            data.value = document.getElementById('editType').value;
+            await apiCall('set_probe', data);
+            
+            data.field = 'freq';
+            data.value = parseFloat(document.getElementById('editFreq').value);
+            await apiCall('set_probe', data);
+            
+            data.field = 'duty';
+            data.value = parseInt(document.getElementById('editDuty').value);
+            await apiCall('set_probe', data);
+            
+            data.field = 'intensity';
+            data.value = parseInt(document.getElementById('editIntensity').value);
+            await apiCall('set_probe', data);
+            
+            data.field = 'modulation';
+            data.value = document.getElementById('editModulation').value;
+            await apiCall('set_probe', data);
+            
+            data.field = 'enabled';
+            data.value = document.getElementById('editEnabled').classList.contains('enabled');
+            await apiCall('set_probe', data);
+            
+            showNotification('Zapisano konfigurację lokalnie');
+            await loadProbes();
+            closeEditor();
+        }
+        
+        async function saveProbeConfig() {
+            if (!currentChannel) return;
+            
+            await saveProbeLocal();
+            
+            if (isConnected) {
+                try {
+                    const result = await apiCall('send_config', { channel: currentChannel });
+                    
+                    if (result.success) {
+                        showNotification('Wysłano konfigurację do urządzenia');
+                    } else {
+                        showNotification(result.message, true);
+                    }
+                } catch (error) {
+                    showNotification('Błąd wysyłania: ' + error.message, true);
+                }
+            } else {
+                showNotification('Brak połączenia z urządzeniem', true);
+            }
+            
+            closeEditor();
+        }
+        
+        // ============================================================================
+        // STEROWANIE TERAPIĄ
+        // ============================================================================
+        
+        async function startTherapy() {
+            if (!isConnected) {
+                showNotification('Brak połączenia z urządzeniem', true);
+                return;
+            }
+            
+            try {
+                const result = await apiCall('start_therapy');
+                
+                if (result.success) {
+                    showNotification('Terapia rozpoczęta');
+                    refreshStatus();
+                } else {
+                    showNotification(result.message, true);
+                }
+            } catch (error) {
+                showNotification('Błąd startu: ' + error.message, true);
+            }
+        }
+        
+        async function stopTherapy() {
+            if (!isConnected) {
+                showNotification('Brak połączenia z urządzeniem', true);
+                return;
+            }
+            
+            try {
+                const result = await apiCall('stop_therapy');
+                
+                if (result.success) {
+                    showNotification('Terapia zatrzymana');
+                    refreshStatus();
+                } else {
+                    showNotification(result.message, true);
+                }
+            } catch (error) {
+                showNotification('Błąd stopu: ' + error.message, true);
+            }
+        }
+        
+        async function sendAllConfigs() {
+            if (!isConnected) {
+                showNotification('Brak połączenia z urządzeniem', true);
+                return;
+            }
+            
+            try {
+                const result = await apiCall('send_all_configs');
+                
+                if (result.success) {
+                    showNotification('Wysłano wszystkie konfiguracje');
+                } else {
+                    showNotification(result.message, true);
+                }
+            } catch (error) {
+                showNotification('Błąd wysyłania: ' + error.message, true);
+            }
+        }
+        
+        // ============================================================================
+        // STATUS SYSTEMU
+        // ============================================================================
+        
+        async function refreshStatus() {
+            try {
+                const [statusResult, logsResult] = await Promise.all([
+                    apiCall('get_status'),
+                    apiCall('get_logs')
+                ]);
+                
+                if (statusResult.success) {
+                    const status = statusResult.status;
+                    // Użyto textContent zamiast innerHTML dla bezpieczeństwa (automatyczne escapowanie)
+                    document.getElementById('statusTemp').textContent = `${status.temp}°C`;
+                    document.getElementById('statusMemory').textContent = `${status.memory} B`;
+                    document.getElementById('statusUptime').textContent = `${status.uptime} s`;
+                    document.getElementById('statusPwm').textContent = status.pwm ? 'ACTIVE' : 'STOPPED';
+                    document.getElementById('statusPwm').style.color = status.pwm ? '#2ecc71' : '#e74c3c';
+                    document.getElementById('statusFreq').textContent = `${status.freq} Hz`;
+                    document.getElementById('statusSafety').textContent = status.safety;
+                }
+                
+                if (logsResult.success && logsResult.logs.length > 0) {
+                    const logsContainer = document.getElementById('logsContainer');
+                    logsContainer.innerHTML = logsResult.logs.map(log => 
+                        `<div class="log-entry">${escapeHtml(log)}</div>`
+                    ).join('');
+                    logsContainer.scrollTop = logsContainer.scrollHeight;
+                }
+            } catch (error) {
+                console.error('Error refreshing status:', error);
+            }
+        }
+        
+        // Funkcja escapeHtml została przeniesiona wyżej (linia 906) - usunięto duplikat
+        
+        // ============================================================================
+        // TRYB PRACY
+        // ============================================================================
+        
+        async function setProbeMode(mode) {
+            try {
+                const result = await apiCall('set_probe_mode', { mode });
+                
+                if (result.success) {
+                    probeMode = mode;
+                    updateModeButtons();
+                    showNotification(`Tryb: ${mode === 'SINGLE' ? 'Pojedynczy' : 'Wielokanałowy'}`);
+                }
+            } catch (error) {
+                showNotification('Błąd zmiany trybu: ' + error.message, true);
+            }
+        }
+        
+        function updateModeButtons() {
+            const buttons = document.querySelectorAll('.mode-btn');
+            buttons.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === probeMode);
+            });
+        }
+        
+        // ============================================================================
+        // AUTO REFRESH - Automatyczne odświeżanie statusu
+        // ============================================================================
+        
+        /**
+         * Uruchom automatyczne odświeżanie statusu co 5 sekund
+         */
+        function startAutoRefresh() {
+            debugLog("startAutoRefresh called", "INFO");
+            
+            if (refreshInterval) clearInterval(refreshInterval);
+            
+            refreshInterval = setInterval(() => {
+                if (isConnected) {
+                    debugLog("Automatyczne odświeżanie statusu...", "DEBUG");
+                    refreshStatus();
+                } else {
+                    debugLog("Brak połączenia - pomijam odświeżanie", "DEBUG");
+                }
+            }, 5000);
+            
+            debugLog("Timer auto-refresh uruchomiony (5s)", "DEBUG");
+        }
+        
+        /**
+         * Zatrzymaj automatyczne odświeżanie
+         */
+        function stopAutoRefresh() {
+            debugLog("stopAutoRefresh called", "INFO");
+            
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+                debugLog("Timer auto-refresh zatrzymany", "DEBUG");
+            }
+        }
+        
+        // ============================================================================
+        // INICJALIZACJA APLIKACJI
+        // ============================================================================
+        
+        /**
+         * Funkcja inicjalizująca aplikację po załadowaniu strony DOM
+         */
+        async function init() {
+            debugLog("=== INICJALIZACJA APLIKACJI ===", "START");
+            
+            try {
+                // Sprawdź aktualne połączenie
+                debugLog("Sprawdzanie istniejącego połączenia...", "INFO");
+                const connResult = await apiCall('get_connection');
+                
+                debugLog("Odpowiedź get_connection", "DEBUG", connResult);
+                
+                if (connResult.success && connResult.connected) {
+                    isConnected = true;
+                    document.getElementById('deviceIp').value = connResult.ip || '';
+                    document.getElementById('devicePort').value = connResult.port || '5001';
+                    updateConnectionStatus(true);
+                    startAutoRefresh();
+                    debugLog("Przywrócono istniejące połączenie", "INFO");
+                } else {
+                    debugLog("Brak aktywnego połączenia w sesji", "DEBUG");
+                }
+                
+                // Załaduj konfigurację końcówek
+                debugLog("Ładowanie konfiguracji końcówek...", "INFO");
+                await loadProbes();
+                
+                // Odśwież status
+                debugLog("Pobieranie statusu urządzenia...", "INFO");
+                await refreshStatus();
+                
+                debugLog("=== INICJALIZACJA ZAKOŃCZONA ===", "SUCCESS");
+            } catch (error) {
+                debugLog("Błąd inicjalizacji: " + error.message, "ERROR", error);
+                showNotification('Błąd inicjalizacji aplikacji', true);
+            }
+        }
+        
+        // Start aplikacji po załadowaniu strony DOM
+        debugLog("Rejestracja event listener DOMContentLoaded", "DEBUG");
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

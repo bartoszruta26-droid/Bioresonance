@@ -1,1 +1,18 @@
-Nothing should be ignored since the changes only include source/config files (.sh, .md) with no build artifacts, dependencies, or temp files.
+(webui/.env*
+webui/node_modules/
+webui/dist/
+webui/build/
+webui/.vscode/
+webui/.idea/
+webui/*.log
+webui/__pycache__/
+webui/.pytest_cache/
+webui/.mypy_cache/
+webui/coverage/
+webui/htmlcov/
+webui/.coverage
+webui/*.tmp
+webui/*.swp
+webui/*.swo
+webui/.DS_Store
+webui/Thumbs.db)
