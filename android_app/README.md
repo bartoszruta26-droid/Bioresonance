@@ -31,24 +31,27 @@ Aplikacja implementuje **pełną funkcjonalność** z:
   - `MainViewModel.kt` (436 linii) - ViewModel z pełną logiką biznesową
   - `ArduinoCommunication.kt` (337 linii) - Komunikacja TCP, parsowanie odpowiedzi Arduino
   - `FrequencyDatabase.kt` (319 linii) - Baza 500+ częstotliwości z frequencies.md
-  - `TherapySessionManager.kt` (301 linii) - Menadżer sesji, timery, sekwencje
+  - `TherapySessionManager.kt` (301 linii) - Menadżer sesji, timery, sekwencje + ScheduleManager
   - `MainActivity.kt` (221 linii) - Główna aktywność z UI
   - `Models.kt` (119 linii) - Modele danych
   - `Types.kt` (105 linii) - Enumy i typy
-- **XML Layouts**: 4 pliki (activity_main.xml, strings.xml, colors.xml, themes.xml)
-- **Architektura**: MVVM (Model-View-ViewModel) z LiveData i Coroutines
-- **Łączna liczba linii**: ~1838 linii Kotlin + XML
+- **XML Layouts**: 4 pliki (473 linie XML)
+  - `activity_main.xml` (369 linii) - Główny layout z kartami Material Design
+  - `strings.xml` (66 linii) - Stringi w języku polskim
+  - `colors.xml` (11 linii) - Paleta kolorów
+  - `themes.xml` (27 linii) - Motyw aplikacji
+- **Architektura**: MVVM (Model-View-ViewModel) z StateFlow i Coroutines
+- **Łączna liczba linii**: ~1838 linii Kotlin + 473 linie XML = 2311 linii kodu
 
 ## 🏗️ Architektura
 
 ### Diagram Blokowy Systemu
 
 ```mermaid
-blockDiagram
-    direction TB
+flowchart TB
     
     subgraph UI["Warstwa UI"]
-        A[MainActivity.kt<br/>• Widżety Material Design<br/>• Observables LiveData]
+        A[MainActivity.kt<br/>• Widżety Material Components<br/>• StateFlow Observables]
     end
     
     subgraph VM["Warstwa ViewModel"]
@@ -103,34 +106,34 @@ flowchart TD
 
 ## 📁 Struktura Plików
 
-### 📂 Kotlin (1813 linii)
+### 📂 Kotlin (1838 linii)
 
 | Plik | Linie | Opis |
 |------|-------|------|
 | `Types.kt` | 105 | Enumy: EffectorType, ModulationType, SystemState, LogLevel, EventType |
 | `Models.kt` | 119 | Modele: ChannelConfig, SystemStatus, LogEntry, ConnectionState, ProbeMode |
-| `ArduinoCommunication.kt` | 312 | Komunikacja TCP, parsowanie odpowiedzi Arduino |
-| `MainViewModel.kt` | 436 | ViewModel z pełną logiką biznesową |
-| `MainActivity.kt` | 221 | Główna aktywność z UI |
-| `FrequencyDatabase.kt` | 319 | **NOWE**: Baza 500+ częstotliwości z frequencies.md |
-| `TherapySessionManager.kt` | 301 | **NOWE**: Menadżer sesji, timery, sekwencje |
+| `ArduinoCommunication.kt` | 337 | Komunikacja TCP, parsowanie odpowiedzi Arduino |
+| `MainViewModel.kt` | 436 | ViewModel z pełną logiką biznesową, StateFlow |
+| `MainActivity.kt` | 221 | Główna aktywność z UI Material Components, ViewBinding |
+| `FrequencyDatabase.kt` | 319 | Baza 500+ częstotliwości z frequencies.md |
+| `TherapySessionManager.kt` | 301 | Menadżer sesji + ScheduleManager (harmonogram) |
 
-### 📂 XML Layouts
+### 📂 XML Layouts (473 linie)
 
-| Plik | Opis |
-|------|------|
-| `activity_main.xml` | Główny layout z kartami Material Design |
-| `strings.xml` | Stringi w języku polskim |
-| `colors.xml` | Paleta kolorów |
-| `themes.xml` | Motyw aplikacji |
+| Plik | Linie | Opis |
+|------|-------|------|
+| `activity_main.xml` | 369 | Główny layout z kartami Material Design, 8 kanałów |
+| `strings.xml` | 66 | Stringi w języku polskim |
+| `colors.xml` | 11 | Paleta kolorów |
+| `themes.xml` | 27 | Motyw aplikacji Material Components (DayNight) |
 
 ### 📂 Konfiguracja
 
 | Plik | Opis |
 |------|------|
-| `build.gradle` (root) | Konfiguracja projektu |
-| `build.gradle` (app) | Zależności: Material, Lifecycle, Coroutines |
-| `AndroidManifest.xml` | Uprawnienia INTERNET, ACCESS_NETWORK_STATE |
+| `build.gradle` (root) | Konfiguracja projektu, Kotlin 1.9+, AGP 8.0+ |
+| `build.gradle` (app) | Zależności: Material Components 1.11, Lifecycle 2.7, Coroutines 1.7, OkHttp 4.12, Gson 2.10 |
+| `AndroidManifest.xml` | Uprawnienia: INTERNET, ACCESS_NETWORK_STATE, ACCESS_WIFI_STATE |
 
 ---
 
@@ -139,7 +142,9 @@ flowchart TD
 ### 1️⃣ Połączenie z Arduino
 - TCP/IP przez Ethernet HAT (port 5001)
 - Automatyczne wykrywanie połączenia
-- Obsługa błędów i retry
+- Obsługa błędów i retry (Socket timeout 3s, command timeout 2s)
+- Uprawnienia: INTERNET, ACCESS_NETWORK_STATE, ACCESS_WIFI_STATE
+- Implementacja: Java Socket (BufferedReader/PrintWriter)
 
 ### 2️⃣ 8 Kanałów Efektorów
 
