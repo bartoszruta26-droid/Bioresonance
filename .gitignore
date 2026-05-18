@@ -2,16 +2,15 @@
 # Compiled and build artifacts
 *.o
 *.obj
-*.elf
-*.hex
-*.bin
+*.a
+*.so
+*.dll
+*.exe
 *.out
 
 # Dependencies
-.pio/
-.platformio/
-lib/
-src/
+build/
+dist/
 
 # Logs and temp files
 *.log
