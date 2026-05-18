@@ -1,5 +1,10 @@
 ```
-# Compiled and build artifacts
+# Arduino build artifacts
+*.hex
+*.elf
+*.bin
+*.map
+*.d
 *.o
 *.obj
 *.exe
@@ -51,21 +56,16 @@ htmlcov/
 .env
 .env.local
 .env.*
-!.env.example
 
 # Editors
 .vscode/
 .idea/
-*.swp
-*.swo
-*~
+
+# OS
 .DS_Store
 Thumbs.db
 
-# Testing
-.nox/
-.pytest_cache/
-.tox/
+# Coverage
 coverage/
 htmlcov/
 

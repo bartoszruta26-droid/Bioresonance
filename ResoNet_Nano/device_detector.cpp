@@ -11,6 +11,7 @@
 #include <stdarg.h>   // Dla va_list, va_start, va_end
 #include <string.h>   // Dla strcmp, strncmp, memcpy, strncpy
 #include <avr/pgmspace.h>  // Dla PROGMEM, pgm_read_word
+#include "ir_led_engine.h"
 
 // ============================================================================
 // ZMIENNE GLOBALNE
@@ -150,20 +151,22 @@ void device_detector_init(DetectionConfig_t* config) {
     memset(&g_device_state, 0, sizeof(DeviceSystemState_t));
     memset(&g_bio_status, 0, sizeof(BioSensorStatus_t));
     
-    // Konfiguracja pinów cyfrowych - szczegółowe komentarze
-    pinMode(PIN_HELMHOLTZ_DETECT, INPUT_PULLUP);   // Detekcja cewki Helmholtza
-    pinMode(PIN_OTIC_ENABLE, OUTPUT);               // Enable dla aplikatora usznego
-    pinMode(PIN_ELECTRODE_ENABLE, OUTPUT);          // Enable dla elektrod
-    pinMode(PIN_WRAP_ENABLE, OUTPUT);               // Enable dla wrap applicator
-    pinMode(PIN_BIO_DETECT, INPUT_PULLUP);          // Detekcja biofeedback
-    pinMode(PIN_PPG_INT, INPUT);                    // Interrupt PPG sensor
-    pinMode(PPG_SPI_CS, OUTPUT);                    // Chip Select SPI
+    // Konfiguracja pinów cyfrowych
+    pinMode(PIN_HELMHOLTZ_DETECT, INPUT_PULLUP);
+    pinMode(PIN_OTIC_ENABLE, OUTPUT);
+    pinMode(PIN_ELECTRODE_ENABLE, OUTPUT);
+    pinMode(PIN_WRAP_ENABLE, OUTPUT);
+    pinMode(PIN_BIO_DETECT, INPUT_PULLUP);
+    pinMode(PIN_PPG_INT, INPUT);
+    pinMode(PPG_SPI_CS, OUTPUT);
+    pinMode(PIN_IR_DETECT, INPUT_PULLUP);
     
     // Ustawienie stanów początkowych - wszystkie wyłączone dla bezpieczeństwa
     digitalWrite(PIN_OTIC_ENABLE, LOW);
     digitalWrite(PIN_ELECTRODE_ENABLE, LOW);
     digitalWrite(PIN_WRAP_ENABLE, LOW);
     digitalWrite(PPG_SPI_CS, HIGH);
+    digitalWrite(PIN_IR_DETECT, HIGH);
     
     // Inicjalizacja I2C dla biofeedback
     Wire.begin();
@@ -449,6 +452,12 @@ EffectorType_t detect_effector() {
         return EFFECTOR_WRAP;
     }
     
+    // Sprawdź IR LED Strip
+    if (detect_ir_led_strip()) {
+        g_current_effector = EFFECTOR_IR_LED_STRIP;
+        return EFFECTOR_IR_LED_STRIP;
+    }
+    
     // Brak podłączonego efektora
     g_current_effector = EFFECTOR_NONE;
     g_device_state.effector.connected = false;
@@ -456,6 +465,69 @@ EffectorType_t detect_effector() {
     
     LOG_INFO("No effector detected");
     return EFFECTOR_NONE;
+}
+
+// ============================================================================
+// DETEKCJA IR LED STRIP
+// ============================================================================
+
+bool detect_ir_led_strip() {
+    LOG_DEBUG("Detecting IR LED Strip...");
+    
+    // Sprawdź czy pin detekcji jest podłączony (pull-up)
+    int detectValue = analogRead(PIN_IR_DETECT);
+    
+    // Jeśli pin IR_DETECT jest podłączony do masy przez rezystor, 
+    // oznacza to podłączenie paska IR
+    if (detectValue < 100) {
+        // Spróbuj potwierdzić poprzez pomiar prądu jeśli dostępny
+        #if defined(PIN_IR_CURRENT_SENSE)
+        int currentSense = analogRead(PIN_IR_CURRENT_SENSE);
+        
+        if (currentSense > IR_CONNECTED_MIN && currentSense <= IR_CONNECTED_MAX) {
+            LOG_INFO_F("IR LED Strip detected (ADC=%d)", currentSense);
+            g_device_state.effector.type = EFFECTOR_IR_LED_STRIP;
+            g_device_state.effector.connected = true;
+            g_device_state.effector.impedance = currentSense;
+            g_device_state.effector.quality = map(currentSense, IR_CONNECTED_MIN, IR_CONNECTED_MAX, 50, 100);
+            return true;
+        } else if (currentSense < IR_SHORT_CIRCUIT) {
+            LOG_ERROR_F("IR LED Strip SHORT CIRCUIT! (ADC=%d)", currentSense);
+            g_device_state.errorCount++;
+            return false;
+        } else if (currentSense > IR_OPEN_CIRCUIT) {
+            LOG_WARNING("IR LED Strip not connected");
+            return false;
+        }
+        #else
+        // Brak pomiaru prądu - polegaj na detekcji cyfrowej
+        LOG_INFO("IR LED Strip detected via digital pin");
+        g_device_state.effector.type = EFFECTOR_IR_LED_STRIP;
+        g_device_state.effector.connected = true;
+        g_device_state.effector.quality = 80;
+        return true;
+        #endif
+    }
+    
+    // Alternatywna metoda: test z włączonym PWM
+    digitalWrite(IR_MODULATION_PIN, HIGH);
+    delay_us(100);
+    
+    // Sprawdź reakcję na teście
+    int testValue = analogRead(PIN_IR_DETECT);
+    digitalWrite(IR_MODULATION_PIN, LOW);
+    
+    if (testValue >= IR_CONNECTED_MIN && testValue <= IR_CONNECTED_MAX) {
+        LOG_INFO_F("IR LED Strip detected via PWM test (ADC=%d)", testValue);
+        g_device_state.effector.type = EFFECTOR_IR_LED_STRIP;
+        g_device_state.effector.connected = true;
+        g_device_state.effector.impedance = testValue;
+        g_device_state.effector.quality = 75;
+        return true;
+    }
+    
+    LOG_DEBUG("IR LED Strip not detected");
+    return false;
 }
 
 // ============================================================================
