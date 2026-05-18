@@ -443,6 +443,7 @@ void loop() {
                     case EFFECTOR_OTIC: Serial.println(F("Otic Applicator")); break;
                     case EFFECTOR_CONTACT: Serial.println(F("Contact Electrodes")); break;
                     case EFFECTOR_WRAP: Serial.println(F("Wrap Applicator")); break;
+                    case EFFECTOR_IR_LED_STRIP: Serial.println(F("IR LED Strip")); break;
                     default: Serial.println(F("None")); break;
                 }
                 Serial.print(F("Connected: "));
@@ -504,6 +505,7 @@ void loop() {
                         case EFFECTOR_OTIC: Serial.println(F("Otic Applicator")); break;
                         case EFFECTOR_CONTACT: Serial.println(F("Contact Electrodes")); break;
                         case EFFECTOR_WRAP: Serial.println(F("Wrap Applicator")); break;
+                        case EFFECTOR_IR_LED_STRIP: Serial.println(F("IR LED Strip")); break;
                         default: Serial.println(F("None")); break;
                     }
                     
