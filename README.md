@@ -173,7 +173,24 @@ Specjalistyczny element emitujący pole elektromagnetyczne o kontrolowanych para
 
 ## 🧠 Oprogramowanie Układowe (Firmware) - Architektura Real-Time
 
+**Pełna dokumentacja firmware Arduino znajduje się w pliku [`arduino.md`](arduino.md).**
+
 Firmware Arduino został napisany w C++17 z wykorzystaniem frameworku Arduino Core, z bezpośrednim dostępem do rejestrów AVR i przerwaniem czasowych dla zapewnienia determinizmu.
+
+### 📁 Struktura Projektu Firmware
+
+```
+ResoNet_Nano/
+├── ResoNet_Nano.ino      # Główny plik z task schedulerem
+├── types.h               # Wspólne definicje typów
+├── safety_system.*       # Bezpieczeństwo medyczne IEC 60601-1
+├── logging_system.*      # System logowania z ring bufferem
+├── event_system.*        # Obsługa zdarzeń FIFO
+├── pwm_engine.*          # Generator XV-LPWM
+└── network_system.*      # Komunikacja Ethernet ENC28J60
+```
+
+**Zobacz:** [Dokumentacja Arduino - Kompletny opis modułów, pseudowielowątkowości i konfiguracji](arduino.md)
 
 ### 📡 Stos Sieciowy i Protokół Komunikacji
 Wykorzystano zoptymalizowaną bibliotekę `EthernetENC` (dla ENC28J60) z ręczną tuningiem buforów.
@@ -504,18 +521,31 @@ tail -f /var/log/apache2/resonet_error.log
 4. **Sieć**: Podłącz Arduino do routera/switcha kablem Ethernet.
 
 ### 💾 Kompilacja i Wgranie Firmware
+
+**Metoda 1: Arduino IDE (Zalecane)**
+
+1. Otwórz folder `ResoNet_Nano/` w Arduino IDE
+2. Zainstaluj bibliotekę `EthernetENC` (Szkic → Dołącz bibliotekę)
+3. Wybierz płytkę: Arduino Nano (ATmega328P)
+4. Kliknij "Wgraj" (Ctrl+U)
+
+**Metoda 2: PlatformIO (Dla zaawansowanych)**
+
 ```bash
 # Klonowanie repozytorium
 git clone https://github.com/resonet-open/ResoNet-Nano.git
-cd ResoNet-Nano/firmware
+cd ResoNet-Nano/ResoNet_Nano
 
-# Konfiguracja PlatformIO
+# Kompilacja i upload
 platformio run --environment nano_enc28j60 --target upload
 
 # Monitor portu szeregowego (debug)
 platformio device monitor --baud 115200
 ```
-*Konfiguracja sieciowa (IP, MAC) w pliku `src/config/network.h`.*
+
+**Pełna instrukcja:** Zobacz [Konfiguracja i Kompilacja w arduino.md](arduino.md#konfiguracja-i-kompilacja)
+
+*Konfiguracja sieciowa (IP, MAC) w pliku `types.h`.*
 
 ### 🎯 Kalibracja Urządzenia
 1. **Kalibracja Częstotliwości**: Podłącz oscyloskop do wyjścia PWM, porównaj z wartością zadaną, skoryguj współczynnik w `calibration.cpp`.
