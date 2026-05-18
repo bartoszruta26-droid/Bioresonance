@@ -7,10 +7,12 @@ Arduino Nano + PoE 48V->5V Compatible
 ================================================================================
 Format: frequency_hz|category|subcategory|description|modulation_type|carrier_khz
 Categories: INJURY_BONE, INJURY_JOINT, INJURY_MUSCLE, INJURY_LIGAMENT, INJURY_NERVE, 
-            INJURY_FASCIA, CIRCULATION, ANTIPARASITIC, MITOCHONDRIA, TELOMERE,
+            INJURY_FASCIA, CIRCULATION, ANTIPARASITIC, MITOCHONDRIA, TELOMERE, DNA_REPAIR,
             ANTIBACTERIAL, ANTIVIRAL, ANTIFUNGAL, IMMUNE, HORMONAL, DETOX,
             ORGAN_SPECIFIC, PAIN, NEUROLOGICAL, RESPIRATORY, DIGESTIVE,
-            CARDIOVASCULAR, LYMPHATIC, SKIN, AUTOIMMUNE, METABOLIC
+            CARDIOVASCULAR, LYMPHATIC, SKIN, AUTOIMMUNE, METABOLIC,
+            SPIRITUALITY, VIRTUES, MERCY_ACTS, CHAKRAS, HOLY_SPIRIT_GIFTS,
+            PROPHECY, LONGEVITY
 Modulation: AM, FM, PWM, BURST, SWEEP, RANDOM, NONE
 Carrier: carrier frequency in kHz for modulation (0 if not applicable)
 ARDUINO NANO LIMITS: Max carrier 30 kHz (PWM pin 9/10), Max modulated freq 20 kHz
@@ -207,6 +209,201 @@ freq_hz|category|subcategory|description|modulation|carrier_khz
 288|TELOMERE|lengthening_deep|Wydłużanie telomerów głębokie / Deep telomere lengthening|FM|25
 864|TELOMERE|tert_deep|Aktywacja TERT / TERT activation|AM|20
 1440|TELOMERE|rejuvenation|Odmładzanie komórkowe / Cellular rejuvenation|PWM|18
+--------------------------------------------------------------------------------
+=== NAPRAWA DNA / DNA REPAIR ===
+528|DNA_REPAIR|repair|Naprawa DNA / DNA repair|FM|0
+639|DNA_REPAIR|healing|Uzdrowienie DNA / DNA healing|AM|0
+741|DNA_REPAIR|expression|Ekspresja genów / Gene expression|AM|0
+852|DNA_REPAIR|methylation|Metylacja DNA / DNA methylation|FM|0
+963|DNA_REPAIR|epigenetic|Naprawa epigenetyczna / Epigenetic repair|AM|0
+1074|DNA_REPAIR|mutation|Redukcja mutacji / Mutation reduction|AM|0
+1185|DNA_REPAIR|strand|Naprawa nici DNA / DNA strand repair|FM|0
+1296|DNA_REPAIR|double_strand|Naprawa podwójnych nici / Double strand break repair|AM|0
+1407|DNA_REPAIR|oxidative|Ochrona przed uszkodzeniami oksydacyjnymi / Oxidative damage protection|AM|0
+1518|DNA_REPAIR|uv|Naprawa uszkodzeń UV / UV damage repair|AM|0
+1629|DNA_REPAIR|chemical|Naprawa uszkodzeń chemicznych / Chemical damage repair|AM|0
+1740|DNA_REPAIR|radiation|Naprawa uszkodzeń radiacyjnych / Radiation damage repair|FM|0
+1851|DNA_REPAIR|telomere_dna|Połączenie telomer-DNA / Telomere-DNA connection|AM|0
+1962|DNA_REPAIR|chromosome|Stabilizacja chromosomów / Chromosome stabilization|AM|0
+2073|DNA_REPAIR|histone|Modyfikacja histonów / Histone modification|AM|0
+528|DNA_REPAIR|love_frequency|Częstotliwość miłości - naprawa DNA / Love frequency DNA repair|FM|15
+639|DNA_REPAIR|miracle|Cudowna naprawa DNA / Miracle DNA repair|AM|20
+--------------------------------------------------------------------------------
+=== DUCHOWOŚĆ I ROZWÓJ / SPIRITUALITY AND DEVELOPMENT ===
+96|SPIRITUALITY|meditation|Głęboka medytacja / Deep meditation|AM|0
+144|SPIRITUALITY|prayer|Modlitwa i kontemplacja / Prayer and contemplation|AM|0
+192|SPIRITUALITY|mindfulness|Uważność / Mindfulness|AM|0
+240|SPIRITUALITY|compassion|Współczucie / Compassion|AM|0
+288|SPIRITUALITY|forgiveness|Przebaczenie / Forgiveness|FM|0
+336|SPIRITUALITY|gratitude|Wdzięczność / Gratitude|AM|0
+384|SPIRITUALITY|humility|Pokora / Humility|AM|0
+432|SPIRITUALITY|universal_harmony|Harmonia uniwersalna / Universal harmony|FM|0
+480|SPIRITUALITY|inner_peace|Wewnętrzny pokój / Inner peace|AM|0
+528|SPIRITUALITY|transformation|Transformacja / Transformation|FM|0
+576|SPIRITUALITY|enlightenment|Oświecenie / Enlightenment|AM|0
+624|SPIRITUALITY|divine_connection|Połączenie z boskością / Divine connection|AM|0
+672|SPIRITUALITY|soul_healing|Uzdrowienie duszy / Soul healing|AM|0
+720|SPIRITUALITY|higher_self|Wyższe Ja / Higher self|FM|0
+768|SPIRITUALITY|ascension|Wniebowstąpienie / Ascension|AM|0
+816|SPIRITUALITY|unity|Jedność / Unity|AM|0
+864|SPIRITUALITY|cosmic_consciousness|Kosmiczna świadomość / Cosmic consciousness|FM|0
+912|SPIRITUALITY|divine_love|Boska miłość / Divine love|AM|0
+960|SPIRITUALITY|spiritual_awakening|Przebudzenie duchowe / Spiritual awakening|AM|0
+1008|SPIRITUALITY|third_eye|Trzecie oko / Third eye|PWM|0
+1056|SPIRITUALITY|crown_chakra|Czakra korony / Crown chakra|FM|0
+1104|SPIRITUALITY|pineal_activation|Aktywacja szyszynki / Pineal activation|PWM|0
+1152|SPIRITUALITY|mystical_experience|Doświadczenie mistyczne / Mystical experience|AM|0
+1200|SPIRITUALITY|samadhi|Samadhi|AM|0
+144|SPIRITUALITY|deep_prayer|Głęboka modlitwa / Deep prayer|FM|18
+432|SPIRITUALITY|cosmic_harmony|Kosmiczna harmonia / Cosmic harmony|FM|20
+528|SPIRITUALITY|dna_spiritual|Duchowa naprawa DNA / Spiritual DNA repair|FM|25
+--------------------------------------------------------------------------------
+=== CZNOTY KARDYNALNE / CARDINAL VIRTUES ===
+111|VIRTUES|prudence|Roztropność / Prudence|AM|0
+222|VIRTUES|justice|Sprawiedliwość / Justice|AM|0
+333|VIRTUES|fortitude|Męstwo / Fortitude|AM|0
+444|VIRTUES|temperance|Umiarkowanie / Temperance|AM|0
+555|VIRTUES|faith|Wiara / Faith|FM|0
+666|VIRTUES|hope|Nadzieja / Hope|AM|0
+777|VIRTUES|charity|Miłość / Charity (Love)|FM|0
+888|VIRTUES|wisdom|Mądrość / Wisdom|AM|0
+999|VIRTUES|understanding|Rozumienie / Understanding|AM|0
+1110|VIRTUES|counsel|Rada / Counsel|AM|0
+1221|VIRTUES|knowledge|Wiedza / Knowledge|AM|0
+1332|VIRTUES|piety|Pobożność / Piety|FM|0
+1443|VIRTUES|fear_of_lord|Bojaźń Boża / Fear of the Lord|AM|0
+1554|VIRTUES|patience|Cierpliwość / Patience|AM|0
+1665|VIRTUES|kindness|Łagodność / Kindness|AM|0
+1776|VIRTUES|goodness|Dobroć / Goodness|AM|0
+1887|VIRTUES|faithfulness|Wierność / Faithfulness|AM|0
+1998|VIRTUES|gentleness|Cichość / Gentleness|AM|0
+2109|VIRTUES|self_control|Opanowanie / Self-control|AM|0
+111|VIRTUES|prudence_deep|Roztropność głęboka / Deep prudence|AM|15
+333|VIRTUES|fortitude_deep|Męstwo głębokie / Deep fortitude|AM|18
+777|VIRTUES|charity_deep|Miłość głęboka / Deep charity|FM|20
+--------------------------------------------------------------------------------
+=== AKTY MIŁOSIERDZIA / ACTS OF MERCY ===
+108|MERCY_ACTS|feed_hungry|Nakarmić głodnych / Feed the hungry|AM|0
+216|MERCY_ACTS|give_drink|Dać pić spragnionym / Give drink to the thirsty|AM|0
+324|MERCY_ACTS|clothe_naked|Odziać nagich / Clothe the naked|AM|0
+432|MERCY_ACTS|shelter_homeless|Przyjąć w gościnę / Shelter the homeless|AM|0
+540|MERCY_ACTS|visit_sick|Odwiedzić chorych / Visit the sick|FM|0
+648|MERCY_ACTS|visit_prisoners|Odwiedzić więzionych / Visit prisoners|AM|0
+756|MERCY_ACTS|bury_dead|Pogrzebać umarłych / Bury the dead|AM|0
+864|MERCY_ACTS|counsel_doubtful|Pouczyć nieumiejących / Counsel the doubtful|AM|0
+972|MERCY_ACTS|instruct_ignorant|Instruować niewiedzących / Instruct the ignorant|FM|0
+1080|MERCY_ACTS|admonish_sinner|Upominać grzeszących / Admonish sinners|AM|0
+1188|MERCY_ACTS|comfort_sorrowful|Pocieszać strapionych / Comfort the sorrowful|AM|0
+1296|MERCY_ACTS|forgive_injuries|Przebaczyć krzywdy / Forgive injuries|FM|0
+1404|MERCY_ACTS|bear_wrongs|Znosić cudze złe / Bear wrongs patiently|AM|0
+1512|MERCY_ACTS|pray_living|Modlić się za żywych / Pray for the living|AM|0
+1620|MERCY_ACTS|pray_dead|Modlić się za zmarłych / Pray for the dead|AM|0
+540|MERCY_ACTS|healing_deep|Głębokie uzdrowienie chorych / Deep healing of sick|FM|22
+756|MERCY_ACTS|mercy_comprehensive|Kompleksowe akty miłosierdzia / Comprehensive mercy acts|AM|25
+--------------------------------------------------------------------------------
+=== CZAKRY / CHAKRAS ===
+194|CHAKRAS|root_muladhara|Czakra podstawy / Root chakra Muladhara|AM|0
+288|CHAKRAS|sacral_svadhishthana|Czakra sakralna / Sacral chakra Svadhishthana|AM|0
+384|CHAKRAS|solar_plexus_manipura|Czakra splotu słonecznego / Solar plexus Manipura|AM|0
+480|CHAKRAS|heart_anahata|Czakra serca / Heart chakra Anahata|FM|0
+576|CHAKRAS|throat_vishuddha|Czakra gardła / Throat chakra Vishuddha|AM|0
+672|CHAKRAS|third_eye_ajna|Czakra trzeciego oka / Third eye Ajna|PWM|0
+768|CHAKRAS|crown_sahasrara|Czakra korony / Crown chakra Sahasrara|FM|0
+864|CHAKRAS|earth_stellar|Czakra gwiezdnej ziemi / Earth star chakra|AM|0
+960|CHAKRAS|soul_star|Czakra gwiazdy duszy / Soul star chakra|AM|0
+1056|CHAKRAS|causal|Czakra przyczynowa / Causal chakra|AM|0
+1152|CHAKRAS|celestial|Czakra niebiańska / Celestial chakra|AM|0
+1248|CHAKRAS|divine|Czakra boska / Divine chakra|FM|0
+1344|CHAKRAS|golden|Złota czakra / Golden chakra|AM|0
+1440|CHAKRAS|crystal|Kryształowa czakra / Crystal chakra|AM|0
+1536|CHAKRAS|plasma|Plazmowa czakra / Plasma chakra|AM|0
+1632|CHAKRAS|unity|Czakra jedności / Unity chakra|AM|0
+194|CHAKRAS|root_balance|Balans czakry podstawy / Root chakra balance|AM|12
+480|CHAKRAS|heart_healing|Uzdrowienie czakry serca / Heart chakra healing|FM|18
+768|CHAKRAS|crown_activation|Aktywacja czakry korony / Crown chakra activation|FM|25
+--------------------------------------------------------------------------------
+=== DARY DUCHA ŚWIĘTEGO / GIFTS OF THE HOLY SPIRIT ===
+144|HOLY_SPIRIT_GIFTS|wisdom|Mądrość / Wisdom|FM|0
+288|HOLY_SPIRIT_GIFTS|understanding|Rozum / Understanding|AM|0
+432|HOLY_SPIRIT_GIFTS|counsel|Rada / Counsel|AM|0
+576|HOLY_SPIRIT_GIFTS|fortitude|Męstwo / Fortitude|AM|0
+720|HOLY_SPIRIT_GIFTS|knowledge|Wiedza / Knowledge|FM|0
+864|HOLY_SPIRIT_GIFTS|piety|Pobożność / Piety|AM|0
+1008|HOLY_SPIRIT_GIFTS|fear_of_lord|Bojaźń Boża / Fear of the Lord|AM|0
+1152|HOLY_SPIRIT_GIFTS|prophecy|Proroctwo / Prophecy|PWM|0
+1296|HOLY_SPIRIT_GIFTS|healing|Uzdrowienie / Healing|FM|0
+1440|HOLY_SPIRIT_GIFTS|miracles|Cuda / Miracles|AM|0
+1584|HOLY_SPIRIT_GIFTS|discernment|Rozróżnianie duchów / Discernment of spirits|AM|0
+1728|HOLY_SPIRIT_GIFTS|tongues|Dar języków / Speaking in tongues|PWM|0
+1872|HOLY_SPIRIT_GIFTS|interpretation|Interpretacja języków / Interpretation of tongues|AM|0
+2016|HOLY_SPIRIT_GIFTS|apostleship|Apostołowanie / Apostleship|AM|0
+2160|HOLY_SPIRIT_GIFTS|teaching|Nauczanie / Teaching|AM|0
+2304|HOLY_SPIRIT_GIFTS|exhortation|Napominanie / Exhortation|AM|0
+2448|HOLY_SPIRIT_GIFTS|giving|Szczodrość / Giving|AM|0
+2592|HOLY_SPIRIT_GIFTS|leadership|Przewodzenie / Leadership|AM|0
+2736|HOLY_SPIRIT_GIFTS|mercy|Miłosierdzie / Mercy|FM|0
+144|HOLY_SPIRIT_GIFTS|wisdom_deep|Głęboka mądrość / Deep wisdom|FM|20
+720|HOLY_SPIRIT_GIFTS|knowledge_deep|Głęboka wiedza / Deep knowledge|FM|25
+--------------------------------------------------------------------------------
+=== WIZJE PROROCZE I DAR PROROCTWA / PROPHETIC VISIONS AND PROPHECY ===
+111|PROPHECY|activation|Aktywacja daru proroctwa / Prophecy gift activation|PWM|0
+222|PROPHECY|clarity|Jasnowidzenie / Clairvoyance|AM|0
+333|PROPHECY|clairaudience|Jasnosłyszenie / Clairaudience|AM|0
+444|PROPHECY|clairsentience|Jasnoczucie / Clairsentience|FM|0
+555|PROPHECY|dreams|Sny prorocze / Prophetic dreams|AM|0
+666|PROPHECY|visions|Wizje / Visions|PWM|0
+777|PROPHECY|discernment|Rozróżnianie / Discernment|AM|0
+888|PROPHECY|word_knowledge|Słowo wiedzy / Word of knowledge|AM|0
+999|PROPHECY|word_wisdom|Słowo mądrości / Word of wisdom|FM|0
+1110|PROPHECY|future_sight|Widzenie przyszłości / Future sight|AM|0
+1221|PROPHECY|remote_viewing|Widzenie na odległość / Remote viewing|AM|0
+1332|PROPHECY|astral_projection|Projekcja astralna / Astral projection|PWM|0
+1443|PROPHECY|lucid_dreaming|Świadome śnienie / Lucid dreaming|AM|0
+1554|PROPHECY|intuition|Intuicja / Intuition|AM|0
+1665|PROPHECY|psychic_protection|Ochrona psychiczna / Psychic protection|AM|0
+1776|PROPHECY|spiritual_shield|Tarcza duchowa / Spiritual shield|AM|0
+1887|PROPHECY|angelic_communication|Komunikacja z aniołami / Angelic communication|FM|0
+1998|PROPHECY|divine_messages|Boskie przesłania / Divine messages|AM|0
+2109|PROPHECY|biblical_prophecy|Proroctwa biblijne / Biblical prophecy|AM|0
+2220|PROPHECY|end_times|Proroctwa czasów ostatecznych / End times prophecy|AM|0
+222|PROPHECY|clarity_deep|Głębokie jasnowidzenie / Deep clairvoyance|AM|18
+666|PROPHECY|visions_deep|Głębokie wizje / Deep visions|PWM|22
+888|PROPHECY|word_deep|Głębokie słowo wiedzy / Deep word of knowledge|FM|25
+--------------------------------------------------------------------------------
+=== DŁUGOWIECZNOŚĆ I WYDŁUŻENIE ŻYCIA / LONGEVITY AND LIFE EXTENSION ===
+100|LONGEVITY|cellular_renewal|Odnawianie komórkowe / Cellular renewal|AM|0
+200|LONGEVITY|stem_cells|Aktywacja komórek macierzystych / Stem cell activation|FM|0
+300|LONGEVITY|autophagy|Autofagia / Autophagy|AM|0
+400|LONGEVITY|senolytics|Usuwanie komórek starzejących się / Senolytics|AM|0
+500|LONGEVITY|nad_boost|Zwiększenie NAD+ / NAD+ boost|AM|0
+600|LONGEVITY|sirtuin_activation|Aktywacja sirtuin / Sirtuin activation|FM|0
+700|LONGEVITY|ampk|Aktywacja AMPK / AMPK activation|AM|0
+800|LONGEVITY|mtor_inhibition|Inhibicja mTOR / mTOR inhibition|AM|0
+900|LONGEVITY|foxo|Aktywacja FOXO / FOXO activation|AM|0
+1000|LONGEVITY|klotho|Białko Klotho / Klotho protein|FM|0
+1100|LONGEVITY|telomerase_full|Pełna aktywacja telomerazy / Full telomerase activation|FM|0
+1200|LONGEVITY|mitohormesis|Mitohormeza / Mitohormesis|AM|0
+1300|LONGEVITY|caloric_mimic|Symulacja restrykcji kalorycznych / Caloric restriction mimic|AM|0
+1400|LONGEVITY|rapamycin_freq|Efekt rapamycyny częstotliwościowej / Rapamycin frequency effect|AM|0
+1500|LONGEVITY|metformin_freq|Efekt metforminy częstotliwościowej / Metformin frequency effect|AM|0
+1600|LONGEVITY|resveratrol|Efekt resweratrolu / Resveratrol effect|FM|0
+1700|LONGEVITY|quercetin|Efekt kwercetyny / Quercetin effect|AM|0
+1800|LONGEVITY|fisetin|Efekt fisetyny / Fisetin effect|AM|0
+1900|LONGEVITY|sproutlin|Efekt sprolutyny / Sproutlin effect|AM|0
+2000|LONGEVITY|young_blood|Efekt młodej krwi / Young blood effect|FM|0
+2100|LONGEVITY|parabiosis|Parabioza częstotliwościowa / Frequency parabiosis|AM|0
+2200|LONGEVITY|organ_regeneration|Regeneracja organów / Organ regeneration|AM|0
+2300|LONGEVITY|tissue_rejuvenation|Odmładzanie tkanek / Tissue rejuvenation|FM|0
+2400|LONGEVITY|skin_young|Odmłodzenie skóry / Skin rejuvenation|AM|0
+2500|LONGEVITY|hair_regrowth|Odrastanie włosów / Hair regrowth|AM|0
+2600|LONGEVITY|vision_restore|Przywrócenie wzroku / Vision restoration|AM|0
+2700|LONGEVITY|hearing_restore|Przywrócenie słuchu / Hearing restoration|AM|0
+2800|LONGEVITY|memory_enhance|Poprawa pamięci / Memory enhancement|FM|0
+2900|LONGEVITY|cognitive_youth|Kognitywna młodzieńczość / Cognitive youth|AM|0
+3000|LONGEVITY|physical_youth|Fizyczna młodzieńczość / Physical youth|AM|0
+100|LONGEVITY|renewal_deep|Głębokie odnawianie / Deep cellular renewal|AM|20
+500|LONGEVITY|nad_deep|Głęboki boost NAD+ / Deep NAD+ boost|FM|25
+1100|LONGEVITY|telomerase_max|Maksymalna telomeraza / Maximum telomerase|FM|30
 --------------------------------------------------------------------------------
 === PRZECIWBAKTERYJNE / ANTIBACTERIAL ===
 727|ANTIBACTERIAL|ecoli|E. coli|AM|0
