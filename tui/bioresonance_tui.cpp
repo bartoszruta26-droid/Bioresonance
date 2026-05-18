@@ -465,8 +465,12 @@ private:
     void loadFrequencies() {
         std::ifstream freq_file("/workspace/frequencies.md");
         if (!freq_file.is_open()) {
-            // Try relative path
+            // Try relative path (when running from repo root)
             freq_file.open("frequencies.md");
+        }
+        if (!freq_file.is_open()) {
+            // Try parent directory (when running from tui/ subdirectory)
+            freq_file.open("../frequencies.md");
         }
         if (!freq_file.is_open()) {
             addLog("Nie można otworzyć frequencies.md");
