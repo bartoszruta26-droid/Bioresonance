@@ -1,7 +1,7 @@
 /**
  * @file types.h
  * @brief Wspólne definicje typów, enumeracji i stałych dla projektu ResoNet Nano
- * @version 3.1 (Poprawiona spójność typów)
+ * @version 4.0 (Poprawiona spójność typów)
  */
 
 #ifndef TYPES_H
@@ -12,8 +12,8 @@
 #include <stdbool.h>
 
 // --- Konfiguracja Systemowa ---
-#define FW_VERSION_MAJOR 3
-#define FW_VERSION_MINOR 1
+#define FW_VERSION_MAJOR 4
+#define FW_VERSION_MINOR 0
 #define FW_VERSION_PATCH 0
 
 // --- Definicje Pinów (Zgodne z hardware.md) ---
@@ -33,7 +33,7 @@
 #define FREQ_RESOLUTION_HZ  0.01f
 
 #define TEMP_CRITICAL_C     85.0f
-#define TEMP_WARNING_C      75.0f
+#define TEMP_WARNING_C      70.0f
 #define TEMP_HYSTERESIS_C   5.0f
 
 #define DUTY_CYCLE_MIN      1.0f
