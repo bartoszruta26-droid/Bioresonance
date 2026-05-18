@@ -69,24 +69,40 @@ sudo ./installer.sh
 
 ## 🏗️ Architektura
 
-```
-┌─────────────────┐     Ethernet      ┌─────────────────────┐
-│  Arduino Nano   │◄─────────────────►│  Aplikacja Klienta  │
-│  + ENC28J60     │  TCP/UDP          │  - Android          │
-│                 │                   │  - WebUI (PHP)      │
-└────────┬────────┘                   │  - GUI (C++)        │
-         │ PWM                        │  - TUI (Bash)       │
-         ▼                            └─────────────────────┘
-┌─────────────────┐
-│   ProbeHolder   │
-│  (izolacja +    │
-│  dopasowanie)   │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│   Antena EMF    │
-└─────────────────┘
+```mermaid
+graph TD
+    subgraph Klient["Aplikacje Klienta"]
+        A[Android App]
+        B[WebUI PHP]
+        C[GUI Desktop C++]
+        D[TUI Bash]
+    end
+
+    subgraph Sieć["Komunikacja Ethernet TCP/UDP"]
+        E[ENC28J60]
+    end
+
+    subgraph Arduino["Arduino Nano"]
+        F[Generator XV-LPWM]
+        G[Bezpieczeństwo]
+        H[Stack sieciowy]
+    end
+
+    subgraph Wyjście["Wyjście EMF"]
+        I[ProbeHolder<br/>Izolacja 2500V RMS]
+        J[Antena EMF<br/>Cewka ferrytowa]
+    end
+
+    A -->|TCP/UDP| E
+    B -->|TCP/UDP| E
+    C -->|TCP/UDP| E
+    D -->|TCP/UDP| E
+    
+    E <--> H
+    H --> F
+    F --> G
+    G --> I
+    I --> J
 ```
 
 ---
