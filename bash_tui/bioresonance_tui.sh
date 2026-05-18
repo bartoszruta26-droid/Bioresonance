@@ -894,7 +894,7 @@ start_sequential_session() {
     SESSION_START_TIME=$(date +%s)
     SESSION_STEP_START_TIME=$SESSION_START_TIME
     
-    log_message "Rozpoczęto sesję sekwencyjną: $preset_name (${SESSION_TOTAL_STEPS} kroków)"
+    log_message "Rozpoczęto sesję sekwencyjną: $preset_name "
     
     # Configure first channel and start
     apply_session_step
@@ -921,7 +921,7 @@ apply_session_step() {
     
     SESSION_STEP_START_TIME=$(date +%s)
     
-    log_message "Krok ${SESSION_CURRENT_STEP}: ${freq} Hz (${duration}s)"
+    log_message "Krok ${SESSION_CURRENT_STEP}: ${freq} Hz"
 }
 
 # Update session state (called in main loop)

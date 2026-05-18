@@ -115,9 +115,15 @@ sudo pacman -S ncurses base-devel
 ## 📦 Kompilacja
 
 ```bash
-cd /workspace
-g++ -std=c++17 -pthread -o bioresonance_tui bioresonance_tui.cpp -lncurses
+cd /workspace/tui
+g++ -std=c++17 -o bioresonance_tui bioresonance_tui.cpp -lncurses
 ```
+
+### Szczegóły Implementacji
+- **Plik źródłowy**: `bioresonance_tui.cpp` (1061 linii)
+- **Standard**: C++17
+- **Biblioteki**: ncurses (terminal UI)
+- **Kompilacja**: Single-file build
 
 ## 🚀 Uruchomienie
 
