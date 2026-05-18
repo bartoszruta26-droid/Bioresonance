@@ -1,21 +1,69 @@
 ```
-# CMake build artifacts
-build/
-CMakeCache.txt
-CMakeFiles/
-
-# Executables
-bioresonance_gui
-
-# Object files
+# Compiled and build artifacts
 *.o
 *.obj
-*.d
+*.exe
+*.dll
+*.so
+*.a
+*.out
 
-# Temporary files
+# Dependencies
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+target/
+.gradle/
+
+# Logs and temp files
+*.log
 *.tmp
 *.swp
+*.swo
 
-# Logs
-*.log
+# Environment
+.env
+.env.local
+*.env.*
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Coverage reports
+coverage/
+htmlcov/
+.coverage
+
+# Compression files
+*.zip
+*.gz
+*.tar
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.zst
+*.lz4
+*.lzh
+*.cab
+*.arj
+*.rpm
+*.deb
+*.Z
+*.lz
+*.lzo
 ```

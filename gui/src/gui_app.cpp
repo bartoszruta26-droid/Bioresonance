@@ -93,10 +93,13 @@ void GuiApp::addLog(const std::string& message) {
     auto time = std::chrono::system_clock::to_time_t(now);
     
     char time_buf[64];
+    struct tm tm_buf;
 #ifdef _WIN32
-    strftime(time_buf, sizeof(time_buf), "%H:%M:%S", localtime(&time));
+    localtime_s(&tm_buf, &time);
+    strftime(time_buf, sizeof(time_buf), "%H:%M:%S", &tm_buf);
 #else
-    strftime(time_buf, sizeof(time_buf), "%H:%M:%S", localtime(&time));
+    localtime_r(&time, &tm_buf);
+    strftime(time_buf, sizeof(time_buf), "%H:%M:%S", &tm_buf);
 #endif
     
     log_messages.push_back(std::string("[") + time_buf + "] " + message);
@@ -150,6 +153,12 @@ void GuiApp::disconnectFromDevice() {
 void GuiApp::onProbeSelected(int probe_id) {
     selected_probe = probe_id;
     addLog("Wybrano końcówkę: " + std::to_string(probe_id));
+    
+    // Update status to reflect the selected probe
+    ProbeConfig* probe = probe_manager.getProbe(probe_id);
+    if (probe) {
+        status.current_frequency = probe->frequency_hz_x100 / 100;
+    }
 }
 
 void GuiApp::onProbeEnabledChanged(int probe_id, bool enabled) {
@@ -161,6 +170,7 @@ void GuiApp::onFrequencySelected(uint32_t frequency_hz) {
     ProbeConfig* probe = probe_manager.getProbe(selected_probe);
     if (probe) {
         probe->frequency_hz_x100 = frequency_hz * 100;
+        status.current_frequency = frequency_hz;  // Update status
         addLog("Ustawiono częstotliwość: " + std::to_string(frequency_hz) + " Hz");
     }
 }
@@ -180,7 +190,7 @@ void GuiApp::onStartTherapy() {
         packet.duty_cycle = probe->duty_cycle;
         packet.intensity_level = probe->intensity_level;
         packet.channel_id = probe->channel_id;
-        packet.checksum = 0;  // TODO: Calculate proper checksum
+        packet.checksum = calculateChecksum(packet);  // Calculate proper checksum
         
         if (network.sendTherapyPacket(packet)) {
             status.pwm_running = true;
@@ -189,6 +199,19 @@ void GuiApp::onStartTherapy() {
             addLog("Błąd wysyłania pakietu terapeutycznego");
         }
     }
+}
+
+/**
+ * @brief Oblicza checksum dla pakietu terapeutycznego
+ */
+static uint8_t calculateChecksum(const TherapyPacket& packet) {
+    uint8_t* data = (uint8_t*)&packet;
+    uint8_t checksum = 0;
+    // Sum all bytes except the last one (checksum itself)
+    for (size_t i = 0; i < sizeof(TherapyPacket) - 1; i++) {
+        checksum += data[i];
+    }
+    return checksum;
 }
 
 void GuiApp::onStopTherapy() {
@@ -270,8 +293,9 @@ void GuiApp::renderProbePanel() {
     ImGui::Text("Końcówki");
     ImGui::Separator();
     
-    auto& probes = probe_manager.getProbesMap();
-    for (auto& [id, config] : probes) {
+    // Create a copy of probes to avoid iterating while potentially modifying
+    auto probes_copy = probe_manager.getProbesMap();
+    for (const auto& [id, config] : probes_copy) {
         bool is_selected = (selected_probe == id);
         
         if (ImGui::Selectable(config.name.c_str(), is_selected)) {
@@ -281,8 +305,9 @@ void GuiApp::renderProbePanel() {
         // Show enabled checkbox
         char checkbox_label[64];
         snprintf(checkbox_label, sizeof(checkbox_label), "##enable_%d", id);
-        if (ImGui::Checkbox(checkbox_label, &config.enabled)) {
-            onProbeEnabledChanged(id, config.enabled);
+        bool enabled = config.enabled;
+        if (ImGui::Checkbox(checkbox_label, &enabled)) {
+            onProbeEnabledChanged(id, enabled);
         }
         ImGui::SameLine();
         
@@ -362,12 +387,23 @@ void GuiApp::renderFrequencyBrowser() {
     ImGui::Separator();
     
     // Search bar
-    ImGui::InputText("Szukaj", search_buffer, sizeof(search_buffer));
+    if (ImGui::InputText("##Search", search_buffer, sizeof(search_buffer), ImGuiInputTextFlags_EnterReturnsTrue)) {
+        try {
+            filtered_results = frequency_loader.searchByDisease(search_buffer);
+            search_triggered = true;
+        } catch (...) {
+            addLog("Błąd podczas wyszukiwania");
+        }
+    }
     ImGui::SameLine();
     
     if (ImGui::Button("Szukaj choroby")) {
-        filtered_results = frequency_loader.searchByDisease(search_buffer);
-        search_triggered = true;
+        try {
+            filtered_results = frequency_loader.searchByDisease(search_buffer);
+            search_triggered = true;
+        } catch (...) {
+            addLog("Błąd podczas wyszukiwania");
+        }
     }
     ImGui::SameLine();
     
@@ -503,6 +539,17 @@ void GuiApp::run() {
                 // Parse response and update status
                 // TODO: Implement proper status parsing
                 addLog("Odebrano: " + response);
+                
+                // Update status fields from device response (placeholder for future implementation)
+                // In a real implementation, parse the response to extract temperature, frequency, etc.
+            }
+            
+            // Periodically update uptime counter
+            static auto last_update = std::chrono::steady_clock::now();
+            auto now = std::chrono::steady_clock::now();
+            if (std::chrono::duration_cast<std::chrono::seconds>(now - last_update).count() >= 1) {
+                status.uptime_seconds++;
+                last_update = now;
             }
         }
         

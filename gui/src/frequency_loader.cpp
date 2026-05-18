@@ -4,6 +4,7 @@
  */
 
 #include "frequency_loader.h"
+#include "logger.h"
 #include <fstream>
 #include <sstream>
 #include <algorithm>
@@ -84,17 +85,21 @@ std::vector<FrequencyEntry> FrequencyLoader::searchByDisease(const std::string& 
     std::string search_lower = disease;
     std::transform(search_lower.begin(), search_lower.end(), search_lower.begin(), ::tolower);
     
-    for (const auto& entry : frequency_database) {
-        std::string desc_lower = entry.description;
-        std::transform(desc_lower.begin(), desc_lower.end(), desc_lower.begin(), ::tolower);
-        
-        std::string disease_lower = entry.disease_name;
-        std::transform(disease_lower.begin(), disease_lower.end(), disease_lower.begin(), ::tolower);
-        
-        if (desc_lower.find(search_lower) != std::string::npos || 
-            disease_lower.find(search_lower) != std::string::npos) {
-            result.push_back(entry);
+    try {
+        for (const auto& entry : frequency_database) {
+            std::string desc_lower = entry.description;
+            std::transform(desc_lower.begin(), desc_lower.end(), desc_lower.begin(), ::tolower);
+            
+            std::string disease_lower = entry.disease_name;
+            std::transform(disease_lower.begin(), disease_lower.end(), disease_lower.begin(), ::tolower);
+            
+            if (desc_lower.find(search_lower) != std::string::npos || 
+                disease_lower.find(search_lower) != std::string::npos) {
+                result.push_back(entry);
+            }
         }
+    } catch (const std::exception& e) {
+        LOG_ERROR(std::string("Błąd podczas wyszukiwania chorób: ") + e.what());
     }
     return result;
 }
