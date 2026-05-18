@@ -26,12 +26,12 @@ static uint8_t base_duty_cycle = 50;
 // ============================================================================
 
 /**
- * @brief Konfiguruje Timer2 dla carrier frequency 38kHz na pinie 5
+ * @brief Konfiguruje Timer2 dla carrier frequency 38kHz na pinie 3 (OC2B)
  * @param carrier_freq_hz Częstotliwość nośna (domyślnie 38000 Hz)
  */
 static void timer2_configure_carrier(uint16_t carrier_freq_hz) {
-    // Pin 5 jest podłączony do OC0B (Timer0) lub można użyć Timer2
-    // Dla 38kHz używamy Timer2 w trybie Fast PWM
+    // Pin 3 (Arduino) jest podłączony do OC2B (Timer2)
+    // Dla 38kHz używamy Timer2 w trybie Fast PWM z TOP=OCR2A (tryb 7)
     
     cli();
     
@@ -48,9 +48,9 @@ static void timer2_configure_carrier(uint16_t carrier_freq_hz) {
     if (ocr2a_value > 255) ocr2a_value = 255;
     if (ocr2a_value < 1) ocr2a_value = 1;
     
-    // Ustaw tryb Fast PWM z OCR2A jako TOP
-    TCCR2A = _BV(WGM20) | _BV(WGM21);  // Mode 7: Fast PWM, TOP=OCR2A
-    TCCR2B = _BV(CS20);                 // Prescaler = 1 (no division)
+    // Ustaw tryb Fast PWM z OCR2A jako TOP (tryb 7 wymaga WGM22=1)
+    TCCR2A = _BV(WGM20) | _BV(WGM21);  // WGM2[1:0] = 11
+    TCCR2B = _BV(CS20) | _BV(WGM22);   // Prescaler = 1, WGM22 = 1 dla trybu 7
     
     // Ustaw TOP
     OCR2A = ocr2a_value;
@@ -58,13 +58,12 @@ static void timer2_configure_carrier(uint16_t carrier_freq_hz) {
     // Duty cycle 50% dla carrier (modulowane przez AM)
     OCR2B = ocr2a_value / 2;
     
-    // Włącz wyjście OC2B na pinie 3 (Arduino) lub użyj pinu 5 z Timer0
-    // Dla pinu 5 (OC0B) musimy użyć Timer0
+    // Włącz wyjście OC2B na pinie 3 (Arduino Nano)
     TCCR2A |= _BV(COM2B1);  // Non-inverting mode on OC2B
     
     sei();
     
-    LOG_INFO_F("Timer2 configured for %u Hz carrier", carrier_freq_hz);
+    LOG_INFO_F("Timer2 configured for %u Hz carrier on pin 3", carrier_freq_hz);
 }
 
 /**
@@ -164,9 +163,13 @@ void ir_led_loop() {
             // Modulacja amplitudy (1-100 Hz)
             {
                 static uint32_t last_am_update = 0;
-                uint16_t mod_period_ms = 100000 / ir_config.therapy_freq_hz_x100; // ms
+                uint32_t mod_period_ms = 100000UL / ir_config.therapy_freq_hz_x100; // ms
                 
-                if (now - last_am_update >= mod_period_ms / 100) {  // 100 kroków na okres
+                // Ensure update interval is at least 1ms to avoid zero division
+                uint32_t update_interval = mod_period_ms / 100;
+                if (update_interval < 1) update_interval = 1;
+                
+                if (now - last_am_update >= update_interval) {  // 100 kroków na okres
                     last_am_update = now;
                     
                     // Oblicz chwilową wartość modulacji (0-100%)
