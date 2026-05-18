@@ -1,47 +1,44 @@
 ```
-# Build artifacts
-build/
-cmake-build-*/
-CMakeFiles/
-CMakeCache.txt
-Makefile
-*.cmake
-conanbuildinfo.txt
-*.so
-*.dylib
-*.dll
-*.exe
+# Compiled files
 *.o
-*.a
-*.lib
 *.obj
+*.exe
+*.dll
+*.so
+*.a
+*.out
+
+# Build directories
+build/
+dist/
 
 # Dependencies
-external/
-vendor/
+node_modules/
+venv/
+.venv/
+__pycache__/
+*.egg-info/
 
-# IDE files
+# Editors
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# Logs and temp files
+# Logs
 *.log
-*.tmp
-*.bak
 
 # Environment
 .env
 .env.local
 *.env.*
 
-# Coverage reports
+# Coverage
 coverage/
 htmlcov/
 .coverage
 
-# OS files
+# System files
 .DS_Store
 Thumbs.db
 ```

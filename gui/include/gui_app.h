@@ -53,7 +53,6 @@ private:
     void renderProbePanel();
     void renderFrequencyBrowser();
     void renderStatusPanel();
-    void renderLogPanel();
     void addLog(const std::string& message);
     
 public:

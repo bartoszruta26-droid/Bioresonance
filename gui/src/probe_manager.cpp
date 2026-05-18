@@ -4,6 +4,7 @@
  */
 
 #include "probe_manager.h"
+#include "logger.h"
 
 ProbeManager::ProbeManager() : current_mode(ProbeMode::SINGLE), active_channel(0) {
     initializeDefaultProbes();
@@ -107,6 +108,10 @@ void ProbeManager::enableProbe(int channel_id, bool enable) {
     ProbeConfig* probe = getProbe(channel_id);
     if (probe) {
         probe->enabled = enable;
+        LOG_INFO("Probe " + std::to_string(channel_id) + (enable ? " enabled" : " disabled"));
+    } else {
+        LOG_WARNING("Attempted to " + std::string(enable ? "enable" : "disable") + 
+                   " non-existent probe " + std::to_string(channel_id));
     }
 }
 

@@ -202,12 +202,26 @@ void GuiApp::onStartTherapy() {
 }
 
 uint8_t GuiApp::calculateChecksum(const TherapyPacket& packet) {
-    const uint8_t* data = reinterpret_cast<const uint8_t*>(&packet);
+    // Safe checksum calculation using explicit field access instead of raw memory
     uint8_t checksum = 0;
-    // Sum all bytes except the last one (checksum itself)
-    for (size_t i = 0; i < sizeof(TherapyPacket) - 1; i++) {
-        checksum += data[i];
-    }
+    checksum += static_cast<uint8_t>(packet.frequency_hz_x100 & 0xFF);
+    checksum += static_cast<uint8_t>((packet.frequency_hz_x100 >> 8) & 0xFF);
+    checksum += static_cast<uint8_t>((packet.frequency_hz_x100 >> 16) & 0xFF);
+    checksum += static_cast<uint8_t>((packet.frequency_hz_x100 >> 24) & 0xFF);
+    
+    checksum += static_cast<uint8_t>(packet.duration_sec & 0xFF);
+    checksum += static_cast<uint8_t>((packet.duration_sec >> 8) & 0xFF);
+    checksum += static_cast<uint8_t>((packet.duration_sec >> 16) & 0xFF);
+    checksum += static_cast<uint8_t>((packet.duration_sec >> 24) & 0xFF);
+    
+    checksum += packet.modulation_type;
+    checksum += packet.duty_cycle;
+    
+    checksum += static_cast<uint8_t>(packet.intensity_level & 0xFF);
+    checksum += static_cast<uint8_t>((packet.intensity_level >> 8) & 0xFF);
+    
+    checksum += packet.channel_id;
+    
     return checksum;
 }
 
@@ -299,8 +313,8 @@ void GuiApp::renderProbePanel() {
             onProbeSelected(id);
         }
         
-        // Show enabled checkbox
-        char checkbox_label[64];
+        // Show enabled checkbox - use fixed-size buffer with bounds checking
+        char checkbox_label[32];
         snprintf(checkbox_label, sizeof(checkbox_label), "##enable_%d", id);
         bool enabled = config.enabled;
         if (ImGui::Checkbox(checkbox_label, &enabled)) {
@@ -377,8 +391,8 @@ void GuiApp::renderProbePanel() {
 
 void GuiApp::renderFrequencyBrowser() {
     static char search_buffer[256] = "";
-    static std::vector<FrequencyEntry> filtered_results;
-    static bool search_triggered = false;
+    std::vector<FrequencyEntry> filtered_results;  // Non-static to avoid thread safety issues
+    bool search_triggered = false;
     
     ImGui::Text("Przeglądarka częstotliwości");
     ImGui::Separator();
@@ -551,7 +565,7 @@ void GuiApp::run() {
         ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
         SDL_RenderPresent(renderer);
         
-        // Limit to 60 FPS
+        // Limit to ~60 FPS (16.67ms per frame)
         std::this_thread::sleep_for(std::chrono::milliseconds(16));
     }
 }

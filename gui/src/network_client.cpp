@@ -33,11 +33,27 @@ NetworkClient::~NetworkClient() {
 }
 
 bool NetworkClient::connect(const std::string& ip, int port_num) {
+    // Validate IP address format (basic check)
+    if (ip.empty()) {
+        REPORT_ERROR(ErrorCode::ERR_NETWORK_UNREACHABLE, ErrorCategory::NETWORK,
+                    "Empty IP address");
+        return false;
+    }
+    
+    // Validate port range
+    if (port_num < 1 || port_num > 65535) {
+        REPORT_ERROR(ErrorCode::ERR_NETWORK_SOCKET_FAILED, ErrorCategory::NETWORK,
+                    "Invalid port number: " + std::to_string(port_num));
+        return false;
+    }
+    
     ip_address = ip;
     port = port_num;
     
     socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (socket_fd == INVALID_SOCKET_VALUE) {
+        REPORT_ERROR(ErrorCode::ERR_NETWORK_SOCKET_FAILED, ErrorCategory::NETWORK,
+                    "Failed to create socket");
         return false;
     }
     
@@ -71,19 +87,25 @@ bool NetworkClient::connect(const std::string& ip, int port_num) {
         return false;
     }
     
-    // Wait for connection
-    fd_set fds;
-    FD_ZERO(&fds);
-    FD_SET(socket_fd, &fds);
+    // Wait for connection - use portable select with proper socket handling
+    fd_set write_fds;
+    FD_ZERO(&write_fds);
+    FD_SET(socket_fd, &write_fds);
     
     struct timeval tv;
     tv.tv_sec = 5;
     tv.tv_usec = 0;
     
-    result = select(socket_fd + 1, NULL, &fds, NULL, &tv);
+#ifdef _WIN32
+    result = select(0, NULL, &write_fds, NULL, &tv);
+#else
+    result = select(socket_fd + 1, NULL, &write_fds, NULL, &tv);
+#endif
     if (result <= 0) {
         CLOSE_SOCKET(socket_fd);
         socket_fd = INVALID_SOCKET_VALUE;
+        REPORT_ERROR(ErrorCode::ERR_NETWORK_TIMEOUT, ErrorCategory::NETWORK,
+                    "Connection timeout");
         return false;
     }
     
@@ -163,15 +185,19 @@ bool NetworkClient::sendCommand(const std::string& cmd) {
 std::string NetworkClient::receiveData(int timeout_ms) {
     if (!isConnected()) return "";
     
-    fd_set fds;
-    FD_ZERO(&fds);
-    FD_SET(socket_fd, &fds);
+    fd_set read_fds;
+    FD_ZERO(&read_fds);
+    FD_SET(socket_fd, &read_fds);
     
     struct timeval tv;
     tv.tv_sec = timeout_ms / 1000;
     tv.tv_usec = (timeout_ms % 1000) * 1000;
     
-    int result = select(socket_fd + 1, &fds, NULL, NULL, &tv);
+#ifdef _WIN32
+    int result = select(0, &read_fds, NULL, NULL, &tv);
+#else
+    int result = select(socket_fd + 1, &read_fds, NULL, NULL, &tv);
+#endif
     if (result <= 0) return "";
     
     char buffer[1024];

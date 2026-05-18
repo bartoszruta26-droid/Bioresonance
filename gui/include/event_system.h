@@ -193,9 +193,20 @@ public:
      */
     void unsubscribeAll(EventType event_type) {
         std::lock_guard<std::mutex> lock(mutex_);
-        for (auto& sub : subscriptions_) {
+        // Create a copy of IDs to avoid issues with concurrent modification
+        std::vector<int> ids_to_remove;
+        for (const auto& sub : subscriptions_) {
             if (sub.event_type == event_type) {
-                sub.active = false;
+                ids_to_remove.push_back(sub.id);
+            }
+        }
+        // Now mark them as inactive
+        for (int id : ids_to_remove) {
+            for (auto& sub : subscriptions_) {
+                if (sub.id == id) {
+                    sub.active = false;
+                    break;
+                }
             }
         }
     }
@@ -230,7 +241,7 @@ public:
     
     /**
      * @brief Opublikuj zdarzenie (asynchronicznie - queue)
-     * Thread-safe version with proper memory management
+     * Thread-safe version with proper memory management and condition variable
      */
     void publishAsync(const Event& event) {
         // Create a copy of event to avoid dangling references
@@ -240,6 +251,9 @@ public:
             std::lock_guard<std::mutex> lock(queue_mutex_);
             event_queue_.push(event_copy);
         }
+        
+        // Notify the processing thread
+        queue_cv_.notify_one();
         
         // Start processing thread if not already running
         if (!processing_thread_.joinable() || !processing_active_) {
@@ -281,6 +295,7 @@ public:
      */
     void stopProcessingThread() {
         processing_active_ = false;
+        queue_cv_.notify_all();  // Wake up the thread so it can exit
         if (processing_thread_.joinable()) {
             processing_thread_.join();
         }
@@ -321,7 +336,12 @@ private:
             bool has_event = false;
             
             {
-                std::lock_guard<std::mutex> lock(queue_mutex_);
+                std::unique_lock<std::mutex> lock(queue_mutex_);
+                // Wait for event or timeout, checking processing_active flag
+                queue_cv_.wait_for(lock, std::chrono::milliseconds(100), [this]() {
+                    return !event_queue_.empty() || !processing_active_;
+                });
+                
                 if (!event_queue_.empty()) {
                     event = event_queue_.front();
                     event_queue_.pop();
@@ -330,8 +350,7 @@ private:
             }
             
             if (!has_event) {
-                // Wait a bit before checking again
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                // Continue to check processing_active flag
                 continue;
             }
             
@@ -345,6 +364,7 @@ private:
     int next_subscription_id_;
     
     std::mutex queue_mutex_;
+    std::condition_variable queue_cv_;
     std::queue<Event> event_queue_;
     std::thread processing_thread_;
     std::atomic<bool> processing_active_;
