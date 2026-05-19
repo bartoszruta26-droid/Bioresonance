@@ -1,12 +1,12 @@
 // ResoNet-Nano: Schemat połączeń Arduino Nano z efektorami
-// Format: TSCircuit (https://tscircuit.com/)
+// Format: TSCircuit (https://tsmainCircuit.com/)
 // Autor: Generated for ResoNet-Nano project
 
 import { createCircuit } from "@tscircuit/core"
 
-const circuit = createCircuit()
+const mainCircuit = createCircuit()
 
-circuit.add(
+mainCircuit.add(
   // Arduino Nano - główny mikrokontroler
   {
     type: "component",
@@ -224,65 +224,65 @@ circuit.add(
 )
 
 // Połączenia - Ścieżka PWM z izolacją
-circuit.connect("ARDUINO1.D9", "R1.1")  // D9 PWM OUT -> 220Ω
-circuit.connect("R1.2", "OPTO_PWM1.1")  // 220Ω -> Anoda opto PWM
-circuit.connect("ARDUINO1.GND", "OPTO_PWM1.2")  // GND -> Katoda opto PWM
+mainCircuit.connect("ARDUINO1.D9", "R1.1")  // D9 PWM OUT -> 220Ω
+mainCircuit.connect("R1.2", "OPTO_PWM1.1")  // 220Ω -> Anoda opto PWM
+mainCircuit.connect("ARDUINO1.GND", "OPTO_PWM1.2")  // GND -> Katoda opto PWM
 
-circuit.connect("DCDC_PWM1.3", "R3.1")  // 5V_ISO -> Pull-up 10k
-circuit.connect("R3.2", "OPTO_PWM1.8")  // Pull-up -> VCC opto
-circuit.connect("DCDC_PWM1.3", "OPTO_PWM1.8")  // 5V_ISO -> VCC opto
+mainCircuit.connect("DCDC_PWM1.3", "R3.1")  // 5V_ISO -> Pull-up 10k
+mainCircuit.connect("R3.2", "OPTO_PWM1.8")  // Pull-up -> VCC opto
+mainCircuit.connect("DCDC_PWM1.3", "OPTO_PWM1.8")  // 5V_ISO -> VCC opto
 
-circuit.connect("OPTO_PWM1.4", "DCDC_PWM1.4")  // Emitter -> AGND
-circuit.connect("OPTO_PWM1.5", "MOSFET_PWM1.G")  // Collector -> Gate MOSFET
-circuit.connect("MOSFET_PWM1.G", "R5.1")  // Gate -> Pulldown 10k
-circuit.connect("R5.2", "DCDC_PWM1.4")  // Pulldown -> AGND
+mainCircuit.connect("OPTO_PWM1.4", "DCDC_PWM1.4")  // Emitter -> AGND
+mainCircuit.connect("OPTO_PWM1.5", "MOSFET_PWM1.G")  // Collector -> Gate MOSFET
+mainCircuit.connect("MOSFET_PWM1.G", "R5.1")  // Gate -> Pulldown 10k
+mainCircuit.connect("R5.2", "DCDC_PWM1.4")  // Pulldown -> AGND
 
-circuit.connect("MOSFET_PWM1.S", "DCDC_PWM1.4")  // Source -> AGND
-circuit.connect("MOSFET_PWM1.D", "L1.1")  // Drain -> Cewka LC
+mainCircuit.connect("MOSFET_PWM1.S", "DCDC_PWM1.4")  // Source -> AGND
+mainCircuit.connect("MOSFET_PWM1.D", "L1.1")  // Drain -> Cewka LC
 
-circuit.connect("L1.2", "C1.1")  // Cewka -> Kondensator
-circuit.connect("C1.2", "DCDC_PWM1.4")  // Kondensator -> AGND
-circuit.connect("L1.2", "BNC1.SIG")  // Wyjście filtra -> BNC signal
+mainCircuit.connect("L1.2", "C1.1")  // Cewka -> Kondensator
+mainCircuit.connect("C1.2", "DCDC_PWM1.4")  // Kondensator -> AGND
+mainCircuit.connect("L1.2", "BNC1.SIG")  // Wyjście filtra -> BNC signal
 
-circuit.connect("DCDC_PWM1.4", "BNC1.GND")  // AGND -> BNC shield
+mainCircuit.connect("DCDC_PWM1.4", "BNC1.GND")  // AGND -> BNC shield
 
 // Połączenia - Ścieżka IR z izolacją
-circuit.connect("ARDUINO1.D5", "R2.1")  // D5 IR PWM -> 220Ω
-circuit.connect("R2.2", "OPTO_IR1.1")  // 220Ω -> Anoda opto IR
-circuit.connect("ARDUINO1.GND", "OPTO_IR1.2")  // GND -> Katoda opto IR
+mainCircuit.connect("ARDUINO1.D5", "R2.1")  // D5 IR PWM -> 220Ω
+mainCircuit.connect("R2.2", "OPTO_IR1.1")  // 220Ω -> Anoda opto IR
+mainCircuit.connect("ARDUINO1.GND", "OPTO_IR1.2")  // GND -> Katoda opto IR
 
-circuit.connect("DCDC_IR1.3", "R4.1")  // 5V_ISO_IR -> Pull-up 10k
-circuit.connect("R4.2", "OPTO_IR1.8")  // Pull-up -> VCC opto
-circuit.connect("DCDC_IR1.3", "OPTO_IR1.8")  // 5V_ISO_IR -> VCC opto
+mainCircuit.connect("DCDC_IR1.3", "R4.1")  // 5V_ISO_IR -> Pull-up 10k
+mainCircuit.connect("R4.2", "OPTO_IR1.8")  // Pull-up -> VCC opto
+mainCircuit.connect("DCDC_IR1.3", "OPTO_IR1.8")  // 5V_ISO_IR -> VCC opto
 
-circuit.connect("OPTO_IR1.4", "DCDC_IR1.4")  // Emitter -> GND_ISO_IR
-circuit.connect("OPTO_IR1.5", "MOSFET_IR1.G")  // Collector -> Gate MOSFET
-circuit.connect("MOSFET_IR1.G", "R6.1")  // Gate -> Pulldown 10k
-circuit.connect("R6.2", "DCDC_IR1.4")  // Pulldown -> GND_ISO_IR
+mainCircuit.connect("OPTO_IR1.4", "DCDC_IR1.4")  // Emitter -> GND_ISO_IR
+mainCircuit.connect("OPTO_IR1.5", "MOSFET_IR1.G")  // Collector -> Gate MOSFET
+mainCircuit.connect("MOSFET_IR1.G", "R6.1")  // Gate -> Pulldown 10k
+mainCircuit.connect("R6.2", "DCDC_IR1.4")  // Pulldown -> GND_ISO_IR
 
-circuit.connect("MOSFET_IR1.S", "DCDC_IR1.4")  // Source -> GND_ISO_IR
-circuit.connect("MOSFET_IR1.D", "IR_STRIP1.-")  // Drain -> LED Strip GND
+mainCircuit.connect("MOSFET_IR1.S", "DCDC_IR1.4")  // Source -> GND_ISO_IR
+mainCircuit.connect("MOSFET_IR1.D", "IR_STRIP1.-")  // Drain -> LED Strip GND
 
-circuit.connect("DCDC_IR1.3", "IR_STRIP1.+")  // 5V_ISO_IR -> LED Strip VCC
+mainCircuit.connect("DCDC_IR1.3", "IR_STRIP1.+")  // 5V_ISO_IR -> LED Strip VCC
 
 // Połączenia - Ethernet SPI
-circuit.connect("ARDUINO1.D10", "ETH1.CS")  // D10 -> Chip Select
-circuit.connect("ARDUINO1.D11", "ETH1.MOSI")  // D11 -> MOSI
-circuit.connect("ARDUINO1.D12", "ETH1.MISO")  // D12 -> MISO
-circuit.connect("ARDUINO1.D13", "ETH1.SCK")  // D13 -> SCK
+mainCircuit.connect("ARDUINO1.D10", "ETH1.CS")  // D10 -> Chip Select
+mainCircuit.connect("ARDUINO1.D11", "ETH1.MOSI")  // D11 -> MOSI
+mainCircuit.connect("ARDUINO1.D12", "ETH1.MISO")  // D12 -> MISO
+mainCircuit.connect("ARDUINO1.D13", "ETH1.SCK")  // D13 -> SCK
 
 // LDO 3.3V dla Ethernet
-circuit.connect("ARDUINO1.5V", "LDO1.VIN")  // 5V -> LDO input
-circuit.connect("ARDUINO1.GND", "LDO1.GND")  // GND -> LDO GND
-circuit.connect("LDO1.VOUT", "ETH1.VREG")  // 3.3V -> Ethernet VREG
-circuit.connect("ARDUINO1.GND", "ETH1.GND")  // DGND -> Ethernet GND
+mainCircuit.connect("ARDUINO1.5V", "LDO1.VIN")  // 5V -> LDO input
+mainCircuit.connect("ARDUINO1.GND", "LDO1.GND")  // GND -> LDO GND
+mainCircuit.connect("LDO1.VOUT", "ETH1.VREG")  // 3.3V -> Ethernet VREG
+mainCircuit.connect("ARDUINO1.GND", "ETH1.GND")  // DGND -> Ethernet GND
 
 // Zasilanie główne
-circuit.connect("PWR_IN1.+", "ARDUINO1.5V")  // 5V_IN -> Arduino 5V
-circuit.connect("PWR_IN1.-", "ARDUINO1.GND")  // GND_IN -> Arduino GND
-circuit.connect("PWR_IN1.+", "DCDC_PWM1.1")  // 5V_IN -> DCDC PWM input
-circuit.connect("PWR_IN1.-", "DCDC_PWM1.2")  // GND_IN -> DCDC PWM GND
-circuit.connect("PWR_IN1.+", "DCDC_IR1.1")  // 5V_IN -> DCDC IR input
-circuit.connect("PWR_IN1.-", "DCDC_IR1.2")  // GND_IN -> DCDC IR GND
+mainCircuit.connect("PWR_IN1.+", "ARDUINO1.5V")  // 5V_IN -> Arduino 5V
+mainCircuit.connect("PWR_IN1.-", "ARDUINO1.GND")  // GND_IN -> Arduino GND
+mainCircuit.connect("PWR_IN1.+", "DCDC_PWM1.1")  // 5V_IN -> DCDC PWM input
+mainCircuit.connect("PWR_IN1.-", "DCDC_PWM1.2")  // GND_IN -> DCDC PWM GND
+mainCircuit.connect("PWR_IN1.+", "DCDC_IR1.1")  // 5V_IN -> DCDC IR input
+mainCircuit.connect("PWR_IN1.-", "DCDC_IR1.2")  // GND_IN -> DCDC IR GND
 
-export default circuit
+export default mainCircuit
