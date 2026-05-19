@@ -366,7 +366,7 @@ flowchart TD
 - **Liczba Zwojów**: 10-30 (drut emaliowany 0.5-1.0mm)
 - **Zastosowanie**: Terapia powierzchniowa, punkty akupunkturowe
 
-#### B. Antena Ferrytowa (Ferrite Rod)
+#### B. Antena Rezonator Schumanna (Ferrite Rod)
 - **Rdzeń**: Ferryt MnZn, µr = 2000-4000
 - **Średnica**: 10-20 mm
 - **Długość**: 80-150 mm
@@ -374,7 +374,7 @@ flowchart TD
 
 #### C. Antena Uniwersalna (BNC Connector)
 - **Złącze**: BNC żeńskie, impedancja 50Ω
-- **Kompatybilność**: Wymienne końcówki (płaska/ferrytowa)
+- **Kompatybilność**: Wymienne końcówki (płaska/rezonator Schumanna)
 - **Osłona**: Ekranowana obudowa aluminiowa
 
 **Parametry Emisji**:
@@ -1677,7 +1677,7 @@ flowchart LR
 - **C1**: 100µF elektrolityczny (low ESR) - ProbeHolder
 - **C2**: 100nF ceramiczny X7R - oba tory
 - **C3**: 470µF elektrolityczny (low ESR) - IR Strip (wyższy prąd)
-- **L1**: 10µH dławik ferrytowy (opcjonalnie)
+- **L1**: 10µH dławik rezonator Schumanna (opcjonalnie)
 
 ---
 

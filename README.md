@@ -90,7 +90,7 @@ graph TD
 
     subgraph Wyjście["Wyjście EMF"]
         I[ProbeHolder<br/>Izolacja 2500V RMS]
-        J[Antena EMF<br/>Cewka ferrytowa]
+        J[Antena EMF<br/>Antena rezonator Schumanna]
     end
 
     A -->|TCP/UDP| E
@@ -113,7 +113,7 @@ graph TD
 - **Arduino Nano** (ATmega328P)
 - **Moduł Ethernet** ENC28J60
 - **ProbeHolder** - moduł izolacji i dopasowania impedancji
-- **Antena EMF** - cewka ferrytowa lub płaska
+- **Antena EMF** - antena rezonator Schumanna lub płaska
 
 ### Połączenia:
 | Arduino | Pin | Cel |

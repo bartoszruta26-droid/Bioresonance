@@ -151,7 +151,7 @@ flowchart TD
 | Kanał | Efektor | Domyślna Freq |
 |-------|---------|---------------|
 | 1 | Cewka Płaska | 727 Hz |
-| 2 | Cewka Ferrytowa | 10 kHz |
+| 2 | Antena Rezonator Schumanna | 10 kHz |
 | 3 | Płyta Kapacytacyjna | 5 kHz |
 | 4 | Aplikator Punktowy | 25 kHz |
 | 5 | Mata EMF | 78.3 Hz |

@@ -220,7 +220,7 @@ channel:frequency[:duty:intensity:modulation]
 - **Domyślna częstotliwość**: `727 Hz`
 - **Kanał**: `1`
 
-### 2. **Cewka Ferrytowa (Ferrite Rod)**
+### 2. **Antena Rezonator Schumanna (Ferrite Rod)**
 - **Zastosowanie**: 🎯 Terapia głęboka, narządy wewnętrzne
 - **Domyślna częstotliwość**: `10 kHz`
 - **Kanał**: `2`
