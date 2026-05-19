@@ -1,1 +1,2 @@
-# No changes needed - only a markdown file was added, which should not be ignored
+# No build artifacts, dependencies, or temp files detected in changes
+# Only source/config files present - no ignores needed
