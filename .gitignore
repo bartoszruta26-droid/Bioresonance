@@ -1,50 +1,64 @@
-```
-# Compiled and build artifacts
-*.pyc
+# Dependencies
+node_modules/
 __pycache__/
+*.egg-info/
+.Python
+venv/
+.env
+.env.local
+.env.*
+
+# Compiled files
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.dylib
+*.dll
+*.class
 *.o
 *.obj
-dist/
-build/
-*.class
 *.exe
-*.dll
-*.so
-*.a
 *.out
 
-# Dependencies
-.venv/
-venv/
-node_modules/
-.mypy_cache/
-.pytest_cache/
+# Build artifacts
+dist/
+build/
 target/
-.gradle/
+release/
+debug/
+
+# IDE/Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
 
 # Logs and temp files
 *.log
 *.tmp
-*.swp
-*.swo
+*.temp
+*.bak
+*.backup
 
-# Environment
-.env
-.env.local
-*.env.*
+# Coverage
+.coverage
+coverage/
+htmlcov/
 
-# Editors
-.vscode/
-.idea/
+# Testing
+.pytest_cache/
+.mypy_cache/
+.tox/
 
 # System files
 .DS_Store
 Thumbs.db
-
-# Coverage
-coverage/
-htmlcov/
-.coverage
+*DS_Store*
+ehthumbs.db
 
 # Compressed files
 *.zip
@@ -69,4 +83,13 @@ htmlcov/
 *.tar.bz2
 *.tar.xz
 *.tar.zst
-```
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Icon?

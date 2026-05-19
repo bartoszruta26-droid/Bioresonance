@@ -71,7 +71,7 @@ blockDiagram
         style fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
     end
     
-    block:Antena["📡 ANTENA EMF\nCewka płaska/ferrytowa"]
+    block:Antena["📡 ANTENA EMF\nCewka płaska/rezonator Schumanna"]
         style fill:#fff8e1,stroke:#fbc02d,stroke-width:2px
     end
     
