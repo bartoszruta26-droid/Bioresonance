@@ -1,1 +1,1 @@
-# No changes needed - only a markdown file was added, which should not be ignored
+Nothing needs to be added to .gitignore since only a markdown file (PLAN_DLA_ADHD.md) was modified and no build artifacts, dependencies, or temporary files were detected in the changes.
