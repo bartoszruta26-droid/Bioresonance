@@ -127,7 +127,7 @@ download_from_github() {
     fi
     
     # Zmień właściciela na bieżącego użytkownika
-    if ! sudo chown "$(whoami):$(whoami)" "$INSTALL_DIR"; then
+    if ! sudo chown "$(id -un):$(id -gn)" "$INSTALL_DIR"; then
         echo -e "${RED}Nie udało się zmienić właściciela katalogu${NC}"
         sudo rm -rf "$INSTALL_DIR"
         return 1
