@@ -491,7 +491,8 @@ install_androidapp() {
         echo "     export ANDROID_HOME=\$HOME/Android/Sdk"
         echo "     export PATH=\$PATH:\$ANDROID_HOME/cmdline-tools/latest/bin"
         echo "     export PATH=\$PATH:\$ANDROID_HOME/platform-tools"
-        echo "     export PATH=\$PATH:\$ANDROID_HOME/build-tools/34.0.0"
+        echo "     # Ścieżka może wymagać aktualizacji w zależności od wersji build-tools"
+        echo "     export PATH=\$PATH:\$ANDROID_HOME/build-tools/*"
         echo ""
         
         # Spróbuj wykryć typową lokalizację Android SDK
@@ -530,22 +531,47 @@ install_androidapp() {
         else
             echo -e "${YELLOW}Gradle nie jest zainstalowane. Pobieranie Gradle Wrapper...${NC}"
             
-            # Pobierz gradle-wrapper.jar
+            # Pobierz gradle-wrapper.jar z lepszą obsługą błędów
             mkdir -p gradle/wrapper
-            if ! curl -L -o gradle/wrapper/gradle-wrapper.jar \
+            echo -e "${CYAN}Pobieranie gradle-wrapper.jar...${NC}"
+            
+            # Spróbuj pobrać z głównego repozytorium Gradle
+            if ! curl -L --connect-timeout 10 --max-time 60 \
+                -o gradle/wrapper/gradle-wrapper.jar \
                 "https://raw.githubusercontent.com/gradle/gradle/master/gradle/wrapper/gradle-wrapper.jar" 2>/dev/null; then
-                echo -e "${RED}Nie udało się pobrać gradle-wrapper.jar.${NC}"
-                echo "Spróbuj ręcznie zainstalować Gradle lub Android Studio."
-                echo ""
-                echo -e "${BLUE}Alternatywnie możesz otworzyć projekt w Android Studio:${NC}"
-                echo "  1. Otwórz Android Studio"
-                echo "  2. Wybierz 'Open an Existing Project'"
-                echo "  3. Wskaż katalog: $ANDROID_DIR"
+                
+                echo -e "${YELLOW}Nie udało się pobrać z GitHub. Próba alternatywnego źródła...${NC}"
+                
+                # Alternatywne źródło - services.gradle.org
+                if ! curl -L --connect-timeout 10 --max-time 60 \
+                    -o gradle/wrapper/gradle-wrapper.jar \
+                    "https://services.gradle.org/distributions/gradle-8.0-bin.zip" 2>/dev/null; then
+                    
+                    echo -e "${RED}Nie udało się pobrać gradle-wrapper.jar z żadnego źródła.${NC}"
+                    echo "Sprawdź połączenie internetowe lub zapory sieciowe."
+                    echo ""
+                    echo -e "${BLUE}Alternatywnie możesz otworzyć projekt w Android Studio:${NC}"
+                    echo "  1. Otwórz Android Studio"
+                    echo "  2. Wybierz 'Open an Existing Project'"
+                    echo "  3. Wskaż katalog: $ANDROID_DIR"
+                    echo ""
+                    echo -n "Naciśnij Enter, aby kontynuować..."
+                    read
+                    return
+                fi
+            fi
+            
+            # Weryfikacja czy plik został pobrany i nie jest pusty
+            if [ ! -s gradle/wrapper/gradle-wrapper.jar ]; then
+                echo -e "${RED}Pobrano pusty lub niewłaściwy plik gradle-wrapper.jar.${NC}"
+                echo "Sprawdź połączenie internetowe."
                 echo ""
                 echo -n "Naciśnij Enter, aby kontynuować..."
                 read
                 return
             fi
+            
+            echo -e "${GREEN}Pomyślnie pobrano gradle-wrapper.jar${NC}"
             
             # Utwórz gradlew script
             cat > gradlew << 'GRADLEW_SCRIPT'
@@ -558,8 +584,6 @@ APP_NAME="Gradle"
 APP_BASE_NAME=`basename "$0"`
 DIRNAME=`dirname "$0"`
 APP_HOME=`cd "$DIRNAME" > /dev/null; pwd`
-
-CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
 
 DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
 JAVA_OPTS=""
