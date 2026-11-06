@@ -9,7 +9,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: desktop-gui-${{ github.event.pull_request.head.ref || github.ref }}
+  group: desktop-gui-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 jobs:
   build:
