@@ -317,17 +317,16 @@ std::string NetworkClient::receiveData(int timeout_ms) {
 #endif
     if (received < 0) {
 #ifdef _WIN32
-        int err = WSAGetLastError();
-        if (err != WSAEWOULDBLOCK) {
-            REPORT_ERROR(ErrorCode::ERR_NETWORK_RECV_FAILED, ErrorCategory::NETWORK,
-                        "Failed to receive data");
-        }
+        const int err = WSAGetLastError();
+        if (err == WSAEWOULDBLOCK || err == WSAEINTR) return "";
 #else
-        if (errno != EAGAIN && errno != EWOULDBLOCK) {
-            REPORT_ERROR(ErrorCode::ERR_NETWORK_RECV_FAILED, ErrorCategory::NETWORK,
-                        "Failed to receive data");
-        }
+        if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) return "";
 #endif
+        connected = false;
+        CLOSE_SOCKET(socket_fd);
+        socket_fd = INVALID_SOCKET_VALUE;
+        REPORT_ERROR(ErrorCode::ERR_NETWORK_RECV_FAILED, ErrorCategory::NETWORK,
+                     "Receive failed; connection closed");
         return "";
     }
     if (received > 0) {
