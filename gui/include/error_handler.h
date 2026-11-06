@@ -231,73 +231,75 @@ public:
      * @brief Zgłoś błąd
      */
     void reportError(const ErrorInfo& error) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        
-        // Zaloguj błąd
+        std::vector<ErrorCallback> callbacks_snapshot;
+        RecoveryCallback recovery_callback;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            callbacks_snapshot = callbacks_;
+            const auto recovery = recovery_handlers_.find(error.category);
+            if (error.recoverable && recovery != recovery_handlers_.end()) {
+                recovery_callback = recovery->second;
+            }
+
+            error_history_.push_back(error);
+            if (error_history_.size() > max_history_size_) {
+                error_history_.erase(error_history_.begin(),
+                    error_history_.begin() + static_cast<std::ptrdiff_t>(
+                        error_history_.size() - max_history_size_));
+            }
+            if (error.category != ErrorCategory::USER) {
+                ++error_count_;
+            }
+        }
+
+        // Run logging and user callbacks outside mutex_: callbacks may report
+        // another error or register handlers without recursively deadlocking.
         LogLevel log_level = LogLevel::ERROR;
-        if (error.category == ErrorCategory::HARDWARE || 
+        if (error.category == ErrorCategory::HARDWARE ||
             error.category == ErrorCategory::SYSTEM) {
             log_level = LogLevel::CRITICAL;
         }
-        
-        Logger::getInstance().log(log_level, error.toString(), 
+        Logger::getInstance().log(log_level, error.toString(),
                                   error.source_file, error.source_line);
-        
-        // Wywołaj callbacki
-        for (auto& cb : callbacks_) {
+
+        for (const auto& callback : callbacks_snapshot) {
             try {
-                cb(error);
+                if (callback) callback(error);
             } catch (const std::exception& e) {
-                Logger::getInstance().log(LogLevel::ERROR, 
+                Logger::getInstance().log(LogLevel::ERROR,
                     std::string("Error callback exception: ") + e.what(),
+                    __FILE__, __LINE__);
+            } catch (...) {
+                Logger::getInstance().log(LogLevel::ERROR,
+                    "Error callback raised a non-standard exception",
                     __FILE__, __LINE__);
             }
         }
-        
-        // Spróbuj recovery jeśli błąd jest recoverable
-        if (error.recoverable) {
-            auto it = recovery_handlers_.find(error.category);
-            if (it != recovery_handlers_.end()) {
-                try {
-                    if (it->second(error)) {
-                        Logger::getInstance().log(LogLevel::INFO,
-                            "Successfully recovered from error: " + error.message,
-                            __FILE__, __LINE__);
-                    }
-                } catch (const std::exception& e) {
-                    Logger::getInstance().log(LogLevel::ERROR,
-                        std::string("Recovery handler exception: ") + e.what(),
+
+        if (recovery_callback) {
+            try {
+                if (recovery_callback(error)) {
+                    Logger::getInstance().log(LogLevel::INFO,
+                        "Successfully recovered from error: " + error.message,
                         __FILE__, __LINE__);
                 }
+            } catch (const std::exception& e) {
+                Logger::getInstance().log(LogLevel::ERROR,
+                    std::string("Recovery handler exception: ") + e.what(),
+                    __FILE__, __LINE__);
+            } catch (...) {
+                Logger::getInstance().log(LogLevel::ERROR,
+                    "Recovery handler raised a non-standard exception",
+                    __FILE__, __LINE__);
             }
         }
-        
-        // Dodaj do historii
-        error_history_.push_back(error);
-        if (error_history_.size() > max_history_size_) {
-            error_history_.erase(error_history_.begin());
-        }
-        
-        // Inkrementuj licznik błędów
-        if (error.category != ErrorCategory::USER) {
-            error_count_++;
-        }
     }
-    
-    /**
-     * @brief Wyczyść ostatni błąd
-     */
-    void clearLastError() {
-        std::lock_guard<std::mutex> lock(mutex_);
-        if (!error_history_.empty()) {
-            error_history_.pop_back();
-        }
-    }
-    
+
     /**
      * @brief Pobierz historię błędów
      */
-    const std::vector<ErrorInfo>& getErrorHistory() const {
+    std::vector<ErrorInfo> getErrorHistory() const {
+        std::lock_guard<std::mutex> lock(mutex_);
         return error_history_;
     }
     
@@ -327,7 +329,7 @@ public:
      * @brief Sprawdź czy wystąpił błąd krytyczny
      */
     bool hasCriticalError() const {
-        // Nie używamy lock_guard bo metoda jest const
+        std::lock_guard<std::mutex> lock(mutex_);
         for (const auto& err : error_history_) {
             if (err.category == ErrorCategory::HARDWARE ||
                 err.category == ErrorCategory::SYSTEM ||
@@ -342,7 +344,13 @@ public:
      * @brief Ustaw maksymalny rozmiar historii
      */
     void setMaxHistorySize(size_t size) {
+        std::lock_guard<std::mutex> lock(mutex_);
         max_history_size_ = size;
+        if (error_history_.size() > max_history_size_) {
+            error_history_.erase(error_history_.begin(),
+                error_history_.begin() + static_cast<std::ptrdiff_t>(
+                    error_history_.size() - max_history_size_));
+        }
     }
 
 private:
@@ -352,7 +360,7 @@ private:
     ErrorHandler(const ErrorHandler&) = delete;
     ErrorHandler& operator=(const ErrorHandler&) = delete;
     
-    std::mutex mutex_;
+    mutable std::mutex mutex_;
     std::vector<ErrorCallback> callbacks_;
     std::map<ErrorCategory, RecoveryCallback> recovery_handlers_;
     std::vector<ErrorInfo> error_history_;
