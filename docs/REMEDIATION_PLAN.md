@@ -25,3 +25,11 @@ Desktop GUI musi budować się na Windows 11 x64 oraz współczesnym Linuxie. Wy
 
 ## Ograniczenia
 CI nie zastępuje testów fizycznego Arduino/Pico. Komunikacja, timery, wyjścia i odcięcie sprzętowe wymagają osobnych testów laboratoryjnych.
+
+
+## Desktop GUI — sterowanie wyjściami zablokowane do czasu wdrożenia protokołu
+
+- Firmware nie udostępnia obecnie działającego transportu ENC28J60 ani odbiornika ramek terapii.
+- Struktura C++ `TherapyPacket` po stronie GUI nie jest zgodnym kontraktem przewodowym z firmware; samo `#pragma pack` nie zapewnia wersjonowania, endianowości, potwierdzeń ani ochrony przed powtórzeniem.
+- GUI nie może przedstawiać lokalnego zapisu TCP jako potwierdzenia uruchomienia lub zatrzymania wyjścia.
+- Dlatego wysyłanie pakietów terapii oraz tekstowego polecenia `STOP` jest zablokowane do czasu wdrożenia i przetestowania RNP po obu stronach, odpowiedzi ACK/status oraz sprzętowego stanu bezpiecznego.
