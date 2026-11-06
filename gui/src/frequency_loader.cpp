@@ -46,13 +46,15 @@ bool FrequencyLoader::loadFromFile(const std::string& filepath) {
 
     std::string line;
     while (std::getline(freq_file, line)) {
-        // Skip comments, headers, empty lines
-        if (line.empty() || line[0] == '#' || line[0] == '-' || line[0] == '=') continue;
-        if (line.find("FREQUENCY_DATA") != std::string::npos) continue;
-        if (line.find("freq_hz|") != std::string::npos) continue;
-        
+        // Trim before classifying a line; do not silently skip negative numeric input.
+        const std::string normalized_line = trim(line);
+        if (normalized_line.empty() || normalized_line[0] == '#' ||
+            normalized_line == "---" || normalized_line == "===") continue;
+        if (normalized_line.find("FREQUENCY_DATA") != std::string::npos) continue;
+        if (normalized_line.find("freq_hz|") != std::string::npos) continue;
+
         // Parse frequency data: freq_hz|category|subcategory|description|modulation|carrier_khz
-        std::istringstream iss(line);
+        std::istringstream iss(normalized_line);
         std::string token;
         std::vector<std::string> tokens;
         
