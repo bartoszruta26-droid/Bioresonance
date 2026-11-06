@@ -325,12 +325,66 @@ switch ($action) {
 
     case 'save_config':
         require_api_token();
-        // Oczekujemy tablicy kanałów w POST
         $channels = $_POST['channels'] ?? [];
         $mode = $_POST['mode'] ?? 'SINGLE';
-        
-        if (!is_array($channels) || empty($channels)) {
+
+        // Reject malformed values instead of coercing them into a different device command.
+        if (!is_array($channels) || count($channels) === 0) {
             json_response(false, null, "No channel data provided");
+        }
+        if (!is_string($mode) || !in_array($mode, ['SINGLE', 'MULTI'], true)) {
+            json_response(false, null, "Invalid configuration mode");
+        }
+
+        $validatedChannels = [];
+        $seenIds = [];
+        foreach ($channels as $index => $ch) {
+            if (!is_array($ch)) {
+                json_response(false, null, "Invalid channel at index " . (int)$index);
+            }
+            foreach (['id', 'name', 'type', 'freq', 'duty', 'intensity', 'modulation', 'enabled'] as $field) {
+                if (!array_key_exists($field, $ch)) {
+                    json_response(false, null, "Missing channel field: $field");
+                }
+            }
+
+            foreach (['id', 'type', 'duty', 'intensity', 'modulation'] as $field) {
+                if (!is_int($ch[$field]) &&
+                    !(is_string($ch[$field]) && preg_match('/^[0-9]{1,5}$/D', $ch[$field]))) {
+                    json_response(false, null, "Invalid integer field: $field");
+                }
+            }
+            $id = (int)$ch['id'];
+            $type = (int)$ch['type'];
+            $duty = (int)$ch['duty'];
+            $intens = (int)$ch['intensity'];
+            $mod = (int)$ch['modulation'];
+
+            if ($id > 65535 || isset($seenIds[$id]) ||
+                $type > 65535 || $duty > 100 || $intens > 255 || $mod > 65535) {
+                json_response(false, null, "Channel field out of range or duplicate channel id");
+            }
+            $seenIds[$id] = true;
+
+            if (!is_string($ch['name']) || strlen($ch['name']) > 20 ||
+                preg_match('/[|\x00-\x1F\x7F]/', $ch['name'])) {
+                json_response(false, null, "Invalid channel name (max 20 bytes; delimiters/control characters are forbidden)");
+            }
+            if ((!is_int($ch['freq']) && !is_float($ch['freq']) &&
+                 !(is_string($ch['freq']) && is_numeric($ch['freq']))) ||
+                !is_finite((float)$ch['freq']) || (float)$ch['freq'] < 0) {
+                json_response(false, null, "Invalid channel frequency");
+            }
+            if (!in_array($ch['enabled'], [true, false, 0, 1, '0', '1'], true)) {
+                json_response(false, null, "Invalid channel enabled flag");
+            }
+
+            $validatedChannels[] = [
+                'id' => $id, 'name' => $ch['name'], 'type' => $type,
+                'freq' => (float)$ch['freq'], 'duty' => $duty,
+                'intensity' => $intens, 'modulation' => $mod,
+                'enabled' => in_array($ch['enabled'], [true, 1, '1'], true) ? 1 : 0
+            ];
         }
 
         $fp = acquire_lock();
@@ -339,29 +393,14 @@ switch ($action) {
         }
 
         try {
-            // Budowanie komendy konfiguracyjnej
-            $configString = "CONFIG MODE:$mode\n";
-            
-            foreach ($channels as $ch) {
-                // Walidacja i sanityzacja danych kanału
-                $id = intval($ch['id']);
-                $name = substr(trim($ch['name']), 0, 20); // Max 20 znaków
-                $type = intval($ch['type']);
-                $freq = floatval($ch['freq']);
-                $duty = intval($ch['duty']);
-                $intens = intval($ch['intensity']);
-                $mod = intval($ch['modulation']);
-                $en = ($ch['enabled'] ? 1 : 0);
-
-                // Zakresy (Safety checks)
-                if ($freq < 0) $freq = 0;
-                if ($duty < 0 || $duty > 100) $duty = 50;
-                if ($intens < 0 || $intens > 255) $intens = 0;
-
-                $configString .= "CH:$id|$name|$type|$freq|$duty|$intens|$mod|$en\n";
+            $configString = "CONFIG MODE:$mode\\n";
+            foreach ($validatedChannels as $ch) {
+                $configString .= "CH:{$ch['id']}|{$ch['name']}|{$ch['type']}|{$ch['freq']}|{$ch['duty']}|{$ch['intensity']}|{$ch['modulation']}|{$ch['enabled']}\\n";
             }
-            
-            $configString .= "END_CONFIG\n";
+            $configString .= "END_CONFIG\\n";
+            if (strlen($configString) > 65536) {
+                json_response(false, null, "Configuration payload exceeds 64 KiB");
+            }
 
             debug_log("Sending bulk config...");
             $result = send_to_arduino($configString, $ip, $port);
