@@ -39,6 +39,8 @@ jobs:
         run: cmake -S gui -B build/gui -DCMAKE_TOOLCHAIN_FILE="$env:CMAKE_TOOLCHAIN_FILE" -DVCPKG_TARGET_TRIPLET=x64-windows
       - name: Build
         run: cmake --build build/gui --config Release --parallel
+      - name: Run desktop unit tests
+        run: ctest --test-dir build/gui -C Release --output-on-failure
       - uses: actions/upload-artifact@v4
         if: always()
         with:
