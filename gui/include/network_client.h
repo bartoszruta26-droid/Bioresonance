@@ -44,7 +44,7 @@ private:
     std::string ip_address;
     int port;
     std::atomic<bool> connected;
-    std::mutex tx_mutex;
+    mutable std::mutex socket_mutex;
     
 public:
     NetworkClient();
@@ -57,8 +57,14 @@ public:
     bool sendCommand(const std::string& cmd);
     std::string receiveData(int timeout_ms = 100);
     
-    std::string getIPAddress() const { return ip_address; }
-    int getPort() const { return port; }
+    std::string getIPAddress() const {
+        std::lock_guard<std::mutex> lock(socket_mutex);
+        return ip_address;
+    }
+    int getPort() const {
+        std::lock_guard<std::mutex> lock(socket_mutex);
+        return port;
+    }
 };
 
 #endif // NETWORK_CLIENT_H
