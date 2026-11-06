@@ -31,6 +31,68 @@ int main() {
 
     int exit_code = 0;
 
+    // disconnect() must wake a thread blocked in receiveData(), rather than
+    // waiting for the caller's full receive timeout or racing descriptor close.
+    {
+        test_socket_t listener = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        if (listener == invalid_test_socket) {
+            exit_code = 13;
+        } else {
+            sockaddr_in address{};
+            address.sin_family = AF_INET;
+            address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+            address.sin_port = 0;
+            if (::bind(listener, reinterpret_cast<sockaddr*>(&address), sizeof(address)) != 0 ||
+                ::listen(listener, 1) != 0) {
+                close_test_socket(listener);
+                exit_code = 14;
+            } else {
+#ifdef _WIN32
+                int address_length = sizeof(address);
+#else
+                socklen_t address_length = sizeof(address);
+#endif
+                if (getsockname(listener, reinterpret_cast<sockaddr*>(&address), &address_length) != 0) {
+                    close_test_socket(listener);
+                    exit_code = 15;
+                } else {
+                    std::thread server([&]() {
+                        test_socket_t peer = ::accept(listener, nullptr, nullptr);
+                        if (peer != invalid_test_socket) {
+                            std::this_thread::sleep_for(std::chrono::seconds(2));
+                            close_test_socket(peer);
+                        }
+                    });
+                    NetworkClient client;
+                    const int port = static_cast<int>(ntohs(address.sin_port));
+                    if (!client.connect("127.0.0.1", port)) {
+                        exit_code = 16;
+                    } else {
+                        std::atomic<bool> receive_finished{false};
+                        std::thread receiver([&]() {
+                            (void)client.receiveData(5000);
+                            receive_finished = true;
+                        });
+                        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                        const auto disconnect_start = std::chrono::steady_clock::now();
+                        client.disconnect();
+                        const auto disconnect_elapsed =
+                            std::chrono::steady_clock::now() - disconnect_start;
+                        receiver.join();
+                        if (!receive_finished.load() ||
+                            disconnect_elapsed > std::chrono::milliseconds(1000)) {
+                            exit_code = 17;
+                        }
+                    }
+                    client.disconnect();
+                    server.join();
+                    close_test_socket(listener);
+                }
+            }
+        }
+    }
+
+
     // A pending connection attempt must not hold socket_mutex. disconnect()
     // must also supersede the attempt so it cannot publish a late connection.
     {
