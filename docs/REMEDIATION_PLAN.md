@@ -21,7 +21,7 @@ Oddzielny firmware RP2040 współdzielący specyfikację RNP, z osobnymi sterown
 CI Windows/Linux dla Desktop GUI; testy jednostkowe protokołu i parserów; symulator urządzenia; testy integracyjne bez efektora; testy sprzętowe z obciążeniem i pomiarami.
 
 ## Desktop GUI — wymagania
-Desktop GUI musi budować się na Windows 10/11 oraz współczesnym Linuxie. Wymagane CMake + C++17 + SDL2, Winsock2 na Windows i POSIX sockets na Linuxie. Każda zmiana w gui/ uruchamia macierz CI Windows/Linux.
+Desktop GUI musi budować się na Windows 11 x64 oraz współczesnym Linuxie. Wymagane CMake + C++17 + SDL2, Winsock2 na Windows i POSIX sockets na Linuxie. Każda zmiana w gui/ uruchamia macierz CI Windows/Linux.
 
 ## Ograniczenia
 CI nie zastępuje testów fizycznego Arduino/Pico. Komunikacja, timery, wyjścia i odcięcie sprzętowe wymagają osobnych testów laboratoryjnych.
