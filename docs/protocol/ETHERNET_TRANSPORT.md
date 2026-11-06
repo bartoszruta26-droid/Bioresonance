@@ -23,7 +23,8 @@ Wartości w pliku są przykładową konfiguracją prywatnej podsieci, a nie uniw
 - Limit 24 odebranych bajtów na jedno wywołanie `network_loop()`, aby ograniczyć czas obsługi.
 - Parser ResoNet Protocol v1; odpowiedzi HELLO_RESP, PONG, STATUS_RESP.
 - Nieznany dla roli klienta typ komunikatu otrzymuje NACK.
-- Niepoprawne ramki nie są przekazywane do handlera.
+- Parser firmware przechowuje wyłącznie nagłówek i CRC dla żądań klienta o pustym payloadzie; znane typy odpowiedzi nie są akceptowane w kierunku klient → urządzenie.
+- Nieznane typy z pustym payloadem otrzymują NACK; błędne ramki nie są przekazywane do handlera.
 - Nieobsługiwane są stare, niewersjonowane pakiety terapii i konfiguracji.
 - Brak komend uruchamiania PWM, IR LED, piezo lub wibratora.
 - STATUS_RESP ustawia `output_inhibited=0`, ponieważ firmware nie ma niezależnego potwierdzenia fizycznego odcięcia wszystkich wyjść. Pole temperatury zewnętrznego efektora ma wartość sentinel `0x7FFF`. Nie należy interpretować tego statusu jako potwierdzenia bezpieczeństwa urządzenia.
