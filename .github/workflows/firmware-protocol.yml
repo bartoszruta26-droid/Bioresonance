@@ -4,12 +4,14 @@ on:
   push:
     branches: [main]
     paths:
-      - "ResoNet_Nano/**"\n      - "ResoNet_Diagnostic_Nano/**"
+      - "ResoNet_Nano/**"
+      - "ResoNet_Diagnostic_Nano/**"
       - "tests/host/**"
       - ".github/workflows/firmware-protocol.yml"
   pull_request:
     paths:
       - "ResoNet_Nano/**"
+      - "ResoNet_Diagnostic_Nano/**"
       - "tests/host/**"
       - ".github/workflows/firmware-protocol.yml"
   workflow_dispatch:
@@ -23,20 +25,25 @@ concurrency:
 
 jobs:
   protocol-host:
-    name: Protocol codec host tests (not hardware tests)
+    name: Full protocol codec host tests (not hardware tests)
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - name: Compile with strict warnings
+      - name: Compile full protocol codec with strict warnings
         run: |
           g++ -std=c++11 -Wall -Wextra -Werror -pedantic \
             -I ResoNet_Nano \
             ResoNet_Nano/protocol_v1.cpp tests/host/protocol_v1_test.cpp \
             -o protocol_v1_test
-      - name: Run protocol host tests
+      - name: Run full protocol host tests
         run: ./protocol_v1_test
-  arduino-nano-compile:
-    name: Arduino Nano firmware compile (no hardware tests)
+      - name: Compile compact diagnostic protocol tests
+        run: g++ -std=c++11 -Wall -Wextra -Werror -pedantic tests/host/diagnostic_protocol_test.cpp -o diagnostic_protocol_test
+      - name: Run compact diagnostic protocol tests
+        run: ./diagnostic_protocol_test
+
+  diagnostic-nano-compile:
+    name: Minimal diagnostic Nano compile and size guard
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -46,10 +53,31 @@ jobs:
           arduino-cli core update-index
           arduino-cli core install arduino:avr
           arduino-cli lib install EthernetENC@2.0.5
-      - name: Compile Arduino Nano firmware with Ethernet disabled by default
+      - name: Compile minimal diagnostic image and enforce memory budget
         run: |
-          bash ResoNet_Nano/build_nano.sh
-      - name: Compile opt-in ENC28J60 TCP transport and enforce memory budget
+          bash ResoNet_Diagnostic_Nano/build.sh 2>&1 | tee "$RUNNER_TEMP/diagnostic-nano-build.log"
+          flash=$(sed -n 's/Sketch uses \([0-9][0-9]*\) bytes.*/\1/p' "$RUNNER_TEMP/diagnostic-nano-build.log" | tail -n 1)
+          ram=$(sed -n 's/Global variables use \([0-9][0-9]*\) bytes.*/\1/p' "$RUNNER_TEMP/diagnostic-nano-build.log" | tail -n 1)
+          test -n "$flash" && test -n "$ram"
+          echo "Diagnostic Nano Flash: $flash / 30720 B"
+          echo "Diagnostic Nano RAM: $ram / 2048 B"
+          test "$flash" -le 20000
+          test "$ram" -le 1200
+
+  arduino-nano-compile:
+    name: Full Arduino Nano firmware compile (no hardware tests)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: arduino/setup-arduino-cli@v2
+      - name: Install AVR core and pinned Ethernet library
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install arduino:avr
+          arduino-cli lib install EthernetENC@2.0.5
+      - name: Compile full firmware with Ethernet disabled by default
+        run: bash ResoNet_Nano/build_nano.sh
+      - name: Compile full firmware with opt-in ENC28J60 TCP and enforce memory budget
         run: |
           cp -a ResoNet_Nano "$RUNNER_TEMP/ResoNet_Nano"
           sed -i 's/#define RESONET_ENABLE_ETHERNET 0/#define RESONET_ENABLE_ETHERNET 1/' "$RUNNER_TEMP/ResoNet_Nano/network_config.h"
@@ -57,5 +85,7 @@ jobs:
           flash=$(sed -n 's/Sketch uses \([0-9][0-9]*\) bytes.*/\1/p' "$RUNNER_TEMP/nano-ethernet-build.log" | tail -n 1)
           ram=$(sed -n 's/Global variables use \([0-9][0-9]*\) bytes.*/\1/p' "$RUNNER_TEMP/nano-ethernet-build.log" | tail -n 1)
           test -n "$flash" && test -n "$ram"
+          echo "Full firmware Ethernet Flash: $flash / 30720 B"
+          echo "Full firmware Ethernet RAM: $ram / 2048 B"
           test "$flash" -le 28800
           test "$ram" -le 1536
