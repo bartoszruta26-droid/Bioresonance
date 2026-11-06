@@ -83,13 +83,13 @@ void detection_log_printf_P(uint8_t level, PGM_P format, ...) {
  */
 #define DBG_LOG(msg) do { \
     if (s_detection_config.debug_enabled) { \
-        detection_log_printf_P(LOG_DEBUG, PSTR(msg)); \
+        LOG_DEBUG(msg); \
     } \
 } while(0)
 
 #define DBG_LOG_F(fmt, ...) do { \
     if (s_detection_config.debug_enabled) { \
-        detection_log_printf_P(LOG_DEBUG, PSTR(fmt), ##__VA_ARGS__); \
+        LOG_DEBUG("Detailed detector debug event"); \
     } \
 } while(0)
 
@@ -100,13 +100,11 @@ void detection_handle_event(EventType_t event_type, EffectorType_t effector) {
     s_detection_events++;
     
     // Wyślij zdarzenie do systemu eventów
-    char event_desc[EVENT_DESC_MAX_LEN];
-    snprintf_P(event_desc, sizeof(event_desc), PSTR("Detector: %d"), effector);
-    event_push(event_type, EVENT_SEVERITY_INFO, (uint32_t)effector, event_desc);
+    event_push(event_type, EVENT_SEVERITY_INFO, (uint32_t)effector, "Detector event");
     
     // Loguj zdarzenie jeśli verbose
     if (s_detection_config.verbose_mode) {
-        DBG_LOG_F("Event handled: 0x%04X for effector %d", event_type, effector);
+        DBG_LOG("Event handled");
     }
 }
 
@@ -191,7 +189,7 @@ void device_detector_init(DetectionConfig_t* config) {
     }
     
     LOG_INFO("Device detector initialized successfully");
-    DBG_LOG_F("Detection interval: %d seconds", s_detection_config.detection_interval);
+    DBG_LOG("Detection interval configured");
 }
 
 /**
@@ -205,7 +203,7 @@ bool detection_parse_cli_args(int argc, char** argv) {
         return false;  // Brak argumentów - użyj domyślnych
     }
     
-    DBG_LOG_F("Parsing %d CLI arguments", argc);
+    DBG_LOG("Parsing CLI arguments");
     
     for (int i = 0; i < argc; i++) {
         // Obsługa flag --verbose / -v
@@ -228,7 +226,7 @@ bool detection_parse_cli_args(int argc, char** argv) {
             int interval = atoi(argv[i] + 11);
             if (interval > 0 && interval <= 60) {
                 s_detection_config.detection_interval = (uint8_t)interval;
-                LOG_INFO_F("CLI: Detection interval set to %d seconds", interval);
+                LOG_INFO("CLI detection interval configured");
             }
         }
         // Obsługa --calibrate / -c
@@ -237,7 +235,7 @@ bool detection_parse_cli_args(int argc, char** argv) {
             LOG_INFO("CLI: Force calibration enabled");
         }
         else {
-            LOG_WARNING_F("CLI: Unknown argument '%s'", argv[i]);
+            LOG_WARNING("CLI unknown argument");
         }
     }
     
@@ -262,7 +260,7 @@ bool detect_helmholtz_coil() {
     analogWrite(PIN_PWM_OUTPUT, 0);
     
     if (senseValue < HELMHOLTZ_CONNECTED_THRESHOLD) {
-        LOG_INFO_F("Helmholtz coil detected (ADC=%d)", senseValue);
+        LOG_INFO("Helmholtz coil detected");
         g_device_state.effector.type = EFFECTOR_HELMHOLTZ;
         g_device_state.effector.connected = true;
         g_device_state.effector.impedance = senseValue;
@@ -299,7 +297,7 @@ bool detect_otic_applicator() {
     digitalWrite(PIN_OTIC_ENABLE, LOW);
     
     if (impedanceValue >= OTIC_CONNECTED_MIN && impedanceValue <= OTIC_CONNECTED_MAX) {
-        LOG_INFO_F("Otic applicator detected (Z=%d)", impedanceValue);
+        LOG_INFO("Otic applicator detected");
         g_device_state.effector.type = EFFECTOR_OTIC;
         g_device_state.effector.connected = true;
         g_device_state.effector.impedance = impedanceValue;
@@ -309,7 +307,7 @@ bool detect_otic_applicator() {
         LOG_WARNING("Otic applicator not connected");
         return false;
     } else {
-        LOG_ERROR_F("Otic applicator short circuit! (Z=%d)", impedanceValue);
+        LOG_ERROR("Otic applicator short circuit");
         g_device_state.errorCount++;
         return false;
     }
@@ -342,23 +340,23 @@ ContactQuality_t detect_electrodes() {
     
     // Ocena jakości
     if (impedanceValue < 100) {
-        LOG_ERROR_F("Electrode SHORT CIRCUIT! (Z=%d)", impedanceValue);
+        LOG_ERROR("Electrode short circuit");
         g_device_state.errorCount++;
         return CONTACT_SHORT;
     } else if (impedanceValue >= ELECTRODE_CONNECTED_MIN && impedanceValue <= ELECTRODE_OPTIMAL_MIN) {
-        LOG_INFO_F("Good electrode contact (Z=%d)", impedanceValue);
+        LOG_INFO("Good electrode contact");
         g_device_state.effector.type = EFFECTOR_CONTACT;
         g_device_state.effector.connected = true;
         g_device_state.effector.quality = 70;
         return CONTACT_GOOD;
     } else if (impedanceValue > ELECTRODE_OPTIMAL_MIN && impedanceValue <= ELECTRODE_OPTIMAL_MAX) {
-        LOG_INFO_F("Excellent electrode contact (Z=%d)", impedanceValue);
+        LOG_INFO("Excellent electrode contact");
         g_device_state.effector.type = EFFECTOR_CONTACT;
         g_device_state.effector.connected = true;
         g_device_state.effector.quality = 100;
         return CONTACT_EXCELLENT;
     } else if (impedanceValue > ELECTRODE_OPTIMAL_MAX && impedanceValue <= ELECTRODE_CONNECTED_MAX) {
-        LOG_WARNING_F("Acceptable contact (dry skin?) (Z=%d)", impedanceValue);
+        LOG_WARNING("Acceptable electrode contact");
         g_device_state.effector.type = EFFECTOR_CONTACT;
         g_device_state.effector.connected = true;
         g_device_state.effector.quality = 50;
@@ -367,7 +365,7 @@ ContactQuality_t detect_electrodes() {
         LOG_WARNING("No electrodes connected!");
         return CONTACT_OPEN;
     } else {
-        LOG_WARNING_F("Poor electrode contact (Z=%d)", impedanceValue);
+        LOG_WARNING("Poor electrode contact");
         return CONTACT_POOR;
     }
 }
@@ -398,7 +396,7 @@ WrapStatus_t detect_wrap_applicator() {
     
     // Decyzja
     if (temperature > WRAP_TEMP_MAX) {
-        LOG_ERROR_F("Wrap overheating! T=%.1f°C", temperature);
+        LOG_ERROR("Wrap overheating");
         return WRAP_OVERTEMP;
     }
     
@@ -407,7 +405,7 @@ WrapStatus_t detect_wrap_applicator() {
         g_device_state.errorCount++;
         return WRAP_SHORT;
     } else if (resistanceValue >= WRAP_CONNECTED_MIN && resistanceValue <= WRAP_CONNECTED_MAX) {
-        LOG_INFO_F("Wrap applicator ready (R=%d, T=%.1f°C)", resistanceValue, temperature);
+        LOG_INFO("Wrap applicator ready");
         g_device_state.effector.type = EFFECTOR_WRAP;
         g_device_state.effector.connected = true;
         g_device_state.effector.impedance = resistanceValue;
@@ -417,7 +415,7 @@ WrapStatus_t detect_wrap_applicator() {
         LOG_WARNING("Wrap coil OPEN CIRCUIT!");
         return WRAP_OPEN;
     } else {
-        LOG_WARNING_F("Unknown wrap state (R=%d)", resistanceValue);
+        LOG_WARNING("Unknown wrap state");
         g_device_state.effector.type = EFFECTOR_WRAP;
         g_device_state.effector.connected = true;
         g_device_state.effector.quality = 60;
@@ -485,14 +483,14 @@ bool detect_ir_led_strip() {
         int currentSense = analogRead(PIN_IR_CURRENT_SENSE);
         
         if (currentSense > IR_CONNECTED_MIN && currentSense <= IR_CONNECTED_MAX) {
-            LOG_INFO_F("IR LED Strip detected (ADC=%d)", currentSense);
+            LOG_INFO("IR LED Strip detected");
             g_device_state.effector.type = EFFECTOR_IR_LED_STRIP;
             g_device_state.effector.connected = true;
             g_device_state.effector.impedance = currentSense;
             g_device_state.effector.quality = map(currentSense, IR_CONNECTED_MIN, IR_CONNECTED_MAX, 50, 100);
             return true;
         } else if (currentSense < IR_SHORT_CIRCUIT) {
-            LOG_ERROR_F("IR LED Strip SHORT CIRCUIT! (ADC=%d)", currentSense);
+            LOG_ERROR("IR LED Strip short circuit");
             g_device_state.errorCount++;
             return false;
         } else if (currentSense > IR_OPEN_CIRCUIT) {
@@ -518,7 +516,7 @@ bool detect_ir_led_strip() {
     digitalWrite(IR_MODULATION_PIN, LOW);
     
     if (testValue >= IR_CONNECTED_MIN && testValue <= IR_CONNECTED_MAX) {
-        LOG_INFO_F("IR LED Strip detected via PWM test (ADC=%d)", testValue);
+        LOG_INFO("IR LED Strip detected via PWM test");
         g_device_state.effector.type = EFFECTOR_IR_LED_STRIP;
         g_device_state.effector.connected = true;
         g_device_state.effector.impedance = testValue;
@@ -613,7 +611,7 @@ BioStatus_t detect_biofeedback_sensors(BioSensorStatus_t* status) {
         g_device_state.biofeedbackEnabled = true;
         return BIO_READY;
     } else if (sensorsOk >= 2) {
-        LOG_WARNING_F("Biofeedback: partial mode (%d/3)", sensorsOk);
+        LOG_WARNING("Biofeedback partial mode");
         g_device_state.biofeedbackEnabled = true;
         return BIO_PARTIAL;
     } else if (!status->gsrConnected) {
@@ -716,7 +714,7 @@ bool detect_piezo_speaker() {
     
     // Sprawdź czy wartość wskazuje na podłączenie
     if (detectValue >= PIEZO_CONNECTED_MIN && detectValue <= PIEZO_CONNECTED_MAX) {
-        LOG_INFO_F("Piezo speaker detected (ADC=%d)", detectValue);
+        LOG_INFO("Piezo speaker detected");
         return true;
     }
     
@@ -750,7 +748,7 @@ bool detect_vibrator() {
     digitalWrite(PIN_VIBRATOR_ENABLE, LOW);
     
     if (impedance >= VIBRATOR_CONNECTED_MIN && impedance <= VIBRATOR_CONNECTED_MAX) {
-        LOG_INFO_F("Vibrator detected (impedance=%d)", impedance);
+        LOG_INFO("Vibrator detected");
         return true;
     }
     
@@ -765,7 +763,7 @@ bool detect_vibrator() {
 bool piezo_set_tone(uint16_t freq_hz, uint8_t volume) {
     // Walidacja parametrów
     if (freq_hz < PIEZO_FREQ_MIN || freq_hz > PIEZO_FREQ_MAX) {
-        LOG_ERROR_F("Invalid piezo frequency: %d Hz", freq_hz);
+        LOG_ERROR("Invalid piezo frequency");
         return false;
     }
     
@@ -788,7 +786,7 @@ bool piezo_set_tone(uint16_t freq_hz, uint8_t volume) {
     // Dla niższych częstotliwości audio potrzebny jest inny timer lub DDS
     #endif
     
-    LOG_INFO_F("Piezo tone set: %d Hz, volume=%d", freq_hz, volume);
+    LOG_INFO("Piezo tone configured");
     return true;
 }
 
@@ -804,7 +802,7 @@ bool vibrator_set_intensity(uint8_t intensity) {
     // Ustaw intensywność przez PWM
     analogWrite(PIN_VIBRATOR_PWM, intensity);
     
-    LOG_INFO_F("Vibrator intensity set: %d", intensity);
+    LOG_INFO("Vibrator intensity configured");
     return true;
 }
 
