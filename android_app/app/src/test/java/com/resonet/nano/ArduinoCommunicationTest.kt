@@ -9,17 +9,18 @@ import java.io.InputStreamReader
 import java.net.ServerSocket
 import java.nio.charset.StandardCharsets
 import kotlin.concurrent.thread
+import java.util.concurrent.atomic.AtomicReference
 
 class ArduinoCommunicationTest {
     @Test
     fun commandFrameIsNewlineDelimitedAndResponseIsBounded() = runBlocking {
         ServerSocket(0).use { server ->
-            @Volatile var receivedCommand = ""
+            val receivedCommand = AtomicReference("")
             val peer = thread {
                 server.accept().use { socket ->
-                    receivedCommand = BufferedReader(
+                    receivedCommand.set(BufferedReader(
                         InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8)
-                    ).readLine() ?: ""
+                    ).readLine() ?: "")
                     socket.getOutputStream().apply {
                         write("=== System Status ===\nUptime: 12s\n".toByteArray(StandardCharsets.UTF_8))
                         flush()
@@ -32,7 +33,7 @@ class ArduinoCommunicationTest {
             try {
                 assertTrue(client.connect("127.0.0.1", server.localPort).isSuccess)
                 val response = client.sendCommand("s").getOrThrow()
-                assertEquals("s", receivedCommand)
+                assertEquals("s", receivedCommand.get())
                 assertTrue(response.startsWith("=== System Status ===\n"))
                 assertTrue(response.endsWith("\n"))
                 assertTrue(response.toByteArray(StandardCharsets.UTF_8).size <= ArduinoCommunication.MAX_RESPONSE_BYTES)
