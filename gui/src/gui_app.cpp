@@ -168,6 +168,10 @@ bool GuiApp::connectToDevice(const std::string& ip, int port) {
         status.free_memory = diagnostic.free_memory_bytes;
         status.temperature = diagnostic.temperature_valid
             ? static_cast<float>(diagnostic.temperature_centi_c) / 100.0f : 0.0f;
+        status.diagnostic_temperature_valid = diagnostic.temperature_valid;
+        status.diagnostic_fault_flags = diagnostic.fault_flags;
+        status.output_inhibited_known = diagnostic.output_inhibited_known;
+        status.output_inhibited = diagnostic.output_inhibited;
         status.safety_state = diagnostic.state == 5 ? "SAFE_LOCKOUT" :
             diagnostic.state == 4 ? "FAULT" :
             diagnostic.state == 1 ? "IDLE" : "UNKNOWN";
@@ -522,13 +526,42 @@ void GuiApp::renderStatusPanel() {
     
     ImGui::Separator();
     
-    // No device status frame parser or authenticated handshake exists yet.
-    // Never display zero-initialized host fields as measured device telemetry.
-    ImGui::Text("Telemetria urządzenia: niedostępna");
-    ImGui::TextWrapped("Połączenie TCP potwierdza wyłącznie zestawienie transportu. "
-                       "Temperatura, stan PWM, częstotliwość wyjściowa, czas pracy "
-                       "i stan zabezpieczeń wymagają wdrożenia protokołu statusu "
-                       "oraz potwierdzenia pochodzenia danych.");
+    if (status.connected) {
+        if (ImGui::Button("Odśwież status v1")) {
+            ResoNetStatusV1 diagnostic;
+            if (network.requestStatus(diagnostic)) {
+                status.uptime_seconds = diagnostic.uptime_seconds;
+                status.free_memory = diagnostic.free_memory_bytes;
+                status.diagnostic_temperature_valid = diagnostic.temperature_valid;
+                status.temperature = diagnostic.temperature_valid
+                    ? static_cast<float>(diagnostic.temperature_centi_c) / 100.0f : 0.0f;
+                status.diagnostic_fault_flags = diagnostic.fault_flags;
+                status.output_inhibited_known = diagnostic.output_inhibited_known;
+                status.output_inhibited = diagnostic.output_inhibited;
+                status.safety_state = diagnostic.state == 5 ? "SAFE_LOCKOUT" :
+                    diagnostic.state == 4 ? "FAULT" :
+                    diagnostic.state == 1 ? "IDLE" : "UNKNOWN";
+                addLog("Odczyt STATUS_RESP zakończony poprawnie.");
+            } else {
+                addLog("Nie udało się zweryfikować STATUS_RESP; połączenie diagnostyczne zamknięte.");
+                disconnectFromDevice();
+            }
+        }
+        ImGui::Text("Stan firmware: %s", status.safety_state.c_str());
+        ImGui::Text("Uptime: %u s", status.uptime_seconds);
+        ImGui::Text("Wolna pamięć: %u B", status.free_memory);
+        if (status.diagnostic_temperature_valid)
+            ImGui::Text("Temperatura MCU: %.2f C", status.temperature);
+        else
+            ImGui::Text("Temperatura: brak wiarygodnego pomiaru");
+        ImGui::Text("Flagi diagnostyczne: 0x%04X", status.diagnostic_fault_flags);
+        ImGui::Text("Blokada wyjść: %s",
+                    status.output_inhibited_known && status.output_inhibited
+                        ? "POTWIERDZONA" : "NIEZNANA");
+        ImGui::TextWrapped("Dane mają charakter diagnostyczny. Brak potwierdzenia blokady wyjść nie oznacza bezpieczeństwa.");
+    } else {
+        ImGui::Text("Telemetria urządzenia: niedostępna");
+    }
     
     ImGui::Separator();
     
@@ -576,30 +609,31 @@ void GuiApp::run() {
             }
         }
         
-        // Update system status periodically
+        // Poll only complete, CRC-validated protocol v1 status frames.
         if (status.connected) {
-            std::string response = network.receiveData(10);
-            if (!response.empty()) {
-                // Parse response and update status
-                // TODO: Implement proper status parsing
-                addLog("Odebrano: " + response);
-                
-                // Update status fields from device response (placeholder for future implementation)
-                // In a real implementation, parse the response to extract temperature, frequency, etc.
-            }
-            
-            if (!network.isConnected()) {
-                status.connected = false;
-                status.pwm_running = false;
-                addLog("Połączenie utracone; stan urządzenia wymaga ponownego odczytu");
-            }
-
-            // Periodically update uptime counter
-            static auto last_update = std::chrono::steady_clock::now();
-            auto now = std::chrono::steady_clock::now();
-            if (std::chrono::duration_cast<std::chrono::seconds>(now - last_update).count() >= 1) {
-                status.uptime_seconds++;
-                last_update = now;
+            static auto last_status_poll = std::chrono::steady_clock::now();
+            const auto now = std::chrono::steady_clock::now();
+            if (std::chrono::duration_cast<std::chrono::seconds>(now - last_status_poll).count() >= 5) {
+                ResoNetStatusV1 diagnostic;
+                if (network.requestStatus(diagnostic)) {
+                    status.uptime_seconds = diagnostic.uptime_seconds;
+                    status.free_memory = diagnostic.free_memory_bytes;
+                    status.diagnostic_temperature_valid = diagnostic.temperature_valid;
+                    status.temperature = diagnostic.temperature_valid
+                        ? static_cast<float>(diagnostic.temperature_centi_c) / 100.0f : 0.0f;
+                    status.diagnostic_fault_flags = diagnostic.fault_flags;
+                    status.output_inhibited_known = diagnostic.output_inhibited_known;
+                    status.output_inhibited = diagnostic.output_inhibited;
+                    status.safety_state = diagnostic.state == 5 ? "SAFE_LOCKOUT" :
+                        diagnostic.state == 4 ? "FAULT" :
+                        diagnostic.state == 1 ? "IDLE" : "UNKNOWN";
+                } else {
+                    status.connected = false;
+                    status.pwm_running = false;
+                    network.disconnect();
+                    addLog("Brak poprawnej odpowiedzi STATUS_RESP; rozłączono klienta diagnostycznego.");
+                }
+                last_status_poll = now;
             }
         }
         
