@@ -46,6 +46,11 @@ jobs:
           arduino-cli core update-index
           arduino-cli core install arduino:avr
           arduino-cli lib install EthernetENC@2.0.5
-      - name: Compile Arduino Nano firmware
+      - name: Compile Arduino Nano firmware with Ethernet disabled by default
         run: |
           arduino-cli compile --fqbn arduino:avr:nano:cpu=atmega328old ResoNet_Nano
+      - name: Compile opt-in ENC28J60 TCP transport (no hardware tests)
+        run: |
+          cp -a ResoNet_Nano "$RUNNER_TEMP/ResoNet_Nano"
+          sed -i 's/#define RESONET_ENABLE_ETHERNET 0/#define RESONET_ENABLE_ETHERNET 1/' "$RUNNER_TEMP/ResoNet_Nano/network_config.h"
+          arduino-cli compile --fqbn arduino:avr:nano:cpu=atmega328old "$RUNNER_TEMP/ResoNet_Nano"
