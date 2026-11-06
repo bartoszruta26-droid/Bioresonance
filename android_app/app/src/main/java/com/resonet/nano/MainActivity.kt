@@ -175,14 +175,16 @@ class MainActivity : AppCompatActivity() {
         // Kolorowanie statusu bezpieczeństwa
         val safetyColor = when {
             !status.systemStateReported -> android.R.color.holo_orange_dark
-            status.hasError || !status.isSafe -> android.R.color.holo_red_dark
-            (status.diagnosticFaultFlags and 0x0002) != 0 || status.outputInhibited == null -> android.R.color.holo_orange_dark
+            status.hasError -> android.R.color.holo_red_dark
+            status.state == SystemState.DIAGNOSTIC || status.state == SystemState.BUSY ||
+                (status.diagnosticFaultFlags and 0x0002) != 0 || status.outputInhibited == null -> android.R.color.holo_orange_dark
             else -> android.R.color.holo_green_dark
         }
         binding.tvSafetyStatus.setTextColor(getColor(safetyColor))
         binding.tvSafetyStatus.text = when {
             !status.systemStateReported -> "BRAK DANYCH O STANIE"
-            status.hasError || !status.isSafe -> "BŁĄD"
+            status.hasError -> "BŁĄD"
+            status.state == SystemState.DIAGNOSTIC || status.state == SystemState.BUSY -> "TRYB DIAGNOSTYCZNY"
             (status.diagnosticFaultFlags and 0x0002) != 0 -> "OSTRZEŻENIE"
             status.outputInhibited == null -> "WYJŚCIA NIEZWERYFIKOWANE"
             status.outputInhibited == true -> "WYJŚCIA ZABLOKOWANE"
