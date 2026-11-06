@@ -194,7 +194,7 @@ sudo cp -r webui/* /var/www/html/bioresonance/
 sudo systemctl restart apache2
 ```
 
-**Dostęp:** `http://localhost/bioresonance/`
+**Dostęp:** `https://localhost/bioresonance/` (po skonfigurowaniu TLS w Apache).
 
 📋 **Więcej:** [webui/README.md](webui/README.md)
 
