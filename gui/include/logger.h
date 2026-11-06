@@ -164,8 +164,6 @@ public:
      * @brief Zaloguj wiadomość
      */
     void log(LogLevel level, const std::string& message, const std::string& file, int line) {
-        if (level < min_level) return;
-        
         LogEntry entry(level, message, file, line);
         
         {
