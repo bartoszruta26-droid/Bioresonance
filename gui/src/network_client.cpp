@@ -61,6 +61,7 @@ NetworkClient::~NetworkClient() {
 }
 
 bool NetworkClient::connect(const std::string& ip, int port_num) {
+    std::lock_guard<std::mutex> socket_lock(socket_mutex);
     // A reconnect replaces the previous descriptor instead of leaking it.
     if (socket_fd != INVALID_SOCKET_VALUE) {
         CLOSE_SOCKET(socket_fd);
@@ -204,6 +205,7 @@ bool NetworkClient::connect(const std::string& ip, int port_num) {
 }
 
 void NetworkClient::disconnect() {
+    std::lock_guard<std::mutex> socket_lock(socket_mutex);
     if (socket_fd != INVALID_SOCKET_VALUE) {
         CLOSE_SOCKET(socket_fd);
         socket_fd = INVALID_SOCKET_VALUE;
@@ -213,7 +215,8 @@ void NetworkClient::disconnect() {
 }
 
 bool NetworkClient::isConnected() const {
-    return connected && socket_fd != INVALID_SOCKET_VALUE;
+    std::lock_guard<std::mutex> socket_lock(socket_mutex);
+    return connected.load() && socket_fd != INVALID_SOCKET_VALUE;
 }
 
 bool NetworkClient::sendTherapyPacket(const TherapyPacket& packet) {
@@ -226,18 +229,17 @@ bool NetworkClient::sendTherapyPacket(const TherapyPacket& packet) {
 }
 
 bool NetworkClient::sendCommand(const std::string& cmd) {
+    std::lock_guard<std::mutex> socket_lock(socket_mutex);
     if (cmd.empty()) {
         REPORT_ERROR(ErrorCode::ERR_NETWORK_SEND_FAILED, ErrorCategory::NETWORK,
                     "Cannot send an empty command");
         return false;
     }
-    if (!isConnected()) {
+    if (!connected.load() || socket_fd == INVALID_SOCKET_VALUE) {
         REPORT_ERROR(ErrorCode::ERR_NETWORK_DISCONNECTED, ErrorCategory::NETWORK,
                     "Cannot send command - not connected");
         return false;
     }
-    
-    std::lock_guard<std::mutex> lock(tx_mutex);
     size_t total_sent = 0;
     int send_flags = 0;
 #ifndef _WIN32
@@ -274,7 +276,8 @@ bool NetworkClient::sendCommand(const std::string& cmd) {
 }
 
 std::string NetworkClient::receiveData(int timeout_ms) {
-    if (!isConnected()) return "";
+    std::lock_guard<std::mutex> socket_lock(socket_mutex);
+    if (!connected.load() || socket_fd == INVALID_SOCKET_VALUE) return "";
     
     fd_set read_fds;
     FD_ZERO(&read_fds);
