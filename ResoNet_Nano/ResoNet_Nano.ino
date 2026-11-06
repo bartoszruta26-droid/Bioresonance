@@ -308,7 +308,7 @@ void setup() {
     network_init();
     
     // 6. System detekcji urządzeń
-    device_detector_init();
+    device_detector_init(NULL);
     
     // Inicjalizacja statystyk
     memset(&stats, 0, sizeof(SystemStats));
