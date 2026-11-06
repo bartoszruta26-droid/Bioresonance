@@ -1,8 +1,8 @@
 # Follow-up audit remediation
 
 Date: 2026-11-06
-Branch: `audit/followup-hardening`
-Base: `main` at merge commit `914d109a8ad78a5d3d7d22cd740b4a386bf2476e`
+Integration: PR #50 merged into `main` at `d726f3f6c1efff00c78c4c20a8d4eb545ea7ca18`.
+Follow-up hardening continued directly on `main` as explicitly requested.
 
 ## Changes implemented
 
@@ -18,6 +18,9 @@ Base: `main` at merge commit `914d109a8ad78a5d3d7d22cd740b4a386bf2476e`
 - Disabled unrestricted `raw_command`. A deny-list is not a safe command authorization mechanism.
 - Added private IPv4 destination validation (RFC1918 ranges only; link-local and public targets are rejected) and strict port parsing before outbound connections.
 - Added a minimum-32-character `BIORESONANCE_API_TOKEN` environment secret requirement for `save_config` and `control`; callers must send it in `X-Bioresonance-Token`.
+- Hardened channel configuration validation: 1–8 unique channel IDs (1–8), frequency 0.1–500000 Hz, duty cycle 1–100%, intensity 0–4095, modulation 0–3, bounded channel names and strict field types.
+- Corrected configuration framing to emit actual newline delimiters rather than a literal backslash followed by `n`.
+- Bounded TCP response frames to 8192 bytes and reject empty, timed-out, oversized or incomplete responses instead of reporting success.
 - Changed lock-file opening to `c+` and removed age-based unlinking. Unlinking a lock file while another process holds its inode can split mutual exclusion across two inodes.
 - Added parsing of JSON request bodies because the WebUI sends `application/json`; PHP does not populate `$_POST` for that content type.
 - Changed TCP writes to loop until the entire command has been sent or a write error/zero-byte write occurs.
@@ -43,7 +46,8 @@ The browser frontend and PHP backend still have an API contract mismatch: the fr
 
 ## Validation status
 
-- Source changes committed to the remediation branch.
-- GitHub Actions will run after the pull request is opened.
-- No local PHP lint, C++ build, Android build, hardware test, oscilloscope measurement, or Windows 11 x64 test is claimed by this document.
-- The branch is intentionally not merged into `main`.
+- PR #50 was merged into `main`; subsequent changes are committed directly to `main` as requested.
+- CI now runs PHP lint, Python API contract regression tests, Node.js syntax validation, CMake build and CTest on Linux.
+- The latest run is pending/in progress; no pass is claimed until the final result is available.
+- Windows 11 x64 remains dependent on the correctly labelled self-hosted runner.
+- No hardware-in-the-loop test, oscilloscope measurement, Android build, or electrical safety validation is claimed.
