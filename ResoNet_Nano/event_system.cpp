@@ -97,10 +97,8 @@ bool event_push(uint16_t event_code, uint8_t severity, uint32_t data, const char
     
     // Dla zdarzeń krytycznych natychmiastowe logowanie
     if (severity == EVENT_SEVERITY_CRITICAL || severity == EVENT_SEVERITY_ERROR) {
-        char log_msg[64];
-        snprintf_P(log_msg, sizeof(log_msg), PSTR("Event 0x%04X [%s]"), event_code, description);
-        log_add_entry(severity == EVENT_SEVERITY_CRITICAL ? LOG_FATAL : LOG_ERROR, 
-                      event_code, log_msg);
+        log_add_entry(severity == EVENT_SEVERITY_CRITICAL ? LOG_FATAL : LOG_ERROR,
+                      event_code, description);
     }
     
     return true;
