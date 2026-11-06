@@ -100,8 +100,8 @@ void detection_handle_event(EventType_t event_type, EffectorType_t effector) {
     s_detection_events++;
     
     // Wyślij zdarzenie do systemu eventów
-    char event_desc[64];
-    snprintf(event_desc, sizeof(event_desc), "Detector: %d", effector);
+    char event_desc[EVENT_DESC_MAX_LEN];
+    snprintf_P(event_desc, sizeof(event_desc), PSTR("Detector: %d"), effector);
     event_push(event_type, EVENT_SEVERITY_INFO, (uint32_t)effector, event_desc);
     
     // Loguj zdarzenie jeśli verbose
