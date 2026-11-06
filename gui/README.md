@@ -139,7 +139,7 @@ gui/
 |--------|--------|-------|
 | Windows 11 x64 | Docelowy; test runtime wymagany | MSVC 2022, Winsock2 |
 | Ubuntu 22.04+ | Docelowy; test runtime wymagany | X11 lub Wayland |
-| macOS 11+ | ✅ Testowany | Metal backend |
+| macOS | Niezweryfikowany w obecnym CI | Wsparcie wymaga osobnego testu |
 
 ## Rozwiązywanie problemów
 
