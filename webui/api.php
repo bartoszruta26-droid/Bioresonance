@@ -361,7 +361,7 @@ switch ($action) {
         $mode = $_POST['mode'] ?? 'SINGLE';
 
         // Reject malformed values instead of coercing them into a different device command.
-        if (!is_array($channels) || count($channels) === 0) {
+        if (!is_array($channels) || count($channels) === 0 || count($channels) > 8) {
             json_response(false, null, "No channel data provided");
         }
         if (!is_string($mode) || !in_array($mode, ['SINGLE', 'MULTI'], true)) {
@@ -392,8 +392,8 @@ switch ($action) {
             $intens = (int)$ch['intensity'];
             $mod = (int)$ch['modulation'];
 
-            if ($id > 65535 || isset($seenIds[$id]) ||
-                $type > 65535 || $duty > 100 || $intens > 255 || $mod > 65535) {
+            if ($id < 1 || $id > 8 || isset($seenIds[$id]) ||
+                $type > 255 || $duty < 1 || $duty > 100 || $intens > 4095 || $mod > 3) {
                 json_response(false, null, "Channel field out of range or duplicate channel id");
             }
             $seenIds[$id] = true;
@@ -404,7 +404,7 @@ switch ($action) {
             }
             if ((!is_int($ch['freq']) && !is_float($ch['freq']) &&
                  !(is_string($ch['freq']) && is_numeric($ch['freq']))) ||
-                !is_finite((float)$ch['freq']) || (float)$ch['freq'] < 0) {
+                !is_finite((float)$ch['freq']) || (float)$ch['freq'] < 0.1 || (float)$ch['freq'] > 500000) {
                 json_response(false, null, "Invalid channel frequency");
             }
             if (!in_array($ch['enabled'], [true, false, 0, 1, '0', '1'], true)) {
