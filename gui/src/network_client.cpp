@@ -217,6 +217,13 @@ bool NetworkClient::isConnected() const {
 }
 
 bool NetworkClient::sendTherapyPacket(const TherapyPacket& packet) {
+    (void)packet;
+    // The packed host structure is not a wire protocol. Firmware currently
+    // exposes no matching packet receiver, framing, versioning, or ACK path.
+    REPORT_ERROR(ErrorCode::ERR_NETWORK_SEND_FAILED, ErrorCategory::NETWORK,
+                 "Therapy packet transmission is disabled until RNP is implemented");
+    return false;
+
     if (!isConnected()) {
         REPORT_ERROR(ErrorCode::ERR_NETWORK_DISCONNECTED, ErrorCategory::NETWORK, 
                     "Cannot send therapy packet - not connected");
