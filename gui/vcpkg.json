@@ -1,0 +1,5 @@
+{
+  "name": "bioresonance-desktop",
+  "version-string": "1.1.0",
+  "dependencies": ["sdl2"]
+}
