@@ -1,6 +1,6 @@
 # ResoNet Nano — protokół komunikacyjny v1
 
-**Status:** SPECYFIKACJA PROJEKTOWA — nie jest jeszcze zaimplementowana w firmware ani klientach.  
+**Status:** częściowo wdrożony — parser i diagnostyczny transport firmware oraz klient Android; adaptery desktop/WebUI/TUI i pełna zgodność międzyplatformowa pozostają do wykonania.  
 **Zakres:** diagnostyka, identyfikacja urządzenia i kontrola łączności.  
 **Sterowanie wyjściami:** celowo poza zakresem v1.
 
