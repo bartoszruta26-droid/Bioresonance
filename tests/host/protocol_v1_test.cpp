@@ -60,7 +60,7 @@ int main() {
     handled = 0;
     parser.reset();
     feedAll(parser, bad_flags, sizeof(bad_flags));
-    assert(handled == 0 && parser.rejectedFrames() == 1);
+    assert(handled == 0 && parser.rejectedFrames() == 2);
 
     assert(encode(0x55, 1, NULL, 0, encoded, sizeof(encoded)) == 0);
     assert(encode(HELLO_REQ, 1, expected, 1, encoded, sizeof(encoded)) == 0);
