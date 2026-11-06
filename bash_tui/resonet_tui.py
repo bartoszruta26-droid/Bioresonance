@@ -89,7 +89,7 @@ class DiagnosticClient:
         hello = self._request(HELLO_REQ, HELLO_RESP)
         if len(hello) != 13:
             raise ValueError("Nieprawidłowa długość HELLO_RESP")
-        if hello[11:13] != b"\\x00\\x00":
+        if hello[11] != 0 or hello[12] != 0:
             raise ValueError("Nieobsługiwane capability w protokole v1")
         return hello
 
