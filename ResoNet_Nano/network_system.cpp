@@ -100,9 +100,8 @@ static void handleProtocolFrame(const ResoNetProtocolV1::FrameView& frame,
             // Only coarse firmware state is exposed. No sensor is certified
             // as an external patient/output temperature measurement.
             payload[0] = locked ? 0x05 : (safe ? 0x01 : 0x04); // SAFE_LOCKOUT / IDLE / FAULT
-            const uint16_t fault_flags = (safety == NULL) ? 0x0001 :
-                (uint16_t)(((uint16_t)safety->error_code << 8) |
-                           (safety->safe_state == SAFE_STATE_WARNING ? 0x01 : 0x00));
+            const uint16_t fault_flags = (safety == NULL || !safe) ? 0x0001 :
+                (safety->safe_state == SAFE_STATE_WARNING ? 0x0002 : 0x0000);
             payload[1] = (uint8_t)(fault_flags >> 8);
             payload[2] = (uint8_t)fault_flags;
 
@@ -141,6 +140,7 @@ static void handleProtocolFrame(const ResoNetProtocolV1::FrameView& frame,
 void network_init() {
 #if RESONET_ENABLE_ETHERNET
     net_status = NET_STATUS_CONNECTING;
+    server_started = false;
     SPI.begin();
 
     Ethernet.init(PIN_ENC28J60_CS);
