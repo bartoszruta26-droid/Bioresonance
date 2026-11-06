@@ -47,6 +47,12 @@ Status: static source review only. No hardware validation has been performed. Th
 - The implementation clamps TOP instead of rejecting an unrepresentable request, so the actual output frequency can differ substantially from the requested value.
 - Required action: derive achievable frequency ranges from clock, prescaler, TOP, and resolution; reject unsupported requests before touching timer registers; add boundary/unit tests and oscilloscope verification.
 
+### P1 — IR carrier frequency calculation does not produce the configured frequency
+- `timer2_configure_carrier()` calculates `OCR2A = F_CPU / carrier_freq_hz - 1` with Timer2 prescaler fixed at 1.
+- For the default 38 kHz request on a 16 MHz clock, the calculated TOP is about 420 and is then clamped to 255. The resulting carrier is about 62.5 kHz, not 38 kHz.
+- A zero `carrier_freq_hz` is not rejected by `ir_led_set_config()` and can cause division by zero.
+- Required action: validate the carrier request, select a supported Timer2 prescaler/TOP pair, calculate the actual achievable frequency, and verify it with an oscilloscope. Resolve Timer2 ownership conflicts before enabling IR and audio outputs together.
+
 ### P1 — ENC28J60 network module is a stub
 - Initialization only configures chip-select and returns success.
 - Link status is a software echo of the connected flag.
