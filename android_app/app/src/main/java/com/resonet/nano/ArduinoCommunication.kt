@@ -26,6 +26,7 @@ class ArduinoCommunication {
         const val CONNECTION_TIMEOUT_MS = 3000
         const val COMMAND_TIMEOUT_MS = 2000
         const val MAX_RESPONSE_BYTES = 8192
+        const val MAX_FRAME_DURATION_MS = 5000
         const val MAX_COMMAND_LENGTH = 256
         const val CMD_STATUS = "s"
         const val CMD_START_THERAPY = "START"
@@ -117,7 +118,14 @@ class ArduinoCommunication {
         val bytes = ByteArrayOutputStream()
         val buffer = ByteArray(512)
         var receivedAny = false
+        val deadlineNanos = System.nanoTime() + MAX_FRAME_DURATION_MS * 1_000_000L
         while (true) {
+            val remainingNanos = deadlineNanos - System.nanoTime()
+            if (remainingNanos <= 0L) throw IOException("Przekroczono całkowity czas odbioru ramki")
+            active.soTimeout = minOf(
+                COMMAND_TIMEOUT_MS,
+                (remainingNanos / 1_000_000L).coerceAtLeast(1L).toInt()
+            )
             try {
                 val count = input.read(buffer)
                 if (count < 0) {
@@ -130,6 +138,8 @@ class ArduinoCommunication {
                 }
                 bytes.write(buffer, 0, count)
             } catch (timeout: SocketTimeoutException) {
+                if (System.nanoTime() >= deadlineNanos)
+                    throw IOException("Przekroczono całkowity czas odbioru ramki", timeout)
                 if (!receivedAny) throw IOException("Przekroczono czas oczekiwania na odpowiedź", timeout)
                 break
             }
