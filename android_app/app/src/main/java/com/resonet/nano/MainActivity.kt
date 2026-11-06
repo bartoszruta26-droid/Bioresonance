@@ -161,12 +161,16 @@ class MainActivity : AppCompatActivity() {
      */
     private fun updateStatusUI(status: SystemStatus) {
         binding.tvUptime.text = "Czas pracy: ${status.uptimeSeconds}s"
-        binding.tvTemperature.text = if (status.temperatureValid)\n            "Temperatura: ${status.temperatureCelsius}°C" else "Temperatura: brak wiarygodnego pomiaru"
+        binding.tvTemperature.text = if (status.temperatureValid)
+            "Temperatura: ${status.temperatureCelsius}°C" else "Temperatura: brak wiarygodnego pomiaru"
         binding.tvMemory.text = "Wolna pamięć: ${status.freeMemoryBytes} B"
-        binding.tvPwmStatus.text = if (status.pwmStatusKnown)\n            "PWM: ${if (status.pwmIsActive) "AKTYWNY" else "STOP"}" else "PWM: brak danych"
-        binding.tvFrequency.text = if (status.frequencyKnown)\n            "Częstotliwość: ${status.currentFrequency} Hz" else "Częstotliwość: brak danych"
+        binding.tvPwmStatus.text = if (status.pwmStatusKnown)
+            "PWM: ${if (status.pwmIsActive) "AKTYWNY" else "STOP"}" else "PWM: brak danych"
+        binding.tvFrequency.text = if (status.frequencyKnown)
+            "Częstotliwość: ${status.currentFrequency} Hz" else "Częstotliwość: brak danych"
         binding.tvNetworkStatus.text = "Sieć: ${if (status.networkConnected) "POŁĄCZONA" else "ROZŁĄCZONA"}"
-        binding.tvEffectorType.text = if (status.effectorKnown)\n            "Efektor: ${status.detectedEffector.displayName}" else "Efektor: brak danych"
+        binding.tvEffectorType.text = if (status.effectorKnown)
+            "Efektor: ${status.detectedEffector.displayName}" else "Efektor: brak danych"
         
         // Kolorowanie statusu bezpieczeństwa
         val safetyColor = when {
@@ -202,7 +206,8 @@ class MainActivity : AppCompatActivity() {
      * Aktualizuje UI logów
      */
     private fun updateLogsUI(entries: List<LogEntry>) {
-        val logText = entries.joinToString("\n") { entry ->
+        val logText = entries.joinToString("
+") { entry ->
             "[${entry.level.displayName}] ${entry.message}"
         }
         binding.tvLogs.text = logText.ifEmpty { "Brak logów" }
