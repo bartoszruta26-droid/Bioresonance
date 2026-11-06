@@ -5,6 +5,11 @@ on:
     branches: [main]
     paths:
       - "gui/include/resonet_protocol_v1.h"
+      - "gui/include/network_client.h"
+      - "gui/include/types.h"
+      - "gui/src/network_client.cpp"
+      - "gui/tests/network_client_smoke.cpp"
+      - "webui/diagnostics.php"
       - "gui/tests/resonet_protocol_v1_smoke.cpp"
       - "bash_tui/**"
       - ".github/workflows/desktop-protocol.yml"
@@ -27,5 +32,21 @@ jobs:
         run: g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I gui/include gui/tests/resonet_protocol_v1_smoke.cpp -o protocol_v1_smoke
       - name: Run protocol codec tests
         run: ./protocol_v1_smoke
+      - name: Compile desktop network client loopback tests
+        run: g++ -std=c++17 -Wall -Wextra -Wpedantic -pthread -I gui/include gui/src/network_client.cpp gui/tests/network_client_smoke.cpp -o network_client_smoke
+      - name: Run desktop network client tests
+        run: ./network_client_smoke
       - name: Run read-only TUI protocol tests
         run: python3 -m unittest discover -s bash_tui -p "test_*.py"
+
+  php-lint:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up PHP 7.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+          extensions: sockets
+      - name: Lint diagnostics bridge
+        run: php -l webui/diagnostics.php
