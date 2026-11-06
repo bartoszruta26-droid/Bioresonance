@@ -2,7 +2,7 @@ name: Desktop GUI
 on:
   push:
     branches: [main]
-    paths: ["gui/**", "frequencies.md", ".github/workflows/desktop-gui.yml"]
+    paths: ["gui/**", "webui/**", "frequencies.md", ".github/workflows/desktop-gui.yml"]
   pull_request:
     paths: ["gui/**", "frequencies.md", ".github/workflows/desktop-gui.yml"]
   workflow_dispatch:
@@ -23,7 +23,9 @@ jobs:
       - name: Install Linux dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build libsdl2-dev build-essential
+          sudo apt-get install -y cmake ninja-build libsdl2-dev build-essential php-cli
+      - name: PHP syntax check
+        run: php -l webui/api.php
       - name: Configure
         run: cmake -S gui -B build/gui -G Ninja -DCMAKE_BUILD_TYPE=Release
       - name: Build
