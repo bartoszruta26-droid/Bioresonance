@@ -19,6 +19,7 @@
 #include <fstream>
 #include <functional>
 #include <chrono>
+#include <ctime>
 #include <iomanip>
 #include <sstream>
 #include <iostream>
@@ -65,7 +66,13 @@ struct LogEntry {
             now.time_since_epoch()) % 1000;
         
         std::ostringstream oss;
-        oss << std::put_time(std::localtime(&time), "%Y-%m-%d %H:%M:%S");
+        std::tm time_info{};
+#ifdef _WIN32
+        localtime_s(&time_info, &time);
+#else
+        localtime_r(&time, &time_info);
+#endif
+        oss << std::put_time(&time_info, "%Y-%m-%d %H:%M:%S");
         oss << '.' << std::setfill('0') << std::setw(3) << ms.count();
         timestamp = oss.str();
         
@@ -119,7 +126,7 @@ public:
         }
     }
     
-    bool isVerbose() const { return verbose_mode; }
+    bool isVerbose() const { return verbose_mode.load(); }
     
     /**
      * @brief Włącz/wyłącz logowanie do pliku
@@ -255,7 +262,7 @@ private:
     Logger& operator=(const Logger&) = delete;
     
     LogLevel min_level;
-    bool verbose_mode;
+    std::atomic<bool> verbose_mode;
     bool logToFile;
     bool console_output;
     size_t max_history_size;
