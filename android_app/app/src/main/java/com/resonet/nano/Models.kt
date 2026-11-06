@@ -65,7 +65,8 @@ data class SystemStatus(
     val currentFrequency: Float = 0.0f,
     val networkConnected: Boolean = false,
     val detectedEffector: EffectorType = EffectorType.NONE,
-    val biofeedbackEnabled: Boolean = false
+    val biofeedbackEnabled: Boolean = false,
+    val systemStateReported: Boolean = false
 ) {
     val isSafe: Boolean
         get() = state == SystemState.IDLE || state == SystemState.RUNNING
