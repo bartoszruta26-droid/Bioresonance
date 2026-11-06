@@ -78,31 +78,27 @@ graph TD
         D[TUI Bash]
     end
 
-    subgraph Sieć["Komunikacja Ethernet TCP/UDP"]
+    subgraph Sieć["Diagnostyczna sieć Ethernet TCP"]
         E[ENC28J60]
     end
 
-    subgraph Arduino["Arduino Nano"]
-        F[Generator XV-LPWM]
-        G[Bezpieczeństwo]
-        H[Stack sieciowy]
+    subgraph Diagnostic["ResoNet Diagnostic Nano — osobny obraz"]
+        H[Minimalny serwer TCP i parser v1]
     end
 
-    subgraph Wyjście["Wyjście EMF"]
-        I[ProbeHolder<br/>Izolacja niezwalidowana]
-        J[Antena EMF<br/>Antena rezonator Schumanna]
+    subgraph Full["Pełny firmware — oddzielny wariant"]
+        F[Podsystemy urządzenia]
+        G[Mechanizmy bezpieczeństwa]
+        I[Wyjścia sprzętowe]
     end
 
-    A -->|TCP v1| E
-    B -->|TCP v1| E
-    C -->|TCP v1| E
-    D -->|TCP v1| E
-    
+    A -->|TCP v1, tylko odczyt| E
+    B -->|TCP v1, tylko odczyt| E
+    C -->|TCP v1, tylko odczyt| E
+    D -->|TCP v1, tylko odczyt| E
     E <--> H
-    H --> F
     F --> G
     G --> I
-    I --> J
 ```
 
 ---
@@ -158,6 +154,8 @@ platformio run --target upload
 📋 **Szczegóły:** [arduino.md](arduino.md)
 
 **Sieć diagnostyczna:** transport ENC28J60/TCP jest domyślnie wyłączony. Aby go włączyć, skonfiguruj adresację w `ResoNet_Nano/network_config.h`, ustaw `RESONET_ENABLE_ETHERNET` na `1` i zainstaluj EthernetENC `2.0.5`. Protokół v1 udostępnia wyłącznie diagnostykę; nie zawiera zdalnych poleceń aktywacji wyjść.
+
+**Wariant oszczędny Flash:** `ResoNet_Diagnostic_Nano/` jest osobnym, minimalnym obrazem dla Nano + ENC28J60. Zawiera wyłącznie serwer TCP, parser v1 i odpowiedzi diagnostyczne. Nie zawiera PWM, sterowania efektorami ani pełnego kontrolera bezpieczeństwa, dlatego nie zastępuje pełnego firmware. CI pilnuje limitu 20 000 B Flash i 1 200 B RAM dla tego wariantu; wynik kompilacji musi być potwierdzony w zadaniu CI.
 
 ---
 
