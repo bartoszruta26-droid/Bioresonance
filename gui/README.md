@@ -35,6 +35,33 @@ sudo apt-get install build-essential cmake libsdl2-dev git
 brew install cmake sdl2 git
 ```
 
+### Windows 10/11 — MSVC + vcpkg
+
+Wymagane: Visual Studio 2022 z obciążeniem „Desktop development with C++”, CMake i Git.
+
+Z katalogu głównego repozytorium, w PowerShell:
+
+```powershell
+git clone https://github.com/microsoft/vcpkg
+.\vcpkg\bootstrap-vcpkg.bat
+.\vcpkg\vcpkg.exe install sdl2:x64-windows
+cmake -S gui -B build\gui -DCMAKE_TOOLCHAIN_FILE="$PWD\vcpkg\scripts\buildsystems\vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows
+cmake --build build\gui --config Release
+.\build\gui\Release\bioresonance_gui.exe
+```
+
+### Linux — GCC/Clang
+
+```bash
+sudo apt-get update
+sudo apt-get install -y build-essential cmake libsdl2-dev
+cmake -S gui -B build/gui -DCMAKE_BUILD_TYPE=Release
+cmake --build build/gui --parallel
+./build/gui/bioresonance_gui
+```
+
+CI buduje Desktop GUI na Windows 2022 i Ubuntu 22.04. Zielony wynik CI jest warunkiem uznania kompilacji za zweryfikowaną; lokalna instrukcja nie jest deklaracją, że każda konfiguracja została już przetestowana.
+
 ### Budowanie
 
 ```bash
