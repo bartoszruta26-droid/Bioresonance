@@ -35,6 +35,33 @@ sudo apt-get install build-essential cmake libsdl2-dev git
 brew install cmake sdl2 git
 ```
 
+### Windows 11 — MSVC + vcpkg
+
+Wymagane: Visual Studio 2022 z obciążeniem „Desktop development with C++”, CMake i Git.
+
+Z katalogu głównego repozytorium, w PowerShell:
+
+```powershell
+git clone https://github.com/microsoft/vcpkg
+.\vcpkg\bootstrap-vcpkg.bat
+.\vcpkg\vcpkg.exe install sdl2:x64-windows
+cmake -S gui -B build\gui -DCMAKE_TOOLCHAIN_FILE="$PWD\vcpkg\scripts\buildsystems\vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows
+cmake --build build\gui --config Release
+.\build\gui\Release\bioresonance_gui.exe
+```
+
+### Linux — GCC/Clang
+
+```bash
+sudo apt-get update
+sudo apt-get install -y build-essential cmake libsdl2-dev
+cmake -S gui -B build/gui -DCMAKE_BUILD_TYPE=Release
+cmake --build build/gui --parallel
+./build/gui/bioresonance_gui
+```
+
+Docelowym systemem Desktop GUI jest Windows 11 x64 oraz Linux (Ubuntu 22.04+). CI kompiluje wariant Windows x64 na hoście GitHub Actions `windows-2022` (Windows Server 2022) oraz wariant Linux na Ubuntu 22.04. Kompilacja na Windows Server nie jest równoznaczna z testem uruchomieniowym na Windows 11. Test GUI na rzeczywistym Windows 11 pozostaje osobnym kryterium odbioru.
+
 ### Budowanie
 
 ```bash
@@ -110,9 +137,9 @@ gui/
 
 | System | Status | Uwagi |
 |--------|--------|-------|
-| Windows 10/11 | ✅ Testowany | Wymaga Winsock2 |
-| Ubuntu 20.04+ | ✅ Testowany | X11 lub Wayland |
-| macOS 11+ | ✅ Testowany | Metal backend |
+| Windows 11 x64 | Docelowy; test runtime wymagany | MSVC 2022, Winsock2 |
+| Ubuntu 22.04+ | Docelowy; test runtime wymagany | X11 lub Wayland |
+| macOS | Niezweryfikowany w obecnym CI | Wsparcie wymaga osobnego testu |
 
 ## Rozwiązywanie problemów
 

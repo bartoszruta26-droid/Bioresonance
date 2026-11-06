@@ -19,11 +19,21 @@
 #include <fstream>
 #include <functional>
 #include <chrono>
+#include <ctime>
 #include <iomanip>
 #include <sstream>
 #include <iostream>
 #include <atomic>
 #include <thread>
+
+// Windows SDK headers may define ERROR/CRITICAL as macros. They collide with
+// the scoped LogLevel enumerators below when Winsock/Windows headers precede us.
+#ifdef ERROR
+#undef ERROR
+#endif
+#ifdef CRITICAL
+#undef CRITICAL
+#endif
 
 /**
  * @brief Poziomy logowania
@@ -56,7 +66,13 @@ struct LogEntry {
             now.time_since_epoch()) % 1000;
         
         std::ostringstream oss;
-        oss << std::put_time(std::localtime(&time), "%Y-%m-%d %H:%M:%S");
+        std::tm time_info{};
+#ifdef _WIN32
+        localtime_s(&time_info, &time);
+#else
+        localtime_r(&time, &time_info);
+#endif
+        oss << std::put_time(&time_info, "%Y-%m-%d %H:%M:%S");
         oss << '.' << std::setfill('0') << std::setw(3) << ms.count();
         timestamp = oss.str();
         
@@ -110,22 +126,27 @@ public:
         }
     }
     
-    bool isVerbose() const { return verbose_mode; }
+    bool isVerbose() const { return verbose_mode.load(); }
     
     /**
      * @brief Włącz/wyłącz logowanie do pliku
      */
     void setLogFile(const std::string& filepath) {
-        std::lock_guard<std::mutex> lock(log_mutex);
-        if (log_file.is_open()) {
-            log_file.close();
+        bool opened = false;
+        {
+            std::lock_guard<std::mutex> lock(log_mutex);
+            if (log_file.is_open()) {
+                log_file.close();
+            }
+            log_file.open(filepath, std::ios::app);
+            opened = log_file.is_open();
+            logToFile = opened;
         }
-        log_file.open(filepath, std::ios::app);
-        if (log_file.is_open()) {
-            logToFile = true;
+
+        // Log only after releasing log_mutex: log() acquires the same mutex.
+        if (opened) {
             log(LogLevel::INFO, "Logger initialized", __FILE__, __LINE__);
         } else {
-            logToFile = false;
             log(LogLevel::ERROR, "Failed to open log file: " + filepath, __FILE__, __LINE__);
         }
     }
@@ -150,40 +171,43 @@ public:
      * @brief Zaloguj wiadomość
      */
     void log(LogLevel level, const std::string& message, const std::string& file, int line) {
-        if (level < min_level) return;
-        
         LogEntry entry(level, message, file, line);
         
-        std::lock_guard<std::mutex> lock(log_mutex);
-        
-        // Log do konsoli
-        if (console_output) {
-            std::ostream& out = (level >= LogLevel::ERROR) ? std::cerr : std::cout;
-            out << entry.toString() << std::endl;
-        }
-        
-        // Log do pliku
-        if (logToFile && log_file.is_open()) {
-            log_file << entry.toString() << std::endl;
-            log_file.flush();
-        }
-        
-        // Wywołaj callbacki
         {
-            std::lock_guard<std::mutex> cb_lock(callback_mutex);
-            for (auto& cb : callbacks) {
-                try {
-                    cb(entry);
-                } catch (const std::exception& e) {
-                    std::cerr << "[Logger] Callback exception: " << e.what() << std::endl;
-                }
+            std::lock_guard<std::mutex> lock(log_mutex);
+            if (level < min_level) return;
+
+            // Log do konsoli
+            if (console_output) {
+                std::ostream& out = (level >= LogLevel::ERROR) ? std::cerr : std::cout;
+                out << entry.toString() << std::endl;
+            }
+
+            // Log do pliku
+            if (logToFile && log_file.is_open()) {
+                log_file << entry.toString() << std::endl;
+                log_file.flush();
+            }
+
+            // Zapisz do historii
+            log_history.push_back(entry);
+            if (log_history.size() > max_history_size) {
+                log_history.erase(log_history.begin());
             }
         }
-        
-        // Zapisz do historii
-        log_history.push_back(entry);
-        if (log_history.size() > max_history_size) {
-            log_history.erase(log_history.begin());
+
+        // Never call user callbacks while holding log_mutex: callbacks may log recursively.
+        std::vector<LogCallback> callbacks_snapshot;
+        {
+            std::lock_guard<std::mutex> cb_lock(callback_mutex);
+            callbacks_snapshot = callbacks;
+        }
+        for (const auto& cb : callbacks_snapshot) {
+            try {
+                cb(entry);
+            } catch (const std::exception& e) {
+                std::cerr << "[Logger] Callback exception: " << e.what() << std::endl;
+            }
         }
     }
     
@@ -238,7 +262,7 @@ private:
     Logger& operator=(const Logger&) = delete;
     
     LogLevel min_level;
-    bool verbose_mode;
+    std::atomic<bool> verbose_mode;
     bool logToFile;
     bool console_output;
     size_t max_history_size;

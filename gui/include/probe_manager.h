@@ -9,6 +9,7 @@
 #include <map>
 #include <vector>
 #include <string>
+#include <cstddef>
 #include "types.h"
 
 class ProbeManager {
@@ -32,7 +33,7 @@ public:
     std::string getModeName(ProbeMode mode) const;
     
     // GUI-specific methods
-    int getProbeCount() const { return probes.size(); }
+    std::size_t getProbeCount() const { return probes.size(); }
     const std::map<int, ProbeConfig>& getProbesMap() const { return probes; }
 };
 

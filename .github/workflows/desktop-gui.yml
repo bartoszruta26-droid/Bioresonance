@@ -1,0 +1,60 @@
+name: Desktop GUI
+on:
+  push:
+    branches: [main]
+    paths: ["gui/**", "frequencies.md", ".github/workflows/desktop-gui.yml"]
+  pull_request:
+    paths: ["gui/**", "frequencies.md", ".github/workflows/desktop-gui.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: desktop-gui-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-22.04
+            platform: linux
+          - runner: [self-hosted, Windows, X64, windows-11]
+            platform: windows-11-x64
+    # Do not execute untrusted fork pull-request code on a persistent self-hosted runner.
+    if: matrix.platform != 'windows-11-x64' || github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build libsdl2-dev build-essential
+      - name: Install Windows dependencies
+        if: runner.os == 'Windows'
+        run: |
+          git clone https://github.com/microsoft/vcpkg "$env:RUNNER_TEMP/vcpkg"
+          & "$env:RUNNER_TEMP/vcpkg/bootstrap-vcpkg.bat" -disableMetrics
+          & "$env:RUNNER_TEMP/vcpkg/vcpkg.exe" install sdl2:x64-windows
+          "CMAKE_TOOLCHAIN_FILE=$env:RUNNER_TEMP/vcpkg/scripts/buildsystems/vcpkg.cmake" | Out-File -FilePath $env:GITHUB_ENV -Append
+      - name: Configure Linux
+        if: runner.os == 'Linux'
+        run: cmake -S gui -B build/gui -G Ninja -DCMAKE_BUILD_TYPE=Release
+      - name: Configure Windows
+        if: runner.os == 'Windows'
+        run: cmake -S gui -B build/gui -DCMAKE_TOOLCHAIN_FILE="$env:CMAKE_TOOLCHAIN_FILE" -DVCPKG_TARGET_TRIPLET=x64-windows
+      - name: Build
+        run: cmake --build build/gui --config Release --parallel
+      - name: Run desktop unit tests
+        run: ctest --test-dir build/gui -C Release --output-on-failure
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bioresonance-gui-${{ runner.os }}
+          path: |
+            build/gui/bioresonance_gui
+            build/gui/Release/bioresonance_gui.exe
+          if-no-files-found: warn

@@ -8,6 +8,7 @@
 
 #include <vector>
 #include <string>
+#include <cstddef>
 #include "types.h"
 
 class FrequencyLoader {
@@ -19,7 +20,7 @@ public:
     
     bool loadFromFile(const std::string& filepath);
     const std::vector<FrequencyEntry>& getFrequencyDatabase() const { return frequency_database; }
-    int getDatabaseSize() const { return frequency_database.size(); }
+    std::size_t getDatabaseSize() const { return frequency_database.size(); }
     
     // Search methods
     std::vector<FrequencyEntry> searchByCategory(const std::string& category);

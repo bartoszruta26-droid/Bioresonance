@@ -9,6 +9,7 @@
 #include <string>
 #include <atomic>
 #include <mutex>
+#include <cstdint>
 #include "types.h"
 
 #ifdef _WIN32
@@ -34,6 +35,9 @@ class NetworkClient {
 private:
     socket_t socket_fd;
 #ifdef _WIN32
+    bool winsock_acquired;
+#endif
+#ifdef _WIN32
     struct sockaddr_in server_addr;
 #else
     struct sockaddr_in server_addr;
@@ -41,7 +45,8 @@ private:
     std::string ip_address;
     int port;
     std::atomic<bool> connected;
-    std::mutex tx_mutex;
+    mutable std::mutex socket_mutex;
+    std::uint64_t connection_generation = 0;
     
 public:
     NetworkClient();
@@ -54,8 +59,14 @@ public:
     bool sendCommand(const std::string& cmd);
     std::string receiveData(int timeout_ms = 100);
     
-    std::string getIPAddress() const { return ip_address; }
-    int getPort() const { return port; }
+    std::string getIPAddress() const {
+        std::lock_guard<std::mutex> lock(socket_mutex);
+        return ip_address;
+    }
+    int getPort() const {
+        std::lock_guard<std::mutex> lock(socket_mutex);
+        return port;
+    }
 };
 
 #endif // NETWORK_CLIENT_H

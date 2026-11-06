@@ -29,6 +29,7 @@ static std::atomic<bool> g_shutdown_requested{false};
  * @brief Handler sygnałów systemowych - tylko ustawia flagę atomową
  */
 void signal_handler(int signum) {
+    (void)signum;
     // Only set atomic flag - avoid non-async-signal-safe functions in handler
     g_shutdown_requested = true;
 }

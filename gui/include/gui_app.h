@@ -23,6 +23,10 @@ private:
     // SDL2 components
     SDL_Window* window;
     SDL_Renderer* renderer;
+    bool sdl_initialized;
+    bool imgui_context_created;
+    bool imgui_sdl_backend_initialized;
+    bool imgui_renderer_backend_initialized;
     
     // Application components
     NetworkClient network;
@@ -40,6 +44,9 @@ private:
     
     // UI state
     bool show_frequency_browser;
+    std::string frequency_search;
+    std::vector<FrequencyEntry> filtered_frequencies;
+    bool frequency_search_active;
     bool show_probe_settings;
     bool show_system_status;
     int current_tab;

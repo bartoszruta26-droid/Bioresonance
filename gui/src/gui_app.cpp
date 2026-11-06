@@ -20,9 +20,11 @@
 #endif
 
 GuiApp::GuiApp() 
-    : window(nullptr), renderer(nullptr), selected_probe(1), running(false),
+    : window(nullptr), renderer(nullptr), sdl_initialized(false),
+      imgui_context_created(false), imgui_sdl_backend_initialized(false),
+      imgui_renderer_backend_initialized(false), selected_probe(1), running(false),
       device_ip("192.168.1.100"), device_port(5001),
-      show_frequency_browser(false), show_probe_settings(true), 
+      show_frequency_browser(false), frequency_search_active(false), show_probe_settings(true), 
       show_system_status(true), current_tab(0) {
 }
 
@@ -36,6 +38,7 @@ bool GuiApp::initSDL() {
         std::cerr << "Failed to initialize SDL: " << SDL_GetError() << std::endl;
         return false;
     }
+    sdl_initialized = true;
     
     // Create window
     window = SDL_CreateWindow("ResoNet-Nano Biorezonans GUI",
@@ -56,12 +59,21 @@ bool GuiApp::initSDL() {
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    imgui_context_created = true;
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     
     // Setup Platform/Renderer backends
-    ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
-    ImGui_ImplSDLRenderer2_Init(renderer);
+    if (!ImGui_ImplSDL2_InitForSDLRenderer(window, renderer)) {
+        std::cerr << "Failed to initialize Dear ImGui SDL platform backend" << std::endl;
+        return false;
+    }
+    imgui_sdl_backend_initialized = true;
+    if (!ImGui_ImplSDLRenderer2_Init(renderer)) {
+        std::cerr << "Failed to initialize Dear ImGui SDL renderer backend" << std::endl;
+        return false;
+    }
+    imgui_renderer_backend_initialized = true;
     
     // Setup style
     ImGui::StyleColorsDark();
@@ -71,9 +83,18 @@ bool GuiApp::initSDL() {
 }
 
 void GuiApp::cleanupSDL() {
-    ImGui_ImplSDLRenderer2_Shutdown();
-    ImGui_ImplSDL2_Shutdown();
-    ImGui::DestroyContext();
+    if (imgui_renderer_backend_initialized) {
+        ImGui_ImplSDLRenderer2_Shutdown();
+        imgui_renderer_backend_initialized = false;
+    }
+    if (imgui_sdl_backend_initialized) {
+        ImGui_ImplSDL2_Shutdown();
+        imgui_sdl_backend_initialized = false;
+    }
+    if (imgui_context_created) {
+        ImGui::DestroyContext();
+        imgui_context_created = false;
+    }
     
     if (renderer) {
         SDL_DestroyRenderer(renderer);
@@ -85,7 +106,10 @@ void GuiApp::cleanupSDL() {
         window = nullptr;
     }
     
-    SDL_Quit();
+    if (sdl_initialized) {
+        SDL_Quit();
+        sdl_initialized = false;
+    }
 }
 
 void GuiApp::addLog(const std::string& message) {
@@ -135,7 +159,7 @@ bool GuiApp::connectToDevice(const std::string& ip, int port) {
         status.connected = true;
         device_ip = ip;
         device_port = port;
-        addLog("Połączono pomyślnie!");
+        addLog("Nawiązano połączenie TCP; identyfikacja urządzenia i telemetria nie są jeszcze obsługiwane.");
         return true;
     } else {
         status.connected = false;
@@ -179,29 +203,10 @@ void GuiApp::onFrequencySelected(uint32_t frequency_hz) {
 }
 
 void GuiApp::onStartTherapy() {
-    if (!status.connected) {
-        addLog("Błąd: Nie podłączono do urządzenia!");
-        return;
-    }
-    
-    ProbeConfig* probe = probe_manager.getProbe(selected_probe);
-    if (probe && probe->enabled) {
-        TherapyPacket packet;
-        packet.frequency_hz_x100 = probe->frequency_hz_x100;
-        packet.duration_sec = probe->duration_sec;
-        packet.modulation_type = (uint8_t)probe->modulation;
-        packet.duty_cycle = probe->duty_cycle;
-        packet.intensity_level = probe->intensity_level;
-        packet.channel_id = probe->channel_id;
-        packet.checksum = calculateChecksum(packet);  // Calculate proper checksum
-        
-        if (network.sendTherapyPacket(packet)) {
-            status.pwm_running = true;
-            addLog("Rozpoczęto terapię na kanale " + std::to_string(probe->channel_id));
-        } else {
-            addLog("Błąd wysyłania pakietu terapeutycznego");
-        }
-    }
+    // The firmware currently has no implemented network transport or RNP parser.
+    // Sending a packed C++ struct here would not constitute a negotiated protocol.
+    status.pwm_running = false;
+    addLog("Sterowanie wyjściami zablokowane: transport urządzenia i parser RNP nie są wdrożone.");
 }
 
 uint8_t GuiApp::calculateChecksum(const TherapyPacket& packet) {
@@ -229,9 +234,9 @@ uint8_t GuiApp::calculateChecksum(const TherapyPacket& packet) {
 }
 
 void GuiApp::onStopTherapy() {
-    status.pwm_running = false;
-    network.sendCommand("STOP");
-    addLog("Zatrzymano terapię");
+    // Deliberately do not send an unframed text command to an unimplemented
+    // firmware transport. A local UI action cannot confirm physical shutdown.
+    addLog("Polecenie STOP niedostępne: brak wdrożonego protokołu urządzenia.");
 }
 
 void GuiApp::renderMenuBar() {
@@ -271,7 +276,7 @@ void GuiApp::renderMenuBar() {
     if (ImGui::BeginPopupModal("About", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::Text("ResoNet-Nano Biorezonans GUI");
         ImGui::Separator();
-        ImGui::Text("Wersja 1.0");
+        ImGui::Text("Wersja 1.1");
         ImGui::Text("Interfejs GUI dla systemu biorezonansu");
         ImGui::Spacing();
         if (ImGui::Button("OK", ImVec2(120, 0))) {
@@ -377,52 +382,48 @@ void GuiApp::renderProbePanel() {
         
         ImGui::Separator();
         
-        // Therapy control buttons
-        if (!status.pwm_running) {
-            if (ImGui::Button("Rozpocznij terapię", ImVec2(200, 40))) {
-                onStartTherapy();
-            }
-        } else {
-            if (ImGui::Button("Zatrzymaj terapię", ImVec2(200, 40))) {
-                onStopTherapy();
-            }
-        }
+        // Output control stays unavailable until firmware transport, protocol parser,
+        // device acknowledgement, and hardware safety interlocks are implemented.
+        ImGui::BeginDisabled();
+        ImGui::Button("Sterowanie wyjściami niedostępne", ImVec2(260, 40));
+        ImGui::EndDisabled();
+        ImGui::TextWrapped("Protokół komunikacyjny urządzenia nie jest jeszcze wdrożony. "
+                           "Interfejs nie wysyła poleceń uruchamiających ani zatrzymujących wyjścia.");
     }
     
     ImGui::EndChild();
 }
 
 void GuiApp::renderFrequencyBrowser() {
-    // Use member variable or persistent storage instead of static local
-    // For now, use a local buffer that persists via ImGui's internal state
-    static char search_buffer[256] = "";  // ImGui manages the text input state internally
-    std::vector<FrequencyEntry> filtered_results;
-    bool search_triggered = false;
-    
     ImGui::Text("Przeglądarka częstotliwości");
     ImGui::Separator();
-    
-    // Search bar
-    if (ImGui::InputText("##Search", search_buffer, sizeof(search_buffer), ImGuiInputTextFlags_EnterReturnsTrue)) {
-        filtered_results = frequency_loader.searchByDisease(search_buffer);
-        search_triggered = true;
-    }
+
+    const bool submitted = ImGui::InputText(
+        "##Search", &frequency_search, ImGuiInputTextFlags_EnterReturnsTrue);
     ImGui::SameLine();
-    
-    if (ImGui::Button("Szukaj choroby")) {
-        filtered_results = frequency_loader.searchByDisease(search_buffer);
-        search_triggered = true;
-    }
+    const bool search_clicked = ImGui::Button("Szukaj choroby");
     ImGui::SameLine();
-    
-    if (ImGui::Button("Pokaż wszystkie")) {
-        filtered_results.clear();
-        search_triggered = false;
+    const bool show_all_clicked = ImGui::Button("Pokaż wszystkie");
+
+    if (submitted || search_clicked) {
+        filtered_frequencies = frequency_loader.searchByDisease(frequency_search);
+        frequency_search_active = true;
     }
-    
+    if (show_all_clicked) {
+        filtered_frequencies.clear();
+        frequency_search_active = false;
+    }
+
     ImGui::Separator();
-    
-    // Results table
+
+    const auto& results = frequency_search_active
+        ? filtered_frequencies
+        : frequency_loader.getFrequencyDatabase();
+
+    if (frequency_search_active && results.empty()) {
+        ImGui::TextWrapped("Brak wyników dla podanej frazy.");
+    }
+
     if (ImGui::BeginTable("FreqTable", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_ScrollY)) {
         ImGui::TableSetupScrollFreeze(0, 1);
         ImGui::TableSetupColumn("Częstotliwość (Hz)");
@@ -430,22 +431,19 @@ void GuiApp::renderFrequencyBrowser() {
         ImGui::TableSetupColumn("Choroba");
         ImGui::TableSetupColumn("Akcje");
         ImGui::TableHeadersRow();
-        
-        const auto& db = frequency_loader.getFrequencyDatabase();
-        const auto& results = search_triggered ? filtered_results : db;
-        
+
         for (const auto& entry : results) {
             ImGui::TableNextRow();
-            
+
             ImGui::TableNextColumn();
             ImGui::Text("%u", entry.frequency_hz);
-            
+
             ImGui::TableNextColumn();
             ImGui::Text("%s", entry.category.c_str());
-            
+
             ImGui::TableNextColumn();
             ImGui::Text("%s", entry.disease_name.c_str());
-            
+
             ImGui::TableNextColumn();
             char button_label[64];
             snprintf(button_label, sizeof(button_label), "Użyj##%u", entry.frequency_hz);
@@ -453,7 +451,7 @@ void GuiApp::renderFrequencyBrowser() {
                 onFrequencySelected(entry.frequency_hz);
             }
         }
-        
+
         ImGui::EndTable();
     }
 }
@@ -463,7 +461,7 @@ void GuiApp::renderStatusPanel() {
     ImGui::Separator();
     
     // Connection status
-    ImGui::Text("Status połączenia: %s", status.connected ? "POŁĄCZONO" : "ROZŁĄCZONO");
+    ImGui::Text("Transport TCP: %s", status.connected ? "POŁĄCZONY" : "ROZŁĄCZONY");
     
     if (status.connected) {
         ImGui::SameLine();
@@ -510,13 +508,13 @@ void GuiApp::renderStatusPanel() {
     
     ImGui::Separator();
     
-    // System info
-    ImGui::Text("Temperatura: %.1f°C", status.temperature);
-    ImGui::Text("PWM: %s", status.pwm_running ? "URUCHOMIONY" : "ZATRZYMANI");
-    ImGui::Text("Aktualna częstotliwość: %u Hz", status.current_frequency);
-    ImGui::Text("Uptime: %u s", status.uptime_seconds);
-    ImGui::Text("Wolna pamięć: %u B", status.free_memory);
-    ImGui::Text("Stan bezpieczeństwa: %s", status.safety_state.c_str());
+    // No device status frame parser or authenticated handshake exists yet.
+    // Never display zero-initialized host fields as measured device telemetry.
+    ImGui::Text("Telemetria urządzenia: niedostępna");
+    ImGui::TextWrapped("Połączenie TCP potwierdza wyłącznie zestawienie transportu. "
+                       "Temperatura, stan PWM, częstotliwość wyjściowa, czas pracy "
+                       "i stan zabezpieczeń wymagają wdrożenia protokołu statusu "
+                       "oraz potwierdzenia pochodzenia danych.");
     
     ImGui::Separator();
     
@@ -576,6 +574,12 @@ void GuiApp::run() {
                 // In a real implementation, parse the response to extract temperature, frequency, etc.
             }
             
+            if (!network.isConnected()) {
+                status.connected = false;
+                status.pwm_running = false;
+                addLog("Połączenie utracone; stan urządzenia wymaga ponownego odczytu");
+            }
+
             // Periodically update uptime counter
             static auto last_update = std::chrono::steady_clock::now();
             auto now = std::chrono::steady_clock::now();
@@ -591,7 +595,7 @@ void GuiApp::run() {
         
         renderUI();
         
-        ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
+        ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData());
         SDL_RenderPresent(renderer);
         
         // Frame timing - calculate delta time and limit to 60 FPS
