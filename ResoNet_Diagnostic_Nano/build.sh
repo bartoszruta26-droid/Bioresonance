@@ -33,7 +33,7 @@ fi
 # Arduino AVR platform already supplies -Os, LTO, function/data sections
 # and --gc-sections. Add only AVR size-oriented prologues; do not replace
 # the platform's normal optimization/linker settings.
-MEMORY_FLAGS="-mcall-prologues -maccumulate-args -fshort-enums -fno-rtti -fno-exceptions -DUIP_CONF_UDP=0 -DUIP_CONF_MAX_CONNECTIONS=1 -DUIP_CONF_MAX_LISTENPORTS=1 -DUIP_CONF_BUFFER_SIZE=128 -DUIP_SOCKET_NUMPACKETS=1 -DSERIAL_RX_BUFFER_SIZE=32 -DSERIAL_TX_BUFFER_SIZE=32"
+MEMORY_FLAGS="-mcall-prologues -maccumulate-args -fshort-enums -fno-rtti -fno-exceptions -DUIP_CONF_UDP=0 -DUIP_CONF_MAX_CONNECTIONS=1 -DUIP_CONF_MAX_LISTENPORTS=1 -DUIP_CONF_BUFFER_SIZE=128 -DUIP_CONF_ARPTAB_SIZE=2 -DUIP_SOCKET_NUMPACKETS=1 -DSERIAL_RX_BUFFER_SIZE=32 -DSERIAL_TX_BUFFER_SIZE=32"
 
 arduino-cli compile \
   --fqbn "$FQBN" \
