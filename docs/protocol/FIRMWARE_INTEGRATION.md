@@ -16,7 +16,7 @@ Wprowadzono niezależny moduł `protocol_v1.h/.cpp` do kodowania ramek, obliczan
 
 ## Integracja z siecią
 
-Moduł celowo nie został podłączony do obecnego `network_system.cpp`. Ten plik nadal ma atrapę ENC28J60 i nie ma działającego serwera TCP. Podłączenie parsera do pozornej warstwy transportowej stworzyłoby fałszywe potwierdzenie komunikacji.
+Moduł jest obecnie podłączony do diagnostycznego serwera TCP w `network_system.cpp`. Transport ENC28J60 jest domyślnie wyłączony w `network_config.h`; przed aktywacją trzeba skonfigurować adresację i przypiąć EthernetENC 2.0.5.
 
 Następny etap transportowy powinien:
 1. dodać rzeczywistą bibliotekę ENC28J60 i jawnie skonfigurowany adres sieciowy;
