@@ -232,22 +232,54 @@ function send_to_arduino($command, $ip, $port) {
     }
     debug_log("TCP: Sent $offset bytes: " . trim($command));
 
-    // 5. Odbieranie odpowiedzi
+    // 5. Odbieranie odpowiedzi zgodnie z ramkowaniem liniowym.
+    // Nie uznajemy pustej odpowiedzi ani niepełnej ramki za sukces.
     $response = "";
-    while ($out = socket_read($socket, 2048)) {
+    $maxResponseBytes = 8192;
+    $frameComplete = false;
+
+    while (strlen($response) < $maxResponseBytes) {
+        $remaining = $maxResponseBytes - strlen($response);
+        $out = @socket_read($socket, min(2048, $remaining), PHP_BINARY_READ);
+
         if ($out === false) {
-            // Check if it's just a timeout (no data) or real error
             $err = socket_last_error($socket);
-            if ($err != SOCKET_ETIMEDOUT && $err != SOCKET_EAGAIN) {
-                 debug_log("TCP: Read error - " . socket_strerror($err), "ERROR");
-            }
-            break; 
+            $timeoutErrors = array_filter([
+                defined('SOCKET_ETIMEDOUT') ? SOCKET_ETIMEDOUT : null,
+                defined('SOCKET_EAGAIN') ? SOCKET_EAGAIN : null,
+                defined('SOCKET_EWOULDBLOCK') ? SOCKET_EWOULDBLOCK : null
+            ], static function ($value) { return $value !== null; });
+            debug_log("TCP: Read failed - " . socket_strerror($err), "ERROR");
+            socket_close($socket);
+            return ['success' => false, 'error' => in_array($err, $timeoutErrors, true)
+                ? "Response timeout"
+                : "Receive failed: " . socket_strerror($err)];
         }
+
+        if ($out === '') {
+            // Peer closed the stream. A complete newline-terminated frame is required.
+            break;
+        }
+
         $response .= $out;
-        // Jeśli odpowiedź jest kompletna (np. kończy się newline), można przerwać wcześniej
-        if (strpos($out, "\n") !== false) break;
+        if (strpos($response, "\n") !== false) {
+            $frameComplete = true;
+            break;
+        }
     }
 
+    if (!$frameComplete) {
+        socket_close($socket);
+        if (strlen($response) >= $maxResponseBytes) {
+            return ['success' => false, 'error' => "Response exceeds maximum frame size"];
+        }
+        return ['success' => false, 'error' => $response === ''
+            ? "Empty response from device"
+            : "Incomplete response frame from device"];
+    }
+
+    // Discard bytes after the first complete line; one request uses one response frame.
+    $response = substr($response, 0, strpos($response, "\n") + 1);
     debug_log("TCP: Received: " . trim($response));
 
     // 6. Zamykanie
