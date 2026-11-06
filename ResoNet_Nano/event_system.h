@@ -14,8 +14,8 @@
 // KONFIGURACJA SYSTEMU ZDARZEŃ
 // ============================================================================
 
-#define EVENT_QUEUE_SIZE 32
-#define EVENT_DESC_MAX_LEN 32
+#define EVENT_QUEUE_SIZE 4
+#define EVENT_DESC_MAX_LEN 16
 
 // Poziomy ważności zdarzeń (używamy z types.h)
 #define EVENT_SEVERITY_INFO      0
