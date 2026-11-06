@@ -49,19 +49,13 @@ jobs:
       - name: Compile Arduino Nano firmware with Ethernet disabled by default
         run: |
           bash ResoNet_Nano/build_nano.sh
-      - name: Compile opt-in ENC28J60 TCP transport (no hardware tests)
+      - name: Compile opt-in ENC28J60 TCP transport and enforce memory budget
         run: |
           cp -a ResoNet_Nano "$RUNNER_TEMP/ResoNet_Nano"
           sed -i 's/#define RESONET_ENABLE_ETHERNET 0/#define RESONET_ENABLE_ETHERNET 1/' "$RUNNER_TEMP/ResoNet_Nano/network_config.h"
-          bash "$RUNNER_TEMP/ResoNet_Nano/build_nano.sh"
-      - name: Diagnostic AVR memory map (temporary analysis)
-        if: always()
-        continue-on-error: true
-        run: |
-          mkdir -p "$RUNNER_TEMP/nano-build"
-          arduino-cli compile --fqbn arduino:avr:nano:cpu=atmega328old \
-            --build-path "$RUNNER_TEMP/nano-build" \
-            --build-property compiler.c.elf.extra_flags="-Wl,--no-check-sections -Wl,-Map=$RUNNER_TEMP/nano.map" \
-            ResoNet_Nano || true
-          find "$HOME/.arduino15/packages/arduino/tools/avr-gcc" -name avr-nm -type f -exec {} -S --size-sort "$RUNNER_TEMP/nano-build/ResoNet_Nano.ino.elf" \; | tail -n 50 || true
-          find "$HOME/.arduino15/packages/arduino/tools/avr-gcc" -name avr-size -type f -exec {} -A "$RUNNER_TEMP/nano-build/ResoNet_Nano.ino.elf" \; || true
+          bash "$RUNNER_TEMP/ResoNet_Nano/build_nano.sh" 2>&1 | tee "$RUNNER_TEMP/nano-ethernet-build.log"
+          flash=$(sed -n 's/Sketch uses \([0-9][0-9]*\) bytes.*/\1/p' "$RUNNER_TEMP/nano-ethernet-build.log" | tail -n 1)
+          ram=$(sed -n 's/Global variables use \([0-9][0-9]*\) bytes.*/\1/p' "$RUNNER_TEMP/nano-ethernet-build.log" | tail -n 1)
+          test -n "$flash" && test -n "$ram"
+          test "$flash" -le 30000
+          test "$ram" -le 1536
