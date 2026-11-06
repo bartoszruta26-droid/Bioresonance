@@ -107,6 +107,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     respond(405, ['success' => false, 'error' => 'Dozwolona jest wyłącznie metoda POST']);
 }
 
+if (empty($_SERVER['HTTPS']) || $_SERVER['HTTPS'] === 'off') {
+    respond(400, ['success' => false, 'error' => 'Panel diagnostyczny wymaga HTTPS']);
+}
+
 $expectedToken = getenv('BIORESONANCE_API_TOKEN') ?: '';
 $providedToken = $_SERVER['HTTP_X_BIORESONANCE_TOKEN'] ?? '';
 if (strlen($expectedToken) < 32 || !hash_equals($expectedToken, $providedToken)) {
