@@ -16,7 +16,13 @@ on:
   pull_request:
     paths:
       - "gui/include/resonet_protocol_v1.h"
+      - "gui/include/network_client.h"
+      - "gui/include/types.h"
+      - "gui/src/network_client.cpp"
+      - "gui/tests/network_client_smoke.cpp"
       - "gui/tests/resonet_protocol_v1_smoke.cpp"
+      - "bash_tui/**"
+      - "webui/diagnostics.php"
       - ".github/workflows/desktop-protocol.yml"
   workflow_dispatch:
 
