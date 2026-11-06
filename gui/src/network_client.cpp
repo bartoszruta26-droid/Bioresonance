@@ -278,7 +278,12 @@ bool NetworkClient::sendCommand(const std::string& cmd) {
 std::string NetworkClient::receiveData(int timeout_ms) {
     std::lock_guard<std::mutex> socket_lock(socket_mutex);
     if (!connected.load() || socket_fd == INVALID_SOCKET_VALUE) return "";
-    
+    if (timeout_ms < 0) {
+        REPORT_ERROR(ErrorCode::ERR_USER_INPUT_INVALID, ErrorCategory::USER,
+                     "Receive timeout must be non-negative");
+        return "";
+    }
+
     fd_set read_fds;
     FD_ZERO(&read_fds);
     FD_SET(socket_fd, &read_fds);
@@ -289,10 +294,20 @@ std::string NetworkClient::receiveData(int timeout_ms) {
     
 #ifdef _WIN32
     int result = select(0, &read_fds, NULL, NULL, &tv);
+    if (result < 0 && WSAGetLastError() == WSAEINTR) return "";
 #else
     int result = select(socket_fd + 1, &read_fds, NULL, NULL, &tv);
+    if (result < 0 && errno == EINTR) return "";
 #endif
-    if (result <= 0) return "";
+    if (result == 0) return "";
+    if (result < 0) {
+        connected = false;
+        CLOSE_SOCKET(socket_fd);
+        socket_fd = INVALID_SOCKET_VALUE;
+        REPORT_ERROR(ErrorCode::ERR_NETWORK_RECV_FAILED, ErrorCategory::NETWORK,
+                     "Socket readiness check failed; connection closed");
+        return "";
+    }
     
     char buffer[1024];
 #ifdef _WIN32
