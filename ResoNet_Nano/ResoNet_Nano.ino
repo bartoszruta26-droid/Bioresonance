@@ -421,7 +421,7 @@ void loop() {
                 
                 PWMStatus* pwm = pwm_get_status();
                 Serial.print(F("PWM Running: "));
-                Serial.println(pwm->is_running ? "YES" : "NO");
+                Serial.println(pwm->is_running ? F("YES") : F("NO"));
                 if (pwm->is_running) {
                     Serial.print(F("Frequency: "));
                     Serial.print(pwm->current_freq_x100 / 100);
@@ -431,7 +431,7 @@ void loop() {
                 }
                 
                 Serial.println(F("Network: "));
-                Serial.println(network_is_connected() ? "CONNECTED" : "DISCONNECTED");
+                Serial.println(network_is_connected() ? F("CONNECTED") : F("DISCONNECTED"));
                 
                 // Device status
                 DeviceSystemState_t* dev = get_device_system_state();
@@ -447,9 +447,9 @@ void loop() {
                     default: Serial.println(F("None")); break;
                 }
                 Serial.print(F("Connected: "));
-                Serial.println(dev->effector.connected ? "YES" : "NO");
+                Serial.println(dev->effector.connected ? F("YES") : F("NO"));
                 Serial.print(F("Biofeedback: "));
-                Serial.println(dev->biofeedbackEnabled ? "ENABLED" : "DISABLED");
+                Serial.println(dev->biofeedbackEnabled ? F("ENABLED") : F("DISABLED"));
                 break;
                 
             case 't':
