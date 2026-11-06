@@ -89,6 +89,10 @@ struct SystemStatus {
     uint32_t uptime_seconds;
     uint16_t free_memory;
     std::string safety_state;
+    bool diagnostic_temperature_valid;
+    uint16_t diagnostic_fault_flags;
+    bool output_inhibited_known;
+    bool output_inhibited;
     std::vector<ProbeConfig> active_probes;
     
     SystemStatus() : 
@@ -98,7 +102,11 @@ struct SystemStatus {
         current_frequency(0),
         uptime_seconds(0),
         free_memory(0),
-        safety_state("Nieznany") {}
+        safety_state("Nieznany"),
+        diagnostic_temperature_valid(false),
+        diagnostic_fault_flags(0),
+        output_inhibited_known(false),
+        output_inhibited(false) {}
 };
 
 // Wpis z bazy częstotliwości
