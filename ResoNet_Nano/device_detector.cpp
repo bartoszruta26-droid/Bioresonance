@@ -8,7 +8,6 @@
 #include "logging_system.h"
 #include "pwm_engine.h"
 #include "event_system.h"
-#include <stdarg.h>   // Dla va_list, va_start, va_end
 #include <string.h>   // Dla strcmp, strncmp, memcpy, strncpy
 #include <avr/pgmspace.h>  // Dla PROGMEM, pgm_read_word
 #include "ir_led_engine.h"
@@ -52,44 +51,11 @@ static const char* const s_error_strings[] PROGMEM = {
 // ============================================================================
 
 /**
- * @brief Logowanie z formatowaniem i obsługą poziomów verbose
- */
-void detection_log_printf_P(uint8_t level, PGM_P format, ...) {
-    // Sprawdź czy tryb quiet pozwala na ten poziom logowania
-    if (s_detection_config.quiet_mode && level < LOG_ERROR) {
-        return;
-    }
-    
-    // Sprawdź tryb verbose dla DEBUG/VERBOSE
-    if (!s_detection_config.verbose_mode && (level == LOG_DEBUG || level == LOG_VERBOSE)) {
-        return;
-    }
-    
-    if (!s_detection_config.debug_enabled && level == LOG_DEBUG) {
-        return;
-    }
-    
-    char buffer[LOG_MESSAGE_MAX_LEN];
-    va_list args;
-    va_start(args, format);
-    vsnprintf_P(buffer, sizeof(buffer), format, args);
-    va_end(args);
-    
-    log_add_entry(level, 0, buffer);
-}
-
-/**
  * @brief Makro wewnętrzne dla debug logów
  */
 #define DBG_LOG(msg) do { \
     if (s_detection_config.debug_enabled) { \
         LOG_DEBUG(msg); \
-    } \
-} while(0)
-
-#define DBG_LOG_F(fmt, ...) do { \
-    if (s_detection_config.debug_enabled) { \
-        LOG_DEBUG("Detailed detector debug event"); \
     } \
 } while(0)
 
