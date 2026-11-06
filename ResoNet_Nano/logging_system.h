@@ -68,6 +68,5 @@ uint16_t logging_get_overflow_count();
 #define LOG_EVENT(level, event, msg) log_add_entry(level, event, msg)
 
 #define LOG_WARNING(msg) LOG_WARN(msg)
-#define LOG_WARNING_F(fmt, ...) LOG_WARN_F(fmt, ##__VA_ARGS__)
 
 #endif // LOGGING_SYSTEM_H
