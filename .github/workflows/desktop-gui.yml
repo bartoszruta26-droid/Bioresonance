@@ -26,6 +26,15 @@ jobs:
           sudo apt-get install -y cmake ninja-build libsdl2-dev build-essential php-cli
       - name: PHP syntax check
         run: php -l webui/api.php
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: WebUI API contract regression tests
+        run: python3 -m unittest discover -s webui/tests -v
+      - name: JavaScript syntax check
+        run: |
+          python3 -c 'import re,pathlib; s=pathlib.Path("webui/index.html").read_text(encoding="utf-8"); m=re.search(r"<script>([\\s\\S]*?)</script>", s); assert m, "inline script not found"; pathlib.Path("$RUNNER_TEMP/webui.js").write_text(m.group(1), encoding="utf-8")'
+          node --check "$RUNNER_TEMP/webui.js"
       - name: Configure
         run: cmake -S gui -B build/gui -G Ninja -DCMAKE_BUILD_TYPE=Release
       - name: Build
