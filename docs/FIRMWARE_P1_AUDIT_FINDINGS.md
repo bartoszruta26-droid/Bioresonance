@@ -43,7 +43,8 @@ Status: static source review only. No hardware validation has been performed. Th
 ### P1 — PWM frequency calculation has unsupported edge cases
 - Timer1 configuration divides by `frequency_hz_x100 / 100`, which becomes zero for requested frequencies below 1 Hz.
 - The calculation stores TOP in a 16-bit value before clamping, so low-frequency values can overflow before the range check.
-- The declared 0.1 Hz–500 kHz range is not demonstrated by the Timer1 implementation.
+- The declared 0.1 Hz–500 kHz range is not demonstrated by the Timer1 implementation. With a minimum TOP clamp of 100 and a 16 MHz clock, the current implementation cannot generate the requested 500 kHz (the clamp limits it to roughly 158.4 kHz at prescaler 1). With TOP limited to 65535 and prescaler 1024, the lowest representable frequency is roughly 0.238 Hz; requests near 0.1 Hz are not representable.
+- The implementation clamps TOP instead of rejecting an unrepresentable request, so the actual output frequency can differ substantially from the requested value.
 - Required action: derive achievable frequency ranges from clock, prescaler, TOP, and resolution; reject unsupported requests before touching timer registers; add boundary/unit tests and oscilloscope verification.
 
 ### P1 — ENC28J60 network module is a stub
