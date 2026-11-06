@@ -413,7 +413,7 @@ if (elapsed > task->max_execution_time) {
 - **Arduino IDE** 1.8.x lub 2.x
 - **Płytka:** Arduino Nano (ATmega328P)
 - **Biblioteki:**
-  - `EthernetENC` (dla ENC28J60) - opcjonalnie jeśli używasz sieci
+  - `EthernetENC` **2.0.5** (dla ENC28J60) — wymagana przy włączonym transporcie Ethernet
 
 ### Instalacja
 
@@ -422,7 +422,11 @@ if (elapsed > task->max_execution_time) {
 3. Dodaj dodatkowe menedżery płytek (jeśli potrzebne)
 4. Zainstaluj bibliotekę: `Szkic → Dołącz bibliotekę → Zarządzaj bibliotekami`
    - Wyszukaj: `EthernetENC`
-   - Zainstaluj wersję najnowsza
+   - Zainstaluj dokładnie wersję `2.0.5`
+
+### Konfiguracja transportu diagnostycznego
+
+Transport ENC28J60/TCP jest domyślnie wyłączony. W `ResoNet_Nano/network_config.h` ustaw `RESONET_ENABLE_ETHERNET` na `1` dopiero po dopasowaniu adresu IP, maski, bramy i unikalnego MAC do sieci lokalnej. Serwer udostępnia wyłącznie diagnostyczny protokół ResoNet v1 na TCP/5001; nie udostępnia komend uruchamiania wyjść.
 
 ### Kompilacja
 
