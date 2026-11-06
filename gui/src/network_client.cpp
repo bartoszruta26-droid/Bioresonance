@@ -11,21 +11,37 @@
 #include <atomic>
 
 #ifdef _WIN32
-    // Reference counter for WSA initialization with proper cleanup
-    static std::atomic<int> ws_init_count{0};
+    // Serialize Winsock lifetime management; count only successful acquisitions.
+    static std::mutex ws_init_mutex;
+    static int ws_init_count = 0;
+    static bool ws_init_ok = false;
 #else
     #include <cerrno>
 #endif
 
-NetworkClient::NetworkClient() : socket_fd(INVALID_SOCKET_VALUE), connected(false) {
+NetworkClient::NetworkClient()
+    : socket_fd(INVALID_SOCKET_VALUE), connected(false)
 #ifdef _WIN32
-    if (ws_init_count++ == 0) {
-        WSADATA wsa_data;
-        int result = WSAStartup(MAKEWORD(2, 2), &wsa_data);
-        if (result != 0) {
-            REPORT_ERROR(ErrorCode::ERR_NETWORK_SOCKET_FAILED, ErrorCategory::NETWORK,
-                        "WSAStartup failed: " + std::to_string(result));
+    , winsock_acquired(false)
+#endif
+{
+#ifdef _WIN32
+    int startup_error = 0;
+    {
+        std::lock_guard<std::mutex> lock(ws_init_mutex);
+        if (ws_init_count == 0) {
+            WSADATA wsa_data;
+            startup_error = WSAStartup(MAKEWORD(2, 2), &wsa_data);
+            ws_init_ok = (startup_error == 0);
         }
+        if (ws_init_ok) {
+            ++ws_init_count;
+            winsock_acquired = true;
+        }
+    }
+    if (startup_error != 0) {
+        REPORT_ERROR(ErrorCode::ERR_NETWORK_SOCKET_FAILED, ErrorCategory::NETWORK,
+                     "WSAStartup failed: " + std::to_string(startup_error));
     }
 #endif
 }
@@ -33,13 +49,21 @@ NetworkClient::NetworkClient() : socket_fd(INVALID_SOCKET_VALUE), connected(fals
 NetworkClient::~NetworkClient() {
     disconnect();
 #ifdef _WIN32
-    if (--ws_init_count == 0) {
-        WSACleanup();
+    if (winsock_acquired) {
+        std::lock_guard<std::mutex> lock(ws_init_mutex);
+        if (ws_init_count > 0 && --ws_init_count == 0) {
+            WSACleanup();
+            ws_init_ok = false;
+        }
+        winsock_acquired = false;
     }
 #endif
 }
 
 bool NetworkClient::connect(const std::string& ip, int port_num) {
+#ifdef _WIN32
+    if (!winsock_acquired) return false;
+#endif
     // Validate IP address format (basic check)
     if (ip.empty()) {
         REPORT_ERROR(ErrorCode::ERR_NETWORK_UNREACHABLE, ErrorCategory::NETWORK,
