@@ -30,6 +30,28 @@ int main() {
 #endif
 
     int exit_code = 0;
+
+    // A pending connection attempt must not hold socket_mutex. disconnect()
+    // must also supersede the attempt so it cannot publish a late connection.
+    {
+        NetworkClient concurrent_client;
+        std::atomic<bool> connect_finished{false};
+        std::thread connector([&]() {
+            (void)concurrent_client.connect("192.0.2.1", 65000);
+            connect_finished = true;
+        });
+        std::this_thread::sleep_for(std::chrono::milliseconds(25));
+        const auto query_start = std::chrono::steady_clock::now();
+        (void)concurrent_client.isConnected();
+        const auto query_elapsed = std::chrono::steady_clock::now() - query_start;
+        concurrent_client.disconnect();
+        connector.join();
+        if (query_elapsed > std::chrono::milliseconds(500) ||
+            concurrent_client.isConnected()) {
+            exit_code = 12;
+        }
+    }
+
     {
         test_socket_t listener = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
         if (listener == invalid_test_socket) {
