@@ -1,0 +1,28 @@
+name: Desktop protocol v1 host checks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "gui/include/resonet_protocol_v1.h"
+      - "gui/tests/resonet_protocol_v1_smoke.cpp"
+      - ".github/workflows/desktop-protocol.yml"
+  pull_request:
+    paths:
+      - "gui/include/resonet_protocol_v1.h"
+      - "gui/tests/resonet_protocol_v1_smoke.cpp"
+      - ".github/workflows/desktop-protocol.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  protocol-host:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile with strict warnings
+        run: g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I gui/include gui/tests/resonet_protocol_v1_smoke.cpp -o protocol_v1_smoke
+      - name: Run protocol codec tests
+        run: ./protocol_v1_smoke
