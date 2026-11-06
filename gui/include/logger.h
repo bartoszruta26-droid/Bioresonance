@@ -25,6 +25,15 @@
 #include <atomic>
 #include <thread>
 
+// Windows SDK headers may define ERROR/CRITICAL as macros. They collide with
+// the scoped LogLevel enumerators below when Winsock/Windows headers precede us.
+#ifdef ERROR
+#undef ERROR
+#endif
+#ifdef CRITICAL
+#undef CRITICAL
+#endif
+
 /**
  * @brief Poziomy logowania
  */
