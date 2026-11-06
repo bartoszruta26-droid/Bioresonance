@@ -174,10 +174,9 @@ static void task_pwm_run() {
     
     pwm_loop();
     
-    // Feed watchdog dla warstwy terapii jeśli PWM działa
-    if (pwm_is_running()) {
-        safety_feed(WDT_LAYER_THERAPY);
-    }
+    // Monitorujemy wykonywanie zadania, a nie stan aktywności wyjścia.
+    // Warstwa watchdog nie może wygasnąć tylko dlatego, że PWM jest bezczynny.
+    safety_feed(WDT_LAYER_THERAPY);
     
     measure_task_end(&task_pwm, start);
 }
@@ -217,11 +216,10 @@ static void task_network_run() {
     
     network_loop();
     
-    // Feed watchdog dla warstwy komunikacji
-    if (network_is_connected()) {
-        safety_feed(WDT_LAYER_COMMS);
-        safety_feed(WDT_LAYER_NETWORK);
-    }
+    // Monitorujemy wykonywanie zadania sieciowego, nie dostępność kabla.
+    // Brak łącza lub wyłączony Ethernet nie oznacza zawieszenia firmware.
+    safety_feed(WDT_LAYER_COMMS);
+    safety_feed(WDT_LAYER_NETWORK);
     
     measure_task_end(&task_network, start);
 }
