@@ -36,7 +36,7 @@ function encode_frame(int $type, int $sequence): string {
     return $header . pack('n', crc16_ccitt_false($header));
 }
 
-function read_exact(Socket $socket, int $length): string {
+function read_exact($socket, int $length): string {
     $data = '';
     while (strlen($data) < $length) {
         $chunk = '';
