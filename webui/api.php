@@ -95,8 +95,7 @@ function validate_ip($ip) {
     $ranges = [
         ['10.0.0.0', '10.255.255.255'],
         ['172.16.0.0', '172.31.255.255'],
-        ['192.168.0.0', '192.168.255.255'],
-        ['169.254.0.0', '169.254.255.255']
+        ['192.168.0.0', '192.168.255.255']
     ];
     foreach ($ranges as [$start, $end]) {
         if ($value >= ip2long($start) && $value <= ip2long($end)) return true;
@@ -282,6 +281,7 @@ debug_log("API Request: action=$action, ip=$ip, port=$port");
 
 switch ($action) {
     case 'connect_test':
+        require_api_token();
         if (!validate_ip($ip)) {
             json_response(false, null, "Invalid IP address format");
         }
@@ -298,6 +298,7 @@ switch ($action) {
         break;
 
     case 'get_status':
+        require_api_token();
         $fp = acquire_lock();
         if (!$fp) {
             json_response(false, null, "System busy (another operation in progress)");
