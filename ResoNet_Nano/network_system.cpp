@@ -30,6 +30,7 @@ static EthernetClient diagnostic_client;
 static ResoNetProtocolV1::Parser protocol_parser;
 static uint32_t last_rx_ms = 0;
 static uint32_t last_activity_ms = 0;
+static bool server_started = false;
 static const uint32_t PARTIAL_FRAME_TIMEOUT_MS = 2000;
 static const uint32_t CLIENT_IDLE_TIMEOUT_MS = 30000;
 static const uint8_t MAX_RX_BYTES_PER_LOOP = 24;
@@ -94,11 +95,14 @@ static void handleProtocolFrame(const ResoNetProtocolV1::FrameView& frame,
             uint8_t payload[14];
             SafetyStatus* safety = safety_get_status();
             const bool safe = safety != NULL && SAFE_IS_SAFE();
+            const bool locked = safety != NULL && safety->safe_state == SAFE_STATE_LOCKOUT;
 
             // Only coarse firmware state is exposed. No sensor is certified
             // as an external patient/output temperature measurement.
-            payload[0] = safe ? 0x01 : 0x04; // IDLE or FAULT
-            const uint16_t fault_flags = safe ? 0 : 1;
+            payload[0] = locked ? 0x05 : (safe ? 0x01 : 0x04); // SAFE_LOCKOUT / IDLE / FAULT
+            const uint16_t fault_flags = (safety == NULL) ? 0x0001 :
+                (uint16_t)(((uint16_t)safety->error_code << 8) |
+                           (safety->safe_state == SAFE_STATE_WARNING ? 0x01 : 0x00));
             payload[1] = (uint8_t)(fault_flags >> 8);
             payload[2] = (uint8_t)fault_flags;
 
@@ -117,7 +121,7 @@ static void handleProtocolFrame(const ResoNetProtocolV1::FrameView& frame,
             payload[10] = 0xFF;
             payload[11] = 0;
             payload[12] = 0;
-            payload[13] = 1; // Output inhibition is always asserted by v1.
+            payload[13] = 0; // Physical output inhibition is not independently verified.
             sendFrame(ResoNetProtocolV1::STATUS_RESP, frame.sequence,
                       payload, sizeof(payload));
             break;
@@ -158,6 +162,7 @@ void network_init() {
     }
 
     diagnostic_server.begin();
+    server_started = true;
     protocol_parser.reset();
     net_status = NET_STATUS_CONNECTED;
     LOG_INFO("Diagnostic TCP server started");
@@ -174,10 +179,15 @@ void network_loop() {
         Ethernet.linkStatus() != LinkON) {
         if (diagnostic_client) diagnostic_client.stop();
         protocol_parser.reset();
+        server_started = false;
         net_status = NET_STATUS_ERROR;
         return;
     }
 
+    if (!server_started) {
+        diagnostic_server.begin();
+        server_started = true;
+    }
     net_status = NET_STATUS_CONNECTED;
 
     if (!diagnostic_client || !diagnostic_client.connected()) {
@@ -253,6 +263,7 @@ void network_reset_module() {
     if (diagnostic_client) diagnostic_client.stop();
     protocol_parser.reset();
     Ethernet.end();
+    server_started = false;
     net_status = NET_STATUS_DISCONNECTED;
     network_init();
 #else
