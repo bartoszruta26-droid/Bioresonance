@@ -208,8 +208,8 @@ void network_loop() {
     }
 
     const uint32_t now = millis();
-    if (now - last_rx_ms > PARTIAL_FRAME_TIMEOUT_MS &&
-        protocol_parser.rejectedFrames() != 0) {
+    if (protocol_parser.hasPartialFrame() &&
+        now - last_rx_ms > PARTIAL_FRAME_TIMEOUT_MS) {
         protocol_parser.reset();
     }
     if (now - last_activity_ms > CLIENT_IDLE_TIMEOUT_MS) {
