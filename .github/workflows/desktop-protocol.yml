@@ -8,6 +8,10 @@ on:
       - "gui/include/network_client.h"
       - "gui/include/types.h"
       - "gui/src/network_client.cpp"
+      - "gui/src/gui_app.cpp"
+      - "gui/CMakeLists.txt"
+      - "gui/src/gui_app.cpp"
+      - "gui/CMakeLists.txt"
       - "gui/tests/network_client_smoke.cpp"
       - "webui/diagnostics.php"
       - "gui/tests/resonet_protocol_v1_smoke.cpp"
@@ -44,6 +48,19 @@ jobs:
         run: ./network_client_smoke
       - name: Run read-only TUI protocol tests
         run: python3 -m unittest discover -s bash_tui -p "test_*.py"
+
+  desktop-build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install SDL2 build dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake build-essential libsdl2-dev
+      - name: Configure desktop application and tests
+        run: cmake -S gui -B build/gui -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+      - name: Build desktop application and host tests
+        run: cmake --build build/gui --parallel
+      - name: Run desktop host tests
+        run: ctest --test-dir build/gui --output-on-failure
 
   php-lint:
     runs-on: ubuntu-22.04
