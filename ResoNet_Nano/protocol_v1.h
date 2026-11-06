@@ -8,8 +8,8 @@
 #ifndef RESONET_PROTOCOL_V1_H
 #define RESONET_PROTOCOL_V1_H
 
-#include <Arduino.h>
 #include <stdint.h>
+#include <stddef.h>
 #include <stddef.h>
 
 namespace ResoNetProtocolV1 {
