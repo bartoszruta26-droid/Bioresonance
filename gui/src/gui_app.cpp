@@ -20,7 +20,9 @@
 #endif
 
 GuiApp::GuiApp() 
-    : window(nullptr), renderer(nullptr), selected_probe(1), running(false),
+    : window(nullptr), renderer(nullptr), sdl_initialized(false),
+      imgui_context_created(false), imgui_sdl_backend_initialized(false),
+      imgui_renderer_backend_initialized(false), selected_probe(1), running(false),
       device_ip("192.168.1.100"), device_port(5001),
       show_frequency_browser(false), show_probe_settings(true), 
       show_system_status(true), current_tab(0) {
@@ -36,6 +38,7 @@ bool GuiApp::initSDL() {
         std::cerr << "Failed to initialize SDL: " << SDL_GetError() << std::endl;
         return false;
     }
+    sdl_initialized = true;
     
     // Create window
     window = SDL_CreateWindow("ResoNet-Nano Biorezonans GUI",
@@ -56,12 +59,21 @@ bool GuiApp::initSDL() {
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    imgui_context_created = true;
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     
     // Setup Platform/Renderer backends
-    ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
-    ImGui_ImplSDLRenderer2_Init(renderer);
+    if (!ImGui_ImplSDL2_InitForSDLRenderer(window, renderer)) {
+        std::cerr << "Failed to initialize Dear ImGui SDL platform backend" << std::endl;
+        return false;
+    }
+    imgui_sdl_backend_initialized = true;
+    if (!ImGui_ImplSDLRenderer2_Init(renderer)) {
+        std::cerr << "Failed to initialize Dear ImGui SDL renderer backend" << std::endl;
+        return false;
+    }
+    imgui_renderer_backend_initialized = true;
     
     // Setup style
     ImGui::StyleColorsDark();
@@ -71,9 +83,18 @@ bool GuiApp::initSDL() {
 }
 
 void GuiApp::cleanupSDL() {
-    ImGui_ImplSDLRenderer2_Shutdown();
-    ImGui_ImplSDL2_Shutdown();
-    ImGui::DestroyContext();
+    if (imgui_renderer_backend_initialized) {
+        ImGui_ImplSDLRenderer2_Shutdown();
+        imgui_renderer_backend_initialized = false;
+    }
+    if (imgui_sdl_backend_initialized) {
+        ImGui_ImplSDL2_Shutdown();
+        imgui_sdl_backend_initialized = false;
+    }
+    if (imgui_context_created) {
+        ImGui::DestroyContext();
+        imgui_context_created = false;
+    }
     
     if (renderer) {
         SDL_DestroyRenderer(renderer);
@@ -85,7 +106,10 @@ void GuiApp::cleanupSDL() {
         window = nullptr;
     }
     
-    SDL_Quit();
+    if (sdl_initialized) {
+        SDL_Quit();
+        sdl_initialized = false;
+    }
 }
 
 void GuiApp::addLog(const std::string& message) {
@@ -179,7 +203,9 @@ void GuiApp::onFrequencySelected(uint32_t frequency_hz) {
 }
 
 void GuiApp::onStartTherapy() {
-    if (!status.connected) {
+    if (!network.isConnected()) {
+        status.connected = false;
+        status.pwm_running = false;
         addLog("Błąd: Nie podłączono do urządzenia!");
         return;
     }
@@ -229,9 +255,13 @@ uint8_t GuiApp::calculateChecksum(const TherapyPacket& packet) {
 }
 
 void GuiApp::onStopTherapy() {
-    status.pwm_running = false;
-    network.sendCommand("STOP");
-    addLog("Zatrzymano terapię");
+    if (network.sendCommand("STOP")) {
+        addLog("Wysłano polecenie STOP; oczekiwanie na potwierdzenie urządzenia");
+    } else {
+        addLog("Nie udało się wysłać polecenia STOP — stan wyjścia urządzenia jest nieznany");
+    }
+    // A successful TCP write is not an authoritative device acknowledgement.
+    // Keep the running state until a real status/ACK protocol is implemented.
 }
 
 void GuiApp::renderMenuBar() {
@@ -271,7 +301,7 @@ void GuiApp::renderMenuBar() {
     if (ImGui::BeginPopupModal("About", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::Text("ResoNet-Nano Biorezonans GUI");
         ImGui::Separator();
-        ImGui::Text("Wersja 1.0");
+        ImGui::Text("Wersja 1.1");
         ImGui::Text("Interfejs GUI dla systemu biorezonansu");
         ImGui::Spacing();
         if (ImGui::Button("OK", ImVec2(120, 0))) {
@@ -576,6 +606,12 @@ void GuiApp::run() {
                 // In a real implementation, parse the response to extract temperature, frequency, etc.
             }
             
+            if (!network.isConnected()) {
+                status.connected = false;
+                status.pwm_running = false;
+                addLog("Połączenie utracone; stan urządzenia wymaga ponownego odczytu");
+            }
+
             // Periodically update uptime counter
             static auto last_update = std::chrono::steady_clock::now();
             auto now = std::chrono::steady_clock::now();
