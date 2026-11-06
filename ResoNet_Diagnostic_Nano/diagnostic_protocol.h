@@ -97,7 +97,8 @@ private:
 inline size_t encode(uint8_t type, uint16_t sequence, const uint8_t* payload,
                      uint8_t payload_length, uint8_t* output, size_t capacity) {
     const size_t total = 11U + payload_length;
-    if (payload_length > 14 || output == NULL ||\n        (payload_length != 0 && payload == NULL) || capacity < total)
+    if (payload_length > 14 || output == NULL ||
+        (payload_length != 0 && payload == NULL) || capacity < total)
         return 0;
     output[0] = 0x52; output[1] = 0x4E; output[2] = VERSION; output[3] = type;
     output[4] = 0;
