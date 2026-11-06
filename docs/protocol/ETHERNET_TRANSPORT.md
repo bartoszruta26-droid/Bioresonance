@@ -31,9 +31,9 @@ Skrypt kompilacyjny ogranicza zasoby stosu: `UIP_CONF_UDP=0`, `UIP_CONF_MAX_CONN
 - Brak komend uruchamiania PWM, IR LED, piezo lub wibratora.
 - STATUS_RESP ustawia `output_inhibited=0`, ponieważ firmware nie ma niezależnego potwierdzenia fizycznego odcięcia wszystkich wyjść. Pole temperatury zewnętrznego efektora ma wartość sentinel `0x7FFF`. Nie należy interpretować tego statusu jako potwierdzenia bezpieczeństwa urządzenia.
 
-## Wynik kompilacji programowej
+## Wynik bazowy przed optymalizacją
 
-Wariant z włączonym transportem kompiluje się dla Arduino Nano ATmega328P w konfiguracji skryptu: **29 442 B flash (95%) i 1 409 B RAM (68%)**, pozostawiając 639 B RAM na zmienne lokalne/stos. To wynik kompilacji, nie testu działania. Margines pamięci programu jest niewielki; każda większa funkcja wymaga ponownego pomiaru.
+Poprzednia kompilacja wariantu EthernetENC przed wyłączeniem aktywnego otwierania TCP i przed dodatkowymi flagami oszczędzania kodu wynosiła **29 442 B flash (95%) i 1 409 B RAM (68%)**, pozostawiając 639 B RAM. To pomiar bazowy, a nie wynik aktualnego skryptu.
 
 ## Ograniczenia i dalsze prace
 
@@ -48,4 +48,4 @@ Wariant z włączonym transportem kompiluje się dla Arduino Nano ATmega328P w k
 
 Dla wariantu ENC28J60 build script automatycznie modyfikuje lokalną kopię przypiętej biblioteki EthernetENC 2.0.5: ustawia `UIP_ACTIVE_OPEN=0`. Firmware działa jako serwer TCP i nie inicjuje połączeń wychodzących, dlatego kod aktywnego otwierania TCP jest zbędny. Funkcja serwera i odpowiedzi na przychodzące połączenia pozostają włączone. Skrypt wykonuje kopię zapasową pliku konfiguracyjnego i przywraca oryginał po kompilacji (także po błędzie). Przerywa kompilację, jeśli nie odnajdzie oczekiwanej wersji biblioteki lub nie może bezpiecznie zastosować zmiany.
 
-Dodatkowo AVR jest kompilowany z `-mcall-prologues`, a UDP pozostaje wyłączone. CI wymaga obecnie nie więcej niż 28 800 B Flash dla wariantu Ethernet. Wynik tej optymalizacji należy potwierdzić kompilacją; nie jest to pomiar fizycznego sprzętu.
+Dodatkowo AVR jest kompilowany z `-mcall-prologues`, a UDP pozostaje wyłączone. CI wymaga obecnie nie więcej niż 28 800 B Flash dla wariantu Ethernet, czyli co najmniej 1 920 B rezerwy względem limitu 30 720 B. **Nowy wynik liczbowy nie został jeszcze potwierdzony**; do czasu zielonej kompilacji nie należy uznawać celu pamięciowego za osiągnięty. Nie jest to pomiar fizycznego sprzętu.
