@@ -49,7 +49,9 @@ enum class SystemState(val id: Int, val displayName: String) {
     RUNNING(3, "Praca"),
     ERROR(4, "Błąd"),
     SAFE_LOCKOUT(5, "Blokada Bezpieczeństwa"),
-    THERMAL_SHUTDOWN(6, "Wyłączenie Termiczne");
+    THERMAL_SHUTDOWN(6, "Wyłączenie Termiczne"),
+    DIAGNOSTIC(7, "Diagnostyka"),
+    BUSY(8, "Zajęty");
 
     companion object {
         fun fromId(id: Int): SystemState {
