@@ -1506,6 +1506,127 @@
             closeTherapyModal();
         }
         
+
+        // ============================================================================
+        // TRYB DIAGNOSTYCZNY — świadomie ograniczony do istniejącego API PHP.
+        // Firmware nie udostępnia obecnie potwierdzonego transportu TCP; UI nie może
+        // przedstawiać niezaimplementowanych funkcji jako działających.
+        // ============================================================================
+        const DIAGNOSTIC_ONLY = true;
+
+        async function connectToDevice() {
+            const ip = document.getElementById('deviceIp').value.trim();
+            const port = document.getElementById('devicePort').value.trim();
+            if (!ip) {
+                showNotification('Podaj adres IPv4 urządzenia', true);
+                return;
+            }
+            if (!/^(?:\\d{1,3}\\.){3}\\d{1,3}$/.test(ip) ||
+                ip.split('.').some(part => Number(part) > 255) ||
+                !/^\\d{1,5}$/.test(port) || Number(port) < 1 || Number(port) > 65535) {
+                showNotification('Nieprawidłowy adres IPv4 lub port', true);
+                return;
+            }
+
+            try {
+                const result = await apiCall('connect_test', { ip, port: Number(port) });
+                if (!result.success) throw new Error(result.error || 'Test TCP nie powiódł się');
+                isConnected = true;
+                document.getElementById('statusIndicator').classList.add('connected');
+                document.getElementById('statusText').textContent = 'Urządzenie odpowiedziało na test TCP';
+                document.getElementById('disconnectBtn').style.display = 'inline-block';
+                showNotification('Otrzymano odpowiedź urządzenia na test TCP');
+                await refreshStatus();
+                startAutoRefresh();
+            } catch (error) {
+                isConnected = false;
+                updateConnectionStatus(false);
+                showNotification('Brak potwierdzonej odpowiedzi: ' + error.message, true);
+            }
+        }
+
+        function disconnectFromDevice() {
+            isConnected = false;
+            stopAutoRefresh();
+            updateConnectionStatus(false);
+            showNotification('Zatrzymano monitorowanie połączenia');
+        }
+
+        async function refreshStatus() {
+            if (!isConnected) return;
+            try {
+                const result = await apiCall('get_status');
+                if (!result.success) throw new Error(result.error || 'Nie udało się pobrać statusu');
+                const status = result.data || {};
+                const set = (id, value, suffix = '') => {
+                    document.getElementById(id).textContent =
+                        value === undefined || value === null || value === '' ? 'Brak danych' : String(value) + suffix;
+                };
+                set('statusTemp', status.TEMP, '°C');
+                set('statusMemory', status.MEM, ' B');
+                set('statusUptime', status.UP, ' s');
+                set('statusPwm', status.PWM);
+                set('statusFreq', status.FREQ, ' Hz');
+                set('statusSafety', status.SAFETY);
+            } catch (error) {
+                isConnected = false;
+                stopAutoRefresh();
+                updateConnectionStatus(false);
+                showNotification('Utracono odpowiedź urządzenia: ' + error.message, true);
+            }
+        }
+
+        async function init() {
+            const notice = document.createElement('div');
+            notice.id = 'diagnosticNotice';
+            notice.setAttribute('role', 'status');
+            notice.style.cssText = 'margin:16px 30px;padding:14px 18px;border-left:5px solid #f39c12;background:#fff8e6;color:#5c4400;border-radius:6px;line-height:1.5';
+            notice.textContent = 'TRYB DIAGNOSTYCZNY: dostępny jest wyłącznie test odpowiedzi TCP i odczyt statusu. Konfiguracja kanałów, uruchamianie sygnałów i funkcje terapeutyczne są wyłączone do czasu wdrożenia oraz walidacji rzeczywistego protokołu komunikacyjnego i zabezpieczeń sprzętowych.';
+            const connectionPanel = document.querySelector('.connection-panel');
+            connectionPanel.insertAdjacentElement('afterend', notice);
+
+            document.querySelectorAll('.probes-section, .control-panel, .logs-panel').forEach(el => {
+                el.hidden = true;
+            });
+            document.querySelectorAll('.mode-btn, #probeList button, #probeEditor button').forEach(el => {
+                el.disabled = true;
+            });
+
+            document.getElementById('statusText').textContent = 'Rozłączono — brak testu TCP';
+            updateConnectionStatus(false);
+            try {
+                await loadFrequencies(); // wyłącznie informacja o lokalnym pliku; nie uruchamia sprzętu
+            } catch (_) {
+                // Brak lokalnej bazy nie wpływa na diagnostykę łącza.
+            }
+        }
+
+        // Twarda blokada operacji, których backend/firmware nie implementuje.
+        async function startTherapy() {
+            showNotification('Funkcja wyłączona: brak zweryfikowanego protokołu i interlocków sprzętowych', true);
+        }
+        async function stopTherapy() {
+            showNotification('Sterowanie wyjściami jest niedostępne w trybie diagnostycznym', true);
+        }
+        async function sendAllConfigs() {
+            showNotification('Wysyłanie konfiguracji jest niedostępne w trybie diagnostycznym', true);
+        }
+        async function saveProbeLocal() {
+            showNotification('Edycja kanałów jest tymczasowo wyłączona', true);
+        }
+        async function saveProbeConfig() {
+            showNotification('Wysyłanie konfiguracji jest niedostępne w trybie diagnostycznym', true);
+        }
+        async function setProbeMode() {
+            showNotification('Zmiana trybu kanałów jest niedostępna w trybie diagnostycznym', true);
+        }
+        function selectTherapyProgram() {
+            showNotification('Wybór programu i aktywacja wyjść są wyłączone', true);
+        }
+        function applyTherapy() {
+            showNotification('Aktywacja wyjść jest wyłączona', true);
+        }
+
         // Start aplikacji po załadowaniu strony DOM
         debugLog("Rejestracja event listener DOMContentLoaded", "DEBUG");
         document.addEventListener('DOMContentLoaded', init);
