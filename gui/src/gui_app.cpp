@@ -538,7 +538,7 @@ void GuiApp::renderStatusPanel() {
         ImGui::Text("Uptime: %u s", status.uptime_seconds);
         ImGui::Text("Wolna pamięć: %u B", status.free_memory);
         if (status.diagnostic_temperature_valid)
-            ImGui::Text("Temperatura MCU: %.2f C", status.temperature);
+            ImGui::Text("Temperatura urządzenia: %.2f C", status.temperature);
         else
             ImGui::Text("Temperatura: brak wiarygodnego pomiaru");
         ImGui::Text("Flagi diagnostyczne: 0x%04X", status.diagnostic_fault_flags);
