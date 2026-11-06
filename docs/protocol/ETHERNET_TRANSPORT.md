@@ -2,7 +2,7 @@
 
 ## Biblioteka
 
-Firmware używa API biblioteki EthernetENC. Zalecana, przypięta wersja: **2.0.5**. Biblioteka zapewnia interfejs zgodny z API Arduino Ethernet i obsługę ENC28J60 przez SPI. Wersję należy zainstalować w Arduino IDE Library Manager lub przypiąć w środowisku budowania.
+Firmware używa API biblioteki EthernetENC. Zalecana, przypięta wersja: **2.0.5**. Biblioteka zapewnia interfejs zgodny z API Arduino Ethernet i obsługę ENC28J60 przez SPI. Wersję należy zainstalować w Arduino IDE Library Manager lub przypiąć w środowisku budowania. Zalecana kompilacja: `bash ResoNet_Nano/build_nano.sh`.
 
 ## Domyślna blokada
 
@@ -16,6 +16,8 @@ Aby włączyć transport, ustaw `RESONET_ENABLE_ETHERNET 1` i zweryfikuj, że:
 
 Wartości w pliku są przykładową konfiguracją prywatnej podsieci, a nie uniwersalnym ustawieniem.
 
+Skrypt kompilacyjny ogranicza zasoby stosu: `UIP_CONF_UDP=0`, `UIP_CONF_MAX_CONNECTIONS=1`, `UIP_SOCKET_NUMPACKETS=1`, bufory UART RX/TX po 32 bajty. UDP jest wyłączone, więc DHCP i DNS są niedostępne; wymagany jest statyczny adres IP. Jeden klient TCP i pojedynczy bufor pakietu ograniczają przepustowość.
+
 ## Zachowanie serwera
 
 - Jeden klient TCP jednocześnie.
@@ -28,6 +30,10 @@ Wartości w pliku są przykładową konfiguracją prywatnej podsieci, a nie uniw
 - Nieobsługiwane są stare, niewersjonowane pakiety terapii i konfiguracji.
 - Brak komend uruchamiania PWM, IR LED, piezo lub wibratora.
 - STATUS_RESP ustawia `output_inhibited=0`, ponieważ firmware nie ma niezależnego potwierdzenia fizycznego odcięcia wszystkich wyjść. Pole temperatury zewnętrznego efektora ma wartość sentinel `0x7FFF`. Nie należy interpretować tego statusu jako potwierdzenia bezpieczeństwa urządzenia.
+
+## Wynik kompilacji programowej
+
+Wariant z włączonym transportem kompiluje się dla Arduino Nano ATmega328P w konfiguracji skryptu: **29 442 B flash (95%) i 1 409 B RAM (68%)**, pozostawiając 639 B RAM na zmienne lokalne/stos. To wynik kompilacji, nie testu działania. Margines pamięci programu jest niewielki; każda większa funkcja wymaga ponownego pomiaru.
 
 ## Ograniczenia i dalsze prace
 
