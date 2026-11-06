@@ -29,6 +29,20 @@ bool FrequencyLoader::loadFromFile(const std::string& filepath) {
         const size_t last = value.find_last_not_of(" \t\r\n");
         return value.substr(first, last - first + 1);
     };
+    const auto parse_u32 = [&trim](const std::string& raw) -> uint32_t {
+        const std::string value = trim(raw);
+        if (value.empty() ||
+            !std::all_of(value.begin(), value.end(), [](unsigned char ch) {
+                return ch >= '0' && ch <= '9';
+            })) {
+            throw std::invalid_argument("numeric field must contain decimal digits only");
+        }
+        const unsigned long long parsed = std::stoull(value);
+        if (parsed > std::numeric_limits<uint32_t>::max()) {
+            throw std::out_of_range("numeric field exceeds uint32 range");
+        }
+        return static_cast<uint32_t>(parsed);
+    };
 
     std::string line;
     while (std::getline(freq_file, line)) {
@@ -46,28 +60,15 @@ bool FrequencyLoader::loadFromFile(const std::string& filepath) {
             tokens.push_back(token);
         }
         
-        if (tokens.size() >= 6) {
+        if (tokens.size() == 6) {
             try {
-                const std::string frequency_token = trim(tokens[0]);
-                const std::string carrier_token = trim(tokens[5]);
-                size_t frequency_chars = 0;
-                size_t carrier_chars = 0;
-                const unsigned long parsed_frequency = std::stoul(frequency_token, &frequency_chars);
-                const unsigned long parsed_carrier = std::stoul(carrier_token, &carrier_chars);
-                if (trim(frequency_token.substr(frequency_chars)).size() != 0 ||
-                    trim(carrier_token.substr(carrier_chars)).size() != 0 ||
-                    parsed_frequency > std::numeric_limits<uint32_t>::max() ||
-                    parsed_carrier > std::numeric_limits<uint32_t>::max()) {
-                    throw std::out_of_range("numeric field out of range or contains trailing data");
-                }
-
                 FrequencyEntry entry;
-                entry.frequency_hz = static_cast<uint32_t>(parsed_frequency);
+                entry.frequency_hz = parse_u32(tokens[0]);
                 entry.category = trim(tokens[1]);
                 entry.subcategory = trim(tokens[2]);
                 entry.description = trim(tokens[3]);
                 entry.modulation = trim(tokens[4]);
-                entry.carrier_khz = static_cast<uint32_t>(parsed_carrier);
+                entry.carrier_khz = parse_u32(tokens[5]);
                 if (entry.frequency_hz == 0 || entry.category.empty() || entry.description.empty()) {
                     throw std::invalid_argument("required frequency field is empty or zero");
                 }
