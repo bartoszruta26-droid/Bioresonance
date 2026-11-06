@@ -94,13 +94,16 @@ static void handleProtocolFrame(const ResoNetProtocolV1::FrameView& frame,
         case ResoNetProtocolV1::STATUS_REQ: {
             uint8_t payload[14];
             SafetyStatus* safety = safety_get_status();
-            const bool safe = safety != NULL && SAFE_IS_SAFE();
             const bool locked = safety != NULL && safety->safe_state == SAFE_STATE_LOCKOUT;
+            const bool faulted = safety == NULL ||
+                safety->safe_state == SAFE_STATE_ERROR ||
+                safety->safe_state == SAFE_STATE_CRITICAL;
+            const bool safe = !locked && !faulted;
 
             // Only coarse firmware state is exposed. No sensor is certified
             // as an external patient/output temperature measurement.
             payload[0] = locked ? 0x05 : (safe ? 0x01 : 0x04); // SAFE_LOCKOUT / IDLE / FAULT
-            const uint16_t fault_flags = (safety == NULL || !safe) ? 0x0001 :
+            const uint16_t fault_flags = faulted ? 0x0001 :
                 (safety->safe_state == SAFE_STATE_WARNING ? 0x0002 : 0x0000);
             payload[1] = (uint8_t)(fault_flags >> 8);
             payload[2] = (uint8_t)fault_flags;
