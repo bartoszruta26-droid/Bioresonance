@@ -4,7 +4,7 @@ on:
     branches: [main]
     paths: ["gui/**", "webui/**", "android_app/**", "frequencies.md", ".github/workflows/desktop-gui.yml"]
   pull_request:
-    paths: ["gui/**", "webui/**", "frequencies.md", ".github/workflows/desktop-gui.yml"]
+    paths: ["gui/**", "webui/**", "android_app/**", "frequencies.md", ".github/workflows/desktop-gui.yml"]
   workflow_dispatch:
 permissions:
   contents: read
