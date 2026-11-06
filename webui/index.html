@@ -758,10 +758,18 @@
             try {
                 const startTime = performance.now();
                 
+                let apiToken = sessionStorage.getItem('bioresonanceApiToken');
+                if (!apiToken) {
+                    apiToken = window.prompt('Podaj token API skonfigurowany na serwerze (BIORESONANCE_API_TOKEN):');
+                    if (!apiToken) throw new Error('Brak tokenu API — żądanie zostało anulowane.');
+                    sessionStorage.setItem('bioresonanceApiToken', apiToken);
+                }
+
                 const options = {
                     method: data ? 'POST' : 'GET',
                     headers: {
                         'Content-Type': 'application/json',
+                        'X-Bioresonance-Token': apiToken,
                     }
                 };
                 
