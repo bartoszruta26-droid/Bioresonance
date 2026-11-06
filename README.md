@@ -142,11 +142,13 @@ ResoNet_Nano/
 
 ### Kompilacja:
 ```bash
-# Arduino IDE
-# 1. Otwórz ResoNet_Nano/ResoNet_Nano.ino
-# 2. Zainstaluj bibliotekę EthernetENC
-# 3. Wybierz Arduino Nano
-# 4. Wgraj
+# Zalecana kompilacja Nano z ograniczeniami pamięci
+arduino-cli core install arduino:avr
+arduino-cli lib install EthernetENC@2.0.5
+bash ResoNet_Nano/build_nano.sh
+
+# EthernetENC/TCP pozostaje domyślnie wyłączony.
+# Przed włączeniem ustaw adresację w ResoNet_Nano/network_config.h.
 
 # PlatformIO
 cd ResoNet_Nano
