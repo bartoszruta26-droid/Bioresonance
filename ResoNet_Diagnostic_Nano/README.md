@@ -40,3 +40,12 @@ g++ -std=c++11 -Wall -Wextra -Werror -pedantic tests/host/effector_runtime_test.
 ```
 
 Testy hosta nie są testami sprzętowymi. Protokół v1 nie zapewnia uwierzytelniania ani szyfrowania; używaj wyłącznie w zaufanej, odizolowanej sieci.
+
+## Aktualizacja modelu efektorów
+- Kolejka ma 8 rekordów po 6 bajtów; sterowanie typem zdarzenia i kanałem jest jawnie pakowane do jednego bajtu.
+- Walidacja profilu przyjmuje częstotliwość 1–65535 Hz, wypełnienie 0–100% i czas 1–65535 ms.
+- processOne(now_ms) przetwarza najwyżej jedno zdarzenie, a tick(now_ms) realizuje nieblokujące automatyczne zatrzymanie.
+- Licznik czasu wykorzystuje różnicę 16-bitową i obsługuje zawinięcie millis(), jeśli tick() jest wykonywane regularnie, co najmniej raz na 65535 ms.
+- effector_gpio.h zawiera sterownik z jawną mapą pinów i adapterem funkcji. Domyślna mapa ma wszystkie piny nieprzypisane (0xFF); szkic nie inicjalizuje sterownika, więc nie ma fizycznego sterowania.
+- Sterownik wymaga trzech unikalnych pinów 0–19 i kompletu funkcji adaptera; begin() wymusza LOW, shutdown() ponownie wyłącza wszystkie kanały.
+- Interfejs GPIO jest obecnie wyłącznie binarny. Generowanie PWM o zadanej częstotliwości, sprawdzenie konfliktów z SPI/ENC28J60/UART oraz dobór stopni mocy pozostają do czasu otrzymania pinów i schematu elektrycznego.
