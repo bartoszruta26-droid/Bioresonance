@@ -75,7 +75,7 @@ bool NetworkClient::connect(const std::string& ip, int port_num) {
     
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(port);
+    server_addr.sin_port = htons(static_cast<u_short>(port));
     
     if (inet_pton(AF_INET, ip.c_str(), &server_addr.sin_addr) <= 0) {
         CLOSE_SOCKET(socket_fd);
