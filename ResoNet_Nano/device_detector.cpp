@@ -54,7 +54,7 @@ static const char* const s_error_strings[] PROGMEM = {
 /**
  * @brief Logowanie z formatowaniem i obsługą poziomów verbose
  */
-void detection_log_printf(uint8_t level, const char* format, ...) {
+void detection_log_printf_P(uint8_t level, PGM_P format, ...) {
     // Sprawdź czy tryb quiet pozwala na ten poziom logowania
     if (s_detection_config.quiet_mode && level < LOG_ERROR) {
         return;
@@ -72,7 +72,7 @@ void detection_log_printf(uint8_t level, const char* format, ...) {
     char buffer[LOG_MESSAGE_MAX_LEN];
     va_list args;
     va_start(args, format);
-    vsnprintf(buffer, sizeof(buffer), format, args);
+    vsnprintf_P(buffer, sizeof(buffer), format, args);
     va_end(args);
     
     log_add_entry(level, 0, buffer);
@@ -83,13 +83,13 @@ void detection_log_printf(uint8_t level, const char* format, ...) {
  */
 #define DBG_LOG(msg) do { \
     if (s_detection_config.debug_enabled) { \
-        detection_log_printf(LOG_DEBUG, msg); \
+        detection_log_printf_P(LOG_DEBUG, PSTR(msg)); \
     } \
 } while(0)
 
 #define DBG_LOG_F(fmt, ...) do { \
     if (s_detection_config.debug_enabled) { \
-        detection_log_printf(LOG_DEBUG, fmt, ##__VA_ARGS__); \
+        detection_log_printf_P(LOG_DEBUG, PSTR(fmt), ##__VA_ARGS__); \
     } \
 } while(0)
 
