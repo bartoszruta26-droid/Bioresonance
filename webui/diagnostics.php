@@ -127,8 +127,10 @@ if (!in_array($action, ['status', 'ping'], true)) {
 $socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
 if ($socket === false) respond(502, ['success' => false, 'error' => 'Nie można utworzyć gniazda TCP']);
 try {
-    socket_set_option($socket, SOL_SOCKET, SO_RCVTIMEO, ['sec' => 2, 'usec' => 0]);
-    socket_set_option($socket, SOL_SOCKET, SO_SNDTIMEO, ['sec' => 2, 'usec' => 0]);
+    if (!socket_set_option($socket, SOL_SOCKET, SO_RCVTIMEO, ['sec' => 2, 'usec' => 0]) ||
+        !socket_set_option($socket, SOL_SOCKET, SO_SNDTIMEO, ['sec' => 2, 'usec' => 0])) {
+        throw new RuntimeException('Nie można ustawić limitów czasu gniazda');
+    }
     if (!@socket_connect($socket, $ip, 5001)) {
         throw new RuntimeException('Nie można połączyć z urządzeniem na porcie 5001');
     }
