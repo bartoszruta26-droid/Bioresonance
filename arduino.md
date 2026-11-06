@@ -4,10 +4,10 @@
 
 ![Firmware Version](https://img.shields.io/badge/firmware-v4.0.0-blue)
 ![Platform](https://img.shields.io/badge/platform-Arduino%20Nano-green)
-![Standard](https://img.shields.io/badge/standard-IEC%2060601--1-red)
-![Language](https://img.shields.io/badge/language-C%2B%2B%2017-orange)
+![Status](https://img.shields.io/badge/status-experimental-orange)
+![Language](https://img.shields.io/badge/language-C%2B%2B%2011-blue)
 
-**Profesjonalny system generatora sygnałów medycznych klasy IEC 60601-1**
+**Eksperymentalne oprogramowanie sterownika i diagnostyki ResoNet Nano**
 
 [Architektura](#architektura-systemu) • [Moduły](#moduły-systemu) • [Pseudowielowątkowość](#pseudowielowątkowość) • [Konfiguracja](#konfiguracja-i-kompilacja) • [Bezpieczeństwo](#bezpieczeństwo-medyczne)
 
@@ -30,7 +30,7 @@
 
 ## Wprowadzenie
 
-**ResoNet Nano** to profesjonalny system generatora sygnałów medycznych klasy IEC 60601-1, zaimplementowany w C++ dla platformy Arduino Nano. System wykorzystuje architekturę modularną z pseudowielowątkowością, zapewniając deterministyczne czasy reakcji i wysokie bezpieczeństwo.
+**ResoNet Nano** to eksperymentalne oprogramowanie wbudowane dla Arduino Nano (ATmega328P). Dokument opisuje architekturę i mechanizmy programowe; nie stanowi potwierdzenia bezpieczeństwa urządzenia, skuteczności klinicznej ani zgodności z normami wyrobów medycznych.
 
 ### Kluczowe Cechy
 
@@ -38,7 +38,7 @@
 - ✅ **Architektura Modularna** - 5 niezależnych modułów
 - ✅ **Pseudowielowątkowość** - Kooperacyjne wielozadaniowość
 - ✅ **Non-blocking Timing** - Wszystkie operacje oparte na `millis()`
-- ✅ **Bezpieczeństwo Medyczne** - Zgodność z IEC 60601-1
+- ⚠️ **Mechanizmy ochronne** - logika programowa, bez walidacji jako zabezpieczenie wyrobu medycznego
 - ✅ **Watchdog Timer** - Wielopoziomowy monitoring
 - ✅ **Ring Buffer Logów** - 4 wpisy historii
 - ✅ **Event Queue** - Kolejka FIFO 4 zdarzenia
@@ -426,15 +426,19 @@ if (elapsed > task->max_execution_time) {
 
 ### Konfiguracja transportu diagnostycznego
 
-Transport ENC28J60/TCP jest domyślnie wyłączony. W `ResoNet_Nano/network_config.h` ustaw `RESONET_ENABLE_ETHERNET` na `1` dopiero po dopasowaniu adresu IP, maski, bramy i unikalnego MAC do sieci lokalnej. Serwer udostępnia wyłącznie diagnostyczny protokół ResoNet v1 na TCP/5001; nie udostępnia komend uruchamiania wyjść.
+Transport ENC28J60/TCP jest domyślnie wyłączony. W `ResoNet_Nano/network_config.h` ustaw `RESONET_ENABLE_ETHERNET` na `1` dopiero po dopasowaniu adresu IP, maski, bramy i unikalnego MAC do sieci lokalnej. Serwer udostępnia wyłącznie diagnostyczny protokół ResoNet v1 na TCP/5001; nie udostępnia komend uruchamiania wyjść. Wariant Nano jest kompilowany z `UIP_CONF_UDP=0` (bez DHCP i DNS), jednym połączeniem TCP i jednym buforem pakietów — wymagany jest statyczny adres IP, a przepustowość jest ograniczona.
 
 ### Kompilacja
 
-1. Otwórz plik: `ResoNet_Nano/ResoNet_Nano.ino`
-2. Wybierz płytkę: `Narzędzia → Płytka → Arduino Nano`
-3. Wybierz procesor: `Narzędzia → Procesor → ATmega328P`
-4. Wybierz port: `Narzędzia → Port → COMx` (Windows) lub `/dev/ttyUSBx` (Linux)
-5. Kliknij: `Szkic → Wgraj` (Ctrl+U)
+Zalecana kompilacja z ustawieniami ograniczającymi zużycie pamięci:
+
+```bash
+arduino-cli core install arduino:avr
+arduino-cli lib install EthernetENC@2.0.5
+bash ResoNet_Nano/build_nano.sh
+```
+
+Skrypt buduje wariant zgodny z Arduino Nano ATmega328P i ustawia ograniczenia biblioteki sieciowej. Transport pozostaje wyłączony, dopóki `RESONET_ENABLE_ETHERNET` ma wartość `0`. Po włączeniu transportu skrypt używa zoptymalizowanej konfiguracji TCP; DHCP/DNS są wyłączone. Arduino IDE może kompilować wariant domyślny, lecz dla wariantu sieciowego należy użyć skryptu lub równoważnych flag kompilatora.
 
 ### Konfiguracja Compile-time
 
@@ -478,17 +482,17 @@ Network: CONNECTED
 
 ---
 
-## Bezpieczeństwo Medyczne
+## Ograniczenia bezpieczeństwa i zgodności
 
-### Zgodność z IEC 60601-1
+**Brak potwierdzonej zgodności z IEC 60601-1.** Nie przeprowadzono oceny zgodności, badań elektrycznych, badań EMC ani walidacji klinicznej. Nie należy opisywać tej platformy jako certyfikowanego wyrobu medycznego ani stosować jej do terapii ludzi.
 
-System implementuje następujące mechanizmy bezpieczeństwa:
+Poniższe elementy są wyłącznie mechanizmami programowymi i nie zastępują niezależnych zabezpieczeń sprzętowych:
 
 #### 1. Ochrona Przed Przegrzaniem
 - **Threshold ostrzeżenia:** 70°C
 - **Threshold krytyczny:** 85°C
 - **Histereza:** 5°C
-- **Akcja:** Natychmiastowy shutdown przy 85°C
+- **Akcja:** programowa reakcja firmware przy 85°C; nie jest to niezależne odcięcie sprzętowe. Aktualny odczyt temperatury MCU nie jest zwalidowanym pomiarem temperatury cewki ani pacjenta.
 
 #### 2. Watchdog Timer
 - **Timeout:** 2 sekundy
@@ -590,4 +594,4 @@ Dokumentacja zgodna z wersją firmware **4.0.0**
 
 **Autor:** ResoNet Development Team  
 **Licencja:** MIT (sprzęt), GPL v3 (oprogramowanie)  
-**Normy:** IEC 60601-1 (klasa IIa urządzenia medyczne)
+**Status:** prototyp eksperymentalny; brak deklaracji klasy wyrobu medycznego i brak potwierdzenia zgodności z IEC 60601-1.
