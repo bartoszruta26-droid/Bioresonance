@@ -67,25 +67,6 @@ uint16_t logging_get_overflow_count();
 
 #define LOG_EVENT(level, event, msg) log_add_entry(level, event, msg)
 
-// Logowanie z formatowaniem (ograniczone)
-#define LOG_INFO_F(fmt, ...) do { \
-    char buf[LOG_MESSAGE_MAX_LEN]; \
-    snprintf_P(buf, sizeof(buf), PSTR(fmt), ##__VA_ARGS__); \
-    log_add_entry(LOG_INFO, 0, buf); \
-} while(0)
-
-#define LOG_ERROR_F(fmt, ...) do { \
-    char buf[LOG_MESSAGE_MAX_LEN]; \
-    snprintf_P(buf, sizeof(buf), PSTR(fmt), ##__VA_ARGS__); \
-    log_add_entry(LOG_ERROR, 0, buf); \
-} while(0)
-
-#define LOG_WARN_F(fmt, ...) do { \
-    char buf[LOG_MESSAGE_MAX_LEN]; \
-    snprintf_P(buf, sizeof(buf), PSTR(fmt), ##__VA_ARGS__); \
-    log_add_entry(LOG_WARNING, 0, buf); \
-} while(0)
-
 #define LOG_WARNING(msg) LOG_WARN(msg)
 #define LOG_WARNING_F(fmt, ...) LOG_WARN_F(fmt, ##__VA_ARGS__)
 
