@@ -122,10 +122,11 @@ bool NetworkClient::connect(const std::string& ip, int port_num) {
     
     // Check for connection errors - portable cast for getsockopt
     int so_error = 0;
-    socklen_t len = sizeof(so_error);
 #ifdef _WIN32
+    int len = sizeof(so_error);
     if (getsockopt(socket_fd, SOL_SOCKET, SO_ERROR, (char*)&so_error, &len) < 0 || so_error != 0) {
 #else
+    socklen_t len = sizeof(so_error);
     if (getsockopt(socket_fd, SOL_SOCKET, SO_ERROR, &so_error, &len) < 0 || so_error != 0) {
 #endif
         CLOSE_SOCKET(socket_fd);
