@@ -1,7 +1,7 @@
 name: Desktop GUI
 on:
   push:
-    branches: [main, "audit/**", "feature/**"]
+    branches: [main]
     paths: ["gui/**", "frequencies.md", ".github/workflows/desktop-gui.yml"]
   pull_request:
     paths: ["gui/**", "frequencies.md", ".github/workflows/desktop-gui.yml"]
