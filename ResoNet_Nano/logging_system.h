@@ -52,7 +52,7 @@ void logging_init();
 void logging_loop();
 void log_add_entry(uint8_t level, uint16_t event_code, const char* message);
 void log_add_entry_P(uint8_t level, uint16_t event_code, PGM_P message);
-const char* get_log_level_name(uint8_t level);
+const __FlashStringHelper* get_log_level_name(uint8_t level);
 LogBuffer* logging_get_buffer();
 void logging_flush_to_serial();
 uint16_t logging_get_overflow_count();
