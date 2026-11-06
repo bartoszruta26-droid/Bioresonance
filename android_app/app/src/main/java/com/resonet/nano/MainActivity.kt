@@ -161,12 +161,12 @@ class MainActivity : AppCompatActivity() {
      */
     private fun updateStatusUI(status: SystemStatus) {
         binding.tvUptime.text = "Czas pracy: ${status.uptimeSeconds}s"
-        binding.tvTemperature.text = "Temperatura: ${status.temperatureCelsius}°C"
+        binding.tvTemperature.text = if (status.temperatureValid)\n            "Temperatura: ${status.temperatureCelsius}°C" else "Temperatura: brak wiarygodnego pomiaru"
         binding.tvMemory.text = "Wolna pamięć: ${status.freeMemoryBytes} B"
-        binding.tvPwmStatus.text = "PWM: ${if (status.pwmIsActive) "AKTYWNY" else "STOP"}"
-        binding.tvFrequency.text = "Częstotliwość: ${status.currentFrequency} Hz"
+        binding.tvPwmStatus.text = if (status.pwmStatusKnown)\n            "PWM: ${if (status.pwmIsActive) "AKTYWNY" else "STOP"}" else "PWM: brak danych"
+        binding.tvFrequency.text = if (status.frequencyKnown)\n            "Częstotliwość: ${status.currentFrequency} Hz" else "Częstotliwość: brak danych"
         binding.tvNetworkStatus.text = "Sieć: ${if (status.networkConnected) "POŁĄCZONA" else "ROZŁĄCZONA"}"
-        binding.tvEffectorType.text = "Efektor: ${status.detectedEffector.displayName}"
+        binding.tvEffectorType.text = if (status.effectorKnown)\n            "Efektor: ${status.detectedEffector.displayName}" else "Efektor: brak danych"
         
         // Kolorowanie statusu bezpieczeństwa
         val safetyColor = when {
