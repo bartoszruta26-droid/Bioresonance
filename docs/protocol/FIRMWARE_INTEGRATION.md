@@ -30,3 +30,6 @@ Następny etap transportowy powinien:
 ## Weryfikacja
 
 Nie przeprowadzono testów sprzętowych. Samo zapisanie plików nie oznacza, że firmware zostało skompilowane lub zweryfikowane na docelowym toolchainie.
+
+
+Build Nano z włączonym EthernetENC 2.0.5 wykonuje bezpieczną, idempotentną poprawkę lokalnego `uipopt.h`: `UIP_ACTIVE_OPEN=0`. Jest to właściwe dla firmware działającego wyłącznie jako serwer TCP. Nie wolno używać tego wariantu, jeśli firmware zacznie inicjować połączenia TCP do innych hostów. Skrypt kompilacji sprawdza oczekiwaną wersję pliku i kończy się błędem, jeśli poprawka nie może zostać zastosowana.
