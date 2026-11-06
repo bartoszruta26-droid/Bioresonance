@@ -147,9 +147,10 @@ ParseResult Parser::feed(uint8_t byte, FrameHandler handler, void* context) {
                 const uint16_t payload_length = readU16BE(&buffer_[7]);
                 const bool request_type = buffer_[3] == HELLO_REQ ||
                     buffer_[3] == PING || buffer_[3] == STATUS_REQ;
+                const bool known_type = isKnownType(buffer_[3]);
                 if (buffer_[2] != VERSION || buffer_[4] != 0 ||
-                    payload_length != 0 || !request_type ||
-                    !validatePayloadLength(buffer_[3], payload_length)) {
+                    payload_length != 0 || (known_type && !request_type) ||
+                    (known_type && !validatePayloadLength(buffer_[3], payload_length))) {
                     ++rejected_frames_;
                     restartWithByte(byte);
                     return PARSE_REJECTED;
