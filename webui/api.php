@@ -208,15 +208,20 @@ function send_to_arduino($command, $ip, $port) {
         $command .= "\n";
     }
     
-    $bytesSent = socket_write($socket, $command, strlen($command));
-    if ($bytesSent === false) {
-        $err = socket_last_error($socket);
-        $msg = socket_strerror($err);
-        debug_log("TCP: Write failed - $msg", "ERROR");
-        socket_close($socket);
-        return ['success' => false, 'error' => "Send failed: $msg"];
+    $totalLength = strlen($command);
+    $offset = 0;
+    while ($offset < $totalLength) {
+        $bytesSent = @socket_write($socket, substr($command, $offset), $totalLength - $offset);
+        if ($bytesSent === false || $bytesSent === 0) {
+            $err = socket_last_error($socket);
+            $msg = socket_strerror($err);
+            debug_log("TCP: Write failed after $offset/$totalLength bytes - $msg", "ERROR");
+            socket_close($socket);
+            return ['success' => false, 'error' => "Send failed: $msg"];
+        }
+        $offset += $bytesSent;
     }
-    debug_log("TCP: Sent $bytesSent bytes: " . trim($command));
+    debug_log("TCP: Sent $offset bytes: " . trim($command));
 
     // 5. Odbieranie odpowiedzi
     $response = "";
@@ -253,9 +258,15 @@ $action = $_POST['action'] ?? $_GET['action'] ?? '';
 $ip = $_POST['ip'] ?? $_SESSION['arduino_ip'] ?? DEFAULT_ARDUINO_IP;
 $port = $_POST['port'] ?? $_SESSION['arduino_port'] ?? DEFAULT_ARDUINO_PORT;
 
+// Validate every destination before any outbound socket operation.
+// The WebUI is intended to reach a device on a private/local network only.
+if (!validate_ip($ip) || !validate_port($port)) {
+    json_response(false, null, 'Invalid device address or port; only private IPv4 targets are allowed.');
+}
+
 // Zapisz preferencje w sesji
 $_SESSION['arduino_ip'] = $ip;
-$_SESSION['arduino_port'] = $port;
+$_SESSION['arduino_port'] = (int)$port;
 
 debug_log("API Request: action=$action, ip=$ip, port=$port");
 
