@@ -122,6 +122,7 @@ bool NetworkClient::connect(const std::string& ip, int port_num) {
     if (flags < 0 || fcntl(socket_fd, F_SETFL, flags | O_NONBLOCK) < 0) {
         CLOSE_SOCKET(socket_fd);
         socket_fd = INVALID_SOCKET_VALUE;
+        socket_lock.unlock();
         REPORT_ERROR(ErrorCode::ERR_NETWORK_SOCKET_FAILED, ErrorCategory::NETWORK,
                     "Failed to set non-blocking socket mode");
         return false;
