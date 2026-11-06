@@ -11,13 +11,14 @@
 // ============================================================================
 
 static LogBuffer log_buffer;
-static const char* log_level_names[] = {
-    "VERBOSE",
-    "DEBUG",
-    "INFO",
-    "WARN",
-    "ERROR",
-    "FATAL"
+static const char log_verbose[] PROGMEM = "VERBOSE";
+static const char log_debug[] PROGMEM = "DEBUG";
+static const char log_info[] PROGMEM = "INFO";
+static const char log_warn[] PROGMEM = "WARN";
+static const char log_error[] PROGMEM = "ERROR";
+static const char log_fatal[] PROGMEM = "FATAL";
+static PGM_P const log_level_names[] PROGMEM = {
+    log_verbose, log_debug, log_info, log_warn, log_error, log_fatal
 };
 
 // ============================================================================
@@ -144,11 +145,11 @@ void log_add_entry_P(uint8_t level, uint16_t event_code, PGM_P message) {
  * @param level Poziom logowania
  * @return Nazwa jako string z pamięci FLASH
  */
-const char* get_log_level_name(uint8_t level) {
+const __FlashStringHelper* get_log_level_name(uint8_t level) {
     if (level <= LOG_FATAL) {
-        return log_level_names[level];
+        return (const __FlashStringHelper*)pgm_read_ptr(&log_level_names[level]);
     }
-    return "UNKNOWN";
+    return F("UNKNOWN");
 }
 
 /**
