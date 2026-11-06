@@ -274,9 +274,7 @@ void GuiApp::renderMenuBar() {
         }
         
         if (ImGui::BeginMenu("Widok")) {
-            ImGui::MenuItem("Przeglądarka częstotliwości", nullptr, &show_frequency_browser);
-            ImGui::MenuItem("Ustawienia końcówek", nullptr, &show_probe_settings);
-            ImGui::MenuItem("Status systemu", nullptr, &show_system_status);
+            ImGui::TextDisabled("Tryb diagnostyczny — tylko odczyt");
             ImGui::EndMenu();
         }
         
@@ -305,24 +303,13 @@ void GuiApp::renderMenuBar() {
 }
 
 void GuiApp::renderMainTabs() {
-    ImGui::BeginTabBar("MainTabs");
-    
-    if (ImGui::BeginTabItem("Panel główny")) {
-        renderProbePanel();
-        ImGui::EndTabItem();
+    if (ImGui::BeginTabBar("MainTabs")) {
+        if (ImGui::BeginTabItem("Diagnostyka v1")) {
+            renderStatusPanel();
+            ImGui::EndTabItem();
+        }
+        ImGui::EndTabBar();
     }
-    
-    if (ImGui::BeginTabItem("Częstotliwości")) {
-        renderFrequencyBrowser();
-        ImGui::EndTabItem();
-    }
-    
-    if (ImGui::BeginTabItem("Status")) {
-        renderStatusPanel();
-        ImGui::EndTabItem();
-    }
-    
-    ImGui::EndTabBar();
 }
 
 void GuiApp::renderProbePanel() {
