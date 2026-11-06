@@ -68,7 +68,9 @@ void setup() {
 }
 void loop() {
     // Bounded state transition in RAM only; deliberately no GPIO/PWM operation.
-    effector_runtime.processOne();
+    const uint32_t now_ms = millis();
+    effector_runtime.processOne(now_ms);
+    effector_runtime.tick(now_ms);
     if (Ethernet.hardwareStatus()==EthernetNoHardware || Ethernet.linkStatus()!=LinkON) {
         if (client) client.stop(); parser.reset(); server_started=false; return;
     }
