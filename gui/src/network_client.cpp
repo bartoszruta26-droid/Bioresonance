@@ -173,6 +173,18 @@ bool NetworkClient::connect(const std::string& ip, int port_num) {
         return false;
     }
 
+    const std::uint32_t host_order = ntohl(parsed_address.s_addr);
+    const bool private_or_loopback =
+        (host_order & 0xFF000000UL) == 0x0A000000UL ||
+        (host_order & 0xFFF00000UL) == 0xAC100000UL ||
+        (host_order & 0xFFFF0000UL) == 0xC0A80000UL ||
+        (host_order & 0xFF000000UL) == 0x7F000000UL;
+    if (!private_or_loopback) {
+        REPORT_ERROR(ErrorCode::ERR_NETWORK_UNREACHABLE, ErrorCategory::NETWORK,
+                     "Only RFC1918 or loopback IPv4 addresses are permitted");
+        return false;
+    }
+
     socket_t candidate = socket(AF_INET, SOCK_STREAM, 0);
     if (candidate == INVALID_SOCKET_VALUE) {
         REPORT_ERROR(ErrorCode::ERR_NETWORK_SOCKET_FAILED, ErrorCategory::NETWORK,
