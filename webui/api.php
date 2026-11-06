@@ -362,7 +362,7 @@ switch ($action) {
 
         // Reject malformed values instead of coercing them into a different device command.
         if (!is_array($channels) || count($channels) === 0 || count($channels) > 8) {
-            json_response(false, null, "No channel data provided");
+            json_response(false, null, "Expected 1-8 channel configurations");
         }
         if (!is_string($mode) || !in_array($mode, ['SINGLE', 'MULTI'], true)) {
             json_response(false, null, "Invalid configuration mode");
