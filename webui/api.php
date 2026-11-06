@@ -10,7 +10,7 @@
  */
 
 // --- KONFIGURACJA ---
-define('DEBUG_MODE', true);
+define('DEBUG_MODE', false);
 define('LOG_FILE', __DIR__ . '/debug.log');
 define('LOCK_FILE', __DIR__ . '/session.lock');
 define('LOCK_TIMEOUT', 30); // Sekundy po których lock jest uznawany za osierocony
@@ -366,37 +366,7 @@ switch ($action) {
         break;
 
     case 'raw_command':
-        $cmd = $_POST['command'] ?? '';
-        if (empty($cmd)) {
-            json_response(false, null, "Empty command");
-        }
-
-        // Sanityzacja komendy
-        $safeCmd = sanitize_command($cmd);
-        
-        // Lista zabronionych komend (opcjonalne zabezpieczenie)
-        $forbidden = ['FORMAT', 'RESET_FACTORY']; 
-        foreach($forbidden as $bad) {
-            if (strpos(strtoupper($safeCmd), $bad) !== false) {
-                json_response(false, null, "Command blocked for safety: $bad");
-            }
-        }
-
-        $fp = acquire_lock();
-        if (!$fp) {
-            json_response(false, null, "System busy");
-        }
-
-        try {
-            $result = send_to_arduino($safeCmd . "\n", $ip, $port);
-            if ($result['success']) {
-                json_response(true, ['response' => $result['data']]);
-            } else {
-                json_response(false, null, $result['error']);
-            }
-        } finally {
-            release_lock($fp);
-        }
+        json_response(false, null, 'Raw commands are disabled; use explicitly validated API operations.');
         break;
 
     default:
