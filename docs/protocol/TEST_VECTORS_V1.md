@@ -1,6 +1,6 @@
 # Wektory testowe ResoNet Protocol v1
 
-**Status:** referencyjne dane testowe; protokół jest specyfikacją projektową i nie jest jeszcze wdrożony.
+**Status:** referencyjne dane testowe używane przez firmware i klientów diagnostycznych v1. Wektory nie zastępują testów integracyjnych.
 
 ## Wektor 1 — HELLO_REQ, sequence=1
 
