@@ -159,7 +159,7 @@ bool GuiApp::connectToDevice(const std::string& ip, int port) {
         status.connected = true;
         device_ip = ip;
         device_port = port;
-        addLog("Połączono pomyślnie!");
+        addLog("Nawiązano połączenie TCP; identyfikacja urządzenia i telemetria nie są jeszcze obsługiwane.");
         return true;
     } else {
         status.connected = false;
@@ -461,7 +461,7 @@ void GuiApp::renderStatusPanel() {
     ImGui::Separator();
     
     // Connection status
-    ImGui::Text("Status połączenia: %s", status.connected ? "POŁĄCZONO" : "ROZŁĄCZONO");
+    ImGui::Text("Transport TCP: %s", status.connected ? "POŁĄCZONY" : "ROZŁĄCZONY");
     
     if (status.connected) {
         ImGui::SameLine();
@@ -508,13 +508,13 @@ void GuiApp::renderStatusPanel() {
     
     ImGui::Separator();
     
-    // System info
-    ImGui::Text("Temperatura: %.1f°C", status.temperature);
-    ImGui::Text("PWM: %s", status.pwm_running ? "URUCHOMIONY" : "ZATRZYMANI");
-    ImGui::Text("Aktualna częstotliwość: %u Hz", status.current_frequency);
-    ImGui::Text("Uptime: %u s", status.uptime_seconds);
-    ImGui::Text("Wolna pamięć: %u B", status.free_memory);
-    ImGui::Text("Stan bezpieczeństwa: %s", status.safety_state.c_str());
+    // No device status frame parser or authenticated handshake exists yet.
+    // Never display zero-initialized host fields as measured device telemetry.
+    ImGui::Text("Telemetria urządzenia: niedostępna");
+    ImGui::TextWrapped("Połączenie TCP potwierdza wyłącznie zestawienie transportu. "
+                       "Temperatura, stan PWM, częstotliwość wyjściowa, czas pracy "
+                       "i stan zabezpieczeń wymagają wdrożenia protokołu statusu "
+                       "oraz potwierdzenia pochodzenia danych.");
     
     ImGui::Separator();
     
