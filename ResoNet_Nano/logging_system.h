@@ -76,13 +76,13 @@ uint16_t logging_get_overflow_count();
 
 #define LOG_ERROR_F(fmt, ...) do { \
     char buf[LOG_MESSAGE_MAX_LEN]; \
-    snprintf(buf, sizeof(buf), fmt, ##__VA_ARGS__); \
+    snprintf_P(buf, sizeof(buf), PSTR(fmt), ##__VA_ARGS__); \
     log_add_entry(LOG_ERROR, 0, buf); \
 } while(0)
 
 #define LOG_WARN_F(fmt, ...) do { \
     char buf[LOG_MESSAGE_MAX_LEN]; \
-    snprintf(buf, sizeof(buf), fmt, ##__VA_ARGS__); \
+    snprintf_P(buf, sizeof(buf), PSTR(fmt), ##__VA_ARGS__); \
     log_add_entry(LOG_WARNING, 0, buf); \
 } while(0)
 
