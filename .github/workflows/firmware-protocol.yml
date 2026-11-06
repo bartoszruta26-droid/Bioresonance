@@ -43,6 +43,10 @@ jobs:
         run: g++ -std=c++11 -Wall -Wextra -Werror -pedantic tests/host/diagnostic_protocol_test.cpp -o diagnostic_protocol_test
       - name: Run compact diagnostic protocol tests
         run: ./diagnostic_protocol_test
+      - name: Compile RAM-only effector runtime tests
+        run: g++ -std=c++11 -Wall -Wextra -Werror -pedantic tests/host/effector_runtime_test.cpp -o effector_runtime_test
+      - name: Run RAM-only effector runtime tests
+        run: ./effector_runtime_test
 
   diagnostic-nano-compile:
     name: Minimal diagnostic Nano compile and size guard
