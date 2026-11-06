@@ -150,7 +150,7 @@ bash ResoNet_Nano/build_nano.sh
 # EthernetENC/TCP pozostaje domyślnie wyłączony.
 # Przed włączeniem ustaw adresację w ResoNet_Nano/network_config.h.
 
-# PlatformIO
+# PlatformIO — tylko dla wariantu z Ethernet wyłączonym; dla Ethernet użyj build_nano.sh
 cd ResoNet_Nano
 platformio run --target upload
 ```
