@@ -62,8 +62,8 @@ sudo ./installer.sh
 ### Kluczowe cechy:
 - 🎯 **Generator sygnałów**: parametry PWM konfigurowane programowo; rzeczywiste parametry wymagają pomiaru
 - 🔒 **Zabezpieczenia**: mechanizmy programowe; izolacja galwaniczna nie została tu zwalidowana
-- 🌐 **Ethernet**: Komunikacja TCP/UDP przez ENC28J60
-- 💻 **Multi-platformowość**: Android, WebUI (PHP), GUI (C++), TUI (Bash)
+- 🌐 **Ethernet**: Diagnostyczny TCP przez ENC28J60 (UDP wyłączone)
+- 💻 **Klienci diagnostyczni**: Android, WebUI (PHP), Desktop (C++), TUI (Python) — protokół v1, tylko odczyt
 
 ---
 
@@ -93,10 +93,10 @@ graph TD
         J[Antena EMF<br/>Antena rezonator Schumanna]
     end
 
-    A -->|TCP/UDP| E
-    B -->|TCP/UDP| E
-    C -->|TCP/UDP| E
-    D -->|TCP/UDP| E
+    A -->|TCP v1| E
+    B -->|TCP v1| E
+    C -->|TCP v1| E
+    D -->|TCP v1| E
     
     E <--> H
     H --> F
@@ -165,7 +165,7 @@ platformio run --target upload
 
 ### 🎮 GUI Desktop (C++/ImGui)
 
-Aplikacja desktopowa napisana w C++ z biblioteką Dear ImGui.
+Aplikacja desktopowa C++/Dear ImGui z negocjacją HELLO v1 i odczytem STATUS. Tryb wyłącznie diagnostyczny — brak sterowania wyjściami.
 
 **Wymagania:**
 ```bash
@@ -187,7 +187,7 @@ make
 
 ### 🌍 WebUI (PHP/Apache)
 
-Panel sterowania przez przeglądarkę internetową.
+Panel diagnostyczny przez przeglądarkę. Otwórz `webui/index.html`; stary interfejs tekstowy i endpoint `api.php` są wyłączone.
 
 **Instalacja:**
 ```bash
@@ -224,7 +224,7 @@ cd android_app
 
 ### 💻 TUI (Bash)
 
-Terminalowy interfejs w Bashu.
+Terminalowy klient diagnostyczny Python 3; wysyła wyłącznie HELLO, PING i STATUS_REQ.
 
 **Uruchomienie:**
 ```bash
