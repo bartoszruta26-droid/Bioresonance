@@ -10,7 +10,6 @@ import ipaddress
 import socket
 import struct
 import sys
-import time
 
 MAGIC = b"RN"
 VERSION = 1
