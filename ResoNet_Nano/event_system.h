@@ -9,6 +9,7 @@
 
 #include <Arduino.h>
 #include "types.h"
+#include <avr/pgmspace.h>
 
 // ============================================================================
 // KONFIGURACJA SYSTEMU ZDARZEŃ
@@ -45,6 +46,7 @@ typedef struct {
 void event_system_init();
 void event_system_loop();
 bool event_push(uint16_t event_code, uint8_t severity, uint32_t data, const char* description);
+bool event_push_P(uint16_t event_code, uint8_t severity, uint32_t data, PGM_P description);
 bool event_pop(SystemEvent* event);
 bool event_peek(SystemEvent* event);
 uint16_t event_get_count();
@@ -52,10 +54,10 @@ uint16_t event_get_dropped_count();
 void event_clear_queue();
 
 // Makra pomocnicze
-#define EVENT_INFO(code, desc)      event_push(code, 0, 0, desc)
-#define EVENT_WARNING(code, desc)   event_push(code, 1, 0, desc)
-#define EVENT_ERROR(code, desc)     event_push(code, 2, 0, desc)
-#define EVENT_CRITICAL(code, desc)  event_push(code, 3, 0, desc)
-#define EVENT_DATA(code, data, desc) event_push(code, 0, data, desc)
+#define EVENT_INFO(code, desc)      event_push_P(code, 0, 0, PSTR(desc))
+#define EVENT_WARNING(code, desc)   event_push_P(code, 1, 0, PSTR(desc))
+#define EVENT_ERROR(code, desc)     event_push_P(code, 2, 0, PSTR(desc))
+#define EVENT_CRITICAL(code, desc)  event_push_P(code, 3, 0, PSTR(desc))
+#define EVENT_DATA(code, data, desc) event_push_P(code, 0, data, PSTR(desc))
 
 #endif // EVENT_SYSTEM_H
