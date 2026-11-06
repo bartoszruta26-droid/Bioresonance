@@ -23,6 +23,10 @@ Wymagane: Arduino CLI, core `arduino:avr`, EthernetENC 2.0.5.
 arduino-cli core install arduino:avr
 arduino-cli lib install EthernetENC@2.0.5
 bash ResoNet_Diagnostic_Nano/build.sh
+
+# Opcjonalnie: zachowaj ELF i mapę linkera do analizy zajętości Flash
+RESONET_BUILD_DIR=/tmp/resonet-build RESONET_MAP_FILE=/tmp/resonet-diagnostic.map \\
+  bash ResoNet_Diagnostic_Nano/build.sh
 ```
 
 Skrypt tymczasowo ustawia `UIP_ACTIVE_OPEN=0` w lokalnej kopii EthernetENC, wykonuje kopię zapasową i przywraca oryginalny plik po zakończeniu kompilacji. Wykorzystuje domyślne optymalizacje platformy AVR (`-Os`, LTO i usuwanie nieużytych sekcji) oraz `-mcall-prologues`, `-maccumulate-args`, `-fshort-enums` i linkowanie `--relax`. Ogranicza uIP do jednego połączenia, jednego portu nasłuchującego, dwóch wpisów ARP, jednego bufora pakietu i bufora IP/TCP 128 B. To wystarcza dla ramek diagnostycznych do 25 B; większe transfery i wyższa przepustowość nie są celem tego obrazu.
@@ -33,4 +37,4 @@ g++ -std=c++11 -Wall -Wextra -Werror -pedantic tests/host/diagnostic_protocol_te
 ./diagnostic_protocol_test
 ```
 
-Testy hosta i kompilacja AVR nie są testami fizycznego sprzętu. Protokół v1 nie zapewnia uwierzytelniania ani szyfrowania; używaj wyłącznie w zaufanej, odizolowanej sieci.
+CI publikuje mapę linkera i log kompilacji, aby można było wskazać konkretne symbole zajmujące Flash. Limit odbioru obrazu minimalnego wynosi 20 000 B Flash i 1 200 B RAM.\n\nTesty hosta i kompilacja AVR nie są testami fizycznego sprzętu. Protokół v1 nie zapewnia uwierzytelniania ani szyfrowania; używaj wyłącznie w zaufanej, odizolowanej sieci.
