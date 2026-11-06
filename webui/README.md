@@ -185,7 +185,7 @@ Aplikacja zawiera rozbudowany system debugowania:
 
 ### PHP Debug (api.php)
 
-- Stała `DEBUG_MODE` włączona domyślnie
+- Stała `DEBUG_MODE` wyłączona domyślnie
 - Logi zapisywane do pliku `debug.log` w tym samym katalogu
 - Szczegółowe informacje o:
   - Połączeniach sieciowych
@@ -233,46 +233,29 @@ const DEBUG = false;
 
 Backend udostępnia API REST poprzez `api.php?action=<action>`
 
-### Dostępne akcje:
+### Akcje faktycznie zaimplementowane w backendzie PHP
 
-| Akcja | Metoda | Opis |
-|-------|--------|------|
-| `connect` | POST | Połączenie z urządzeniem |
-| `disconnect` | GET | Rozłączenie z urządzeniem |
-| `get_probes` | GET | Pobranie konfiguracji końcówek |
-| `set_probe` | POST | Ustawienie pola konfiguracji |
-| `send_config` | POST | Wysłanie konfiguracji kanału |
-| `send_all_configs` | POST | Wysłanie wszystkich konfiguracji |
-| `start_therapy` | POST | Start terapii |
-| `stop_therapy` | POST | Stop terapii |
-| `get_status` | GET | Pobranie statusu urządzenia |
-| `get_logs` | GET | Pobranie dziennika zdarzeń |
-| `set_probe_mode` | POST | Ustawienie trybu pracy |
-| `get_connection` | GET | Sprawdzenie stanu połączenia |
+| Akcja | Metoda | Uwierzytelnianie | Opis |
+|-------|--------|------------------|------|
+| `connect_test` | GET/POST | Token API | Wysyła zapytanie `STATUS` i sprawdza odpowiedź TCP |
+| `get_status` | GET/POST | Token API | Pobiera i parsuje status urządzenia |
+| `save_config` | POST | Token API | Waliduje listę kanałów i wysyła konfigurację |
+| `control` | POST | Token API | Obsługuje wyłącznie `START`, `STOP`, `PAUSE` |
+| `raw_command` | GET/POST | Wyłączone | Zawsze odrzucane |
 
-### Przykłady żądań:
+**Istotna niezgodność:** obecny `index.html` wywołuje również akcje `connect`, `disconnect`, `get_probes`, `set_probe`, `send_config`, `send_all_configs`, `start_therapy`, `stop_therapy`, `get_logs`, `set_probe_mode` i `get_connection`. Nie są one obecnie zaimplementowane w `api.php`. Nie należy zakładać, że pełny interfejs WebUI jest funkcjonalnie zintegrowany z backendem. Wymagana jest osobna migracja kontraktu API oraz testy integracyjne z kontrolerem; do tego czasu akcje te powinny być traktowane jako niedostępne.
 
-```javascript
-// Połączenie z urządzeniem
-fetch('api.php?action=connect', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ip: '192.168.1.100', port: 5001})
-})
+### Uwierzytelnianie API
 
-// Pobranie konfiguracji
-fetch('api.php?action=get_probes')
+Backend wymaga zmiennej środowiskowej `BIORESONANCE_API_TOKEN` o długości co najmniej 32 znaków. Klient przekazuje ją w nagłówku `X-Bioresonance-Token`. Sekret należy wygenerować losowo i skonfigurować w środowisku procesu PHP-FPM/Apache; nie wolno zapisywać go w repozytorium ani w plikach dostępnych publicznie.
 
-// Ustawienie częstotliwości
-fetch('api.php?action=set_probe', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({channel: 1, field: 'freq', value: 727.00})
-})
+Przykład wygenerowania sekretu na serwerze:
 
-// Start terapii
-fetch('api.php?action=start_therapy', {method: 'POST'})
+```bash
+php -r 'echo bin2hex(random_bytes(32)), PHP_EOL;'
 ```
+
+Wdrożenie musi przekazać tę wartość do środowiska PHP. Samo zapisanie zmiennej w powłoce administratora nie gwarantuje, że zobaczy ją proces Apache/PHP-FPM — należy skonfigurować ją zgodnie z używanym sposobem uruchamiania PHP.
 
 ## Format Komend TCP do Arduino
 
@@ -338,7 +321,7 @@ W `index.html`:
 const DEBUG = true;  // true = logi w konsoli, false = tylko błędy
 ```
 
-**Uwaga**: Wyłącz debugowanie w środowisku produkcyjnym!
+**Uwaga**: Debugowanie PHP jest domyślnie wyłączone. Nie włączaj go w środowisku produkcyjnym bez kontrolowanego planu ochrony logów.
 
 ## Rozwiązywanie Problemów
 
