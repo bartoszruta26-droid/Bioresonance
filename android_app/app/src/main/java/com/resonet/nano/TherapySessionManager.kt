@@ -109,6 +109,9 @@ class TherapySessionManager {
                 )
                 _sessionState.value = SessionState.Completed(summary)
                 _isRunning.value = false
+            } catch (cancelled: CancellationException) {
+                _isRunning.value = false
+                throw cancelled
             } catch (e: Exception) {
                 _isRunning.value = false
                 // Best-effort stop; the original failure remains the reported cause.
@@ -168,10 +171,17 @@ class TherapySessionManager {
      */
     fun pauseSession() {
         if (!_isRunning.value) return
-        
+
         _isRunning.value = false
-        _sessionState.value = SessionState.Paused
         job?.cancel()
+        scope.launch {
+            val result = communication.stopTherapy()
+            _sessionState.value = if (result.isSuccess) {
+                SessionState.Paused
+            } else {
+                SessionState.Error("Nie potwierdzono zatrzymania urządzenia podczas pauzy: ${result.exceptionOrNull()?.message}")
+            }
+        }
     }
     
     /**
@@ -188,13 +198,27 @@ class TherapySessionManager {
      * Zatrzymuje sesję
      */
     fun stopSession() {
+        val active = _isRunning.value ||
+            _sessionState.value is SessionState.Running ||
+            _sessionState.value is SessionState.Paused ||
+            _sessionState.value is SessionState.Preparing
+
         _isRunning.value = false
         job?.cancel()
-        currentPreset = null
-        _sessionState.value = SessionState.Idle
-        
+        if (!active) {
+            currentPreset = null
+            _sessionState.value = SessionState.Idle
+            return
+        }
+
         scope.launch {
-            communication.stopTherapy()
+            val result = communication.stopTherapy()
+            currentPreset = null
+            _sessionState.value = if (result.isSuccess) {
+                SessionState.Idle
+            } else {
+                SessionState.Error("Nie potwierdzono zatrzymania urządzenia: ${result.exceptionOrNull()?.message}")
+            }
         }
     }
     
