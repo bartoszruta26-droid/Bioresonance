@@ -89,19 +89,21 @@ int main() {
                         if (client.sendCommand("")) exit_code = 10;
                         if (!callback_reentered.load() && exit_code == 0) exit_code = 11;
 
-                        const int port = static_cast<int>(ntohs(address.sin_port));
-                        if (exit_code == 0 && !client.connect("127.0.0.1", port)) {
-                            exit_code = 5;
-                        } else if (!client.sendCommand("ping")) {
-                            exit_code = 6;
-                        } else if (client.receiveData(2000) != "pong") {
-                            exit_code = 7;
-                        } else {
-                            // The server closes after replying; EOF must clear the client state.
-                            for (int attempt = 0; attempt < 20 && client.isConnected(); ++attempt) {
-                                (void)client.receiveData(100);
+                        if (exit_code == 0) {
+                            const int port = static_cast<int>(ntohs(address.sin_port));
+                            if (!client.connect("127.0.0.1", port)) {
+                                exit_code = 5;
+                            } else if (!client.sendCommand("ping")) {
+                                exit_code = 6;
+                            } else if (client.receiveData(2000) != "pong") {
+                                exit_code = 7;
+                            } else {
+                                // The server closes after replying; EOF must clear the client state.
+                                for (int attempt = 0; attempt < 20 && client.isConnected(); ++attempt) {
+                                    (void)client.receiveData(100);
+                                }
+                                if (client.isConnected()) exit_code = 8;
                             }
-                            if (client.isConnected()) exit_code = 8;
                         }
                         client.disconnect();
                     }
