@@ -188,16 +188,25 @@ class ArduinoCommunication {
 
     private fun parseStatusResponse(response: String): SystemStatus {
         val fields = linkedMapOf<String, String>()
-        response.lineSequence().forEach { line ->
+        val lines = response.lineSequence().toList()
+        var index = 0
+        while (index < lines.size) {
+            val line = lines[index]
             val split = line.indexOf(':')
             if (split > 0) {
                 val key = line.substring(0, split).trim()
                 if (key in setOf("Uptime", "Free Memory", "Temperature", "PWM Running",
                         "Frequency", "Network", "Effector", "State", "System State", "Safety State")) {
-                    if (fields.put(key, line.substring(split + 1).trim()) != null)
+                    var value = line.substring(split + 1).trim()
+                    // The current sketch prints "Network: " and its value on the next line.
+                    if (key == "Network" && value.isEmpty() && index + 1 < lines.size) {
+                        value = lines[++index].trim()
+                    }
+                    if (fields.put(key, value) != null)
                         throw IOException("Powtórzone pole statusu: ${key}")
                 }
             }
+            index++
         }
         fun required(key: String): String = fields[key]?.takeIf { it.isNotBlank() }
             ?: throw IOException("Brak wymaganego pola statusu: ${key}")
