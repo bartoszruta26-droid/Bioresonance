@@ -7,7 +7,7 @@ Wprowadzono niezależny moduł `protocol_v1.h/.cpp` do kodowania ramek, obliczan
 ## Ograniczenia projektu
 
 - Parser nie używa sterty, `String`, STL ani blokujących operacji.
-- Pojedyncza instancja parsera przechowuje maksymalnie jedną ramkę (203 bajty).
+- Parser firmware jest rolą serwera: akceptuje wyłącznie żądania klienta z pustym payloadem i używa bufora 11 bajtów. Ogólny format protokołu nadal dopuszcza payload do 192 bajtów; klient Android i funkcja kodująca obsługują pełny limit.
 - Handler otrzymuje widok payloadu ważny wyłącznie podczas wywołania zwrotnego; nie wolno zachowywać wskaźnika po powrocie.
 - Parser wywołuje handler wyłącznie po walidacji wersji, flag, typu, długości, CRC.
 - Moduł nie zawiera typów ani funkcji uruchamiania efektorów.
