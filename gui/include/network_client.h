@@ -9,6 +9,7 @@
 #include <string>
 #include <atomic>
 #include <mutex>
+#include <cstdint>
 #include "types.h"
 
 #ifdef _WIN32
@@ -45,6 +46,7 @@ private:
     int port;
     std::atomic<bool> connected;
     mutable std::mutex socket_mutex;
+    std::uint64_t connection_generation = 0;
     
 public:
     NetworkClient();
