@@ -55,9 +55,7 @@ jobs:
           arduino-cli lib install EthernetENC@2.0.5
       - name: Compile minimal diagnostic image and enforce memory budget
         run: |
-          RESONET_BUILD_DIR="$RUNNER_TEMP/diagnostic-build" \\
-          RESONET_MAP_FILE="$RUNNER_TEMP/diagnostic-nano.map" \\
-            bash ResoNet_Diagnostic_Nano/build.sh 2>&1 | tee "$RUNNER_TEMP/diagnostic-nano-build.log"
+          RESONET_BUILD_DIR="$RUNNER_TEMP/diagnostic-build" RESONET_MAP_FILE="$RUNNER_TEMP/diagnostic-nano.map" bash ResoNet_Diagnostic_Nano/build.sh 2>&1 | tee "$RUNNER_TEMP/diagnostic-nano-build.log"
           flash=$(sed -n 's/Sketch uses \([0-9][0-9]*\) bytes.*/\1/p' "$RUNNER_TEMP/diagnostic-nano-build.log" | tail -n 1)
           ram=$(sed -n 's/Global variables use \([0-9][0-9]*\) bytes.*/\1/p' "$RUNNER_TEMP/diagnostic-nano-build.log" | tail -n 1)
           test -n "$flash" && test -n "$ram"
@@ -91,9 +89,7 @@ jobs:
         run: |
           cp -a ResoNet_Nano "$RUNNER_TEMP/ResoNet_Nano"
           sed -i 's/#define RESONET_ENABLE_ETHERNET 0/#define RESONET_ENABLE_ETHERNET 1/' "$RUNNER_TEMP/ResoNet_Nano/network_config.h"
-          RESONET_BUILD_DIR="$RUNNER_TEMP/full-build" \\
-          RESONET_MAP_FILE="$RUNNER_TEMP/full-nano-ethernet.map" \\
-            bash "$RUNNER_TEMP/ResoNet_Nano/build_nano.sh" 2>&1 | tee "$RUNNER_TEMP/nano-ethernet-build.log"
+          RESONET_BUILD_DIR="$RUNNER_TEMP/full-build" RESONET_MAP_FILE="$RUNNER_TEMP/full-nano-ethernet.map" bash "$RUNNER_TEMP/ResoNet_Nano/build_nano.sh" 2>&1 | tee "$RUNNER_TEMP/nano-ethernet-build.log"
           flash=$(sed -n 's/Sketch uses \([0-9][0-9]*\) bytes.*/\1/p' "$RUNNER_TEMP/nano-ethernet-build.log" | tail -n 1)
           ram=$(sed -n 's/Global variables use \([0-9][0-9]*\) bytes.*/\1/p' "$RUNNER_TEMP/nano-ethernet-build.log" | tail -n 1)
           test -n "$flash" && test -n "$ram"
