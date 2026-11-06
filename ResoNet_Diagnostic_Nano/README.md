@@ -25,7 +25,7 @@ arduino-cli lib install EthernetENC@2.0.5
 bash ResoNet_Diagnostic_Nano/build.sh
 ```
 
-Skrypt tymczasowo ustawia `UIP_ACTIVE_OPEN=0` w lokalnej kopii EthernetENC, wykonuje kopię zapasową i przywraca oryginalny plik po zakończeniu kompilacji. Wykorzystuje domyślne optymalizacje platformy AVR (`-Os`, LTO i usuwanie nieużytych sekcji) oraz `-mcall-prologues`. Ogranicza uIP do jednego połączenia, jednego portu nasłuchującego, jednego bufora pakietu i bufora IP/TCP 128 B. To wystarcza dla ramek diagnostycznych do 25 B; większe transfery i wyższa przepustowość nie są celem tego obrazu.
+Skrypt tymczasowo ustawia `UIP_ACTIVE_OPEN=0` w lokalnej kopii EthernetENC, wykonuje kopię zapasową i przywraca oryginalny plik po zakończeniu kompilacji. Wykorzystuje domyślne optymalizacje platformy AVR (`-Os`, LTO i usuwanie nieużytych sekcji) oraz `-mcall-prologues`, `-maccumulate-args`, `-fshort-enums` i linkowanie `--relax`. Ogranicza uIP do jednego połączenia, jednego portu nasłuchującego, jednego bufora pakietu i bufora IP/TCP 128 B. To wystarcza dla ramek diagnostycznych do 25 B; większe transfery i wyższa przepustowość nie są celem tego obrazu.
 
 ## Testy hosta
 ```bash
