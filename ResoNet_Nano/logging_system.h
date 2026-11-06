@@ -3,7 +3,7 @@
  * @brief Zaawansowany system logowania z ring bufferem - Nagłówki
  * @version 4.0 (Modular Architecture with Pseudo-threading)
  * 
- * System logowania medycznego zgodny z IEC 60601-1
+ * System logowania firmware; nie stanowi elementu certyfikacji medycznej
  */
 
 #ifndef LOGGING_SYSTEM_H
