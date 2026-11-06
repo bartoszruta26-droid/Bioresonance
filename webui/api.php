@@ -79,15 +79,37 @@ function json_response($success, $data = null, $error = null) {
  * Walidacja adresu IP
  */
 function validate_ip($ip) {
-    return filter_var($ip, FILTER_VALIDATE_IP) !== false;
+    if (!is_string($ip) || filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) === false) return false;
+    $value = ip2long($ip);
+    if ($value === false) return false;
+    $ranges = [
+        ['10.0.0.0', '10.255.255.255'],
+        ['172.16.0.0', '172.31.255.255'],
+        ['192.168.0.0', '192.168.255.255'],
+        ['169.254.0.0', '169.254.255.255']
+    ];
+    foreach ($ranges as [$start, $end]) {
+        if ($value >= ip2long($start) && $value <= ip2long($end)) return true;
+    }
+    return false;
 }
 
 /**
  * Walidacja portu
  */
 function validate_port($port) {
-    $p = intval($port);
-    return ($p > 0 && $p < 65536);
+    if (!is_scalar($port) || !preg_match('/^[0-9]{1,5}$/', (string)$port)) return false;
+    $p = (int)$port;
+    return $p >= 1 && $p <= 65535;
+}
+
+function require_api_token() {
+    $expected = getenv('BIORESONANCE_API_TOKEN');
+    $provided = $_SERVER['HTTP_X_BIORESONANCE_TOKEN'] ?? '';
+    if (!is_string($expected) || strlen($expected) < 32 ||
+        !is_string($provided) || !hash_equals($expected, $provided)) {
+        json_response(false, null, 'Unauthorized: configure BIORESONANCE_API_TOKEN and send X-Bioresonance-Token');
+    }
 }
 
 /**
@@ -104,16 +126,9 @@ function sanitize_command($cmd) {
  * Acquires a session lock with stale-lock detection
  */
 function acquire_lock() {
-    // Sprawdź czy nie ma osieroconego locka
-    if (file_exists(LOCK_FILE)) {
-        $fileTime = filemtime(LOCK_FILE);
-        if ((time() - $fileTime) > LOCK_TIMEOUT) {
-            debug_log("LOCK: Removing stale lock file (older than " . LOCK_TIMEOUT . "s)", "WARN");
-            @unlink(LOCK_FILE);
-        }
-    }
-
-    $fp = fopen(LOCK_FILE, 'w+');
+    // Never unlink a lock file based on age: that can split synchronization
+    // across two inodes and permit concurrent operations.
+    $fp = fopen(LOCK_FILE, 'c+');
     if (!$fp) {
         return false;
     }
@@ -287,6 +302,7 @@ switch ($action) {
         break;
 
     case 'save_config':
+        require_api_token();
         // Oczekujemy tablicy kanałów w POST
         $channels = $_POST['channels'] ?? [];
         $mode = $_POST['mode'] ?? 'SINGLE';
@@ -340,6 +356,7 @@ switch ($action) {
         break;
 
     case 'control':
+        require_api_token();
         $subAction = $_POST['sub'] ?? ''; // START, STOP, PAUSE
         
         if (!in_array($subAction, ['START', 'STOP', 'PAUSE'])) {
