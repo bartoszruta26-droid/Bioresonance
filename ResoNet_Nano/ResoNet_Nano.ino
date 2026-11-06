@@ -1,6 +1,6 @@
 /**
  * @file ResoNet_Nano.ino
- * @brief Profesjonalny System Biorezonansu Klasy Medycznej - Główny Plik Arduino
+ * @brief Eksperymentalny sterownik ResoNet Nano - Główny Plik Arduino
  * @version 4.0 (Modular Architecture with Pseudo-threading)
  * 
  * @description
@@ -10,7 +10,7 @@
  * - Non-blocking timing z millis()
  * 
  * Moduły systemu:
- * - safety_system: Bezpieczeństwo medyczne IEC 60601-1
+ * - safety_system: programowe mechanizmy ochronne (bez walidacji IEC 60601-1)
  * - logging_system: Logowanie z ring bufferem
  * - event_system: Obsługa zdarzeń FIFO
  * - pwm_engine: Generator sygnałów PWM
@@ -262,7 +262,7 @@ void setup() {
     delay(1000);  // Stabilizacja
     
     Serial.println(F("\n=== ResoNet Nano v4.0 ==="));
-    Serial.println(F("Medical Grade Bioresonance System"));
+    Serial.println(F("Experimental diagnostic platform"));
     Serial.println(F("Modular Architecture with Pseudo-threading\n"));
     
     // Konfiguracja pinów
