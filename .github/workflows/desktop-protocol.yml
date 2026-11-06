@@ -14,6 +14,9 @@ on:
       - "gui/tests/resonet_protocol_v1_smoke.cpp"
       - "bash_tui/**"
       - "webui/diagnostics.php"
+      - "webui/diagnostics.html"
+      - "webui/index.html"
+      - "webui/api.php"
       - ".github/workflows/desktop-protocol.yml"
   pull_request:
     paths:
@@ -72,4 +75,4 @@ jobs:
           php-version: '7.4'
           extensions: sockets
       - name: Lint diagnostics bridge
-        run: php -l webui/diagnostics.php
+        run: php -l webui/diagnostics.php && php -l webui/api.php
