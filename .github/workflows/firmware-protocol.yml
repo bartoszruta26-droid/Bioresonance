@@ -29,6 +29,8 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+      - name: Check build script syntax
+        run: bash -n ResoNet_Nano/build_nano.sh ResoNet_Diagnostic_Nano/build.sh
       - name: Compile full protocol codec with strict warnings
         run: |
           g++ -std=c++11 -Wall -Wextra -Werror -pedantic \
