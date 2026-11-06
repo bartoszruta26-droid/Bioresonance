@@ -34,6 +34,9 @@ class NetworkClient {
 private:
     socket_t socket_fd;
 #ifdef _WIN32
+    bool winsock_acquired;
+#endif
+#ifdef _WIN32
     struct sockaddr_in server_addr;
 #else
     struct sockaddr_in server_addr;
