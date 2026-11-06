@@ -6,6 +6,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(BIORESONANCE_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
 find_package(SDL2 CONFIG REQUIRED)
+find_package(Threads REQUIRED)
 set(IMGUI_SOURCES
  imgui_lib/imgui.cpp imgui_lib/imgui_demo.cpp imgui_lib/imgui_draw.cpp
  imgui_lib/imgui_tables.cpp imgui_lib/imgui_widgets.cpp
@@ -36,7 +37,6 @@ elseif(APPLE)
  find_library(METALKIT_FRAMEWORK MetalKit REQUIRED)
  target_link_libraries(bioresonance_gui PRIVATE ${COCOA_FRAMEWORK} ${METAL_FRAMEWORK} ${METALKIT_FRAMEWORK})
 elseif(UNIX)
- find_package(Threads REQUIRED)
  target_link_libraries(bioresonance_gui PRIVATE Threads::Threads ${CMAKE_DL_LIBS})
 endif()
 if(MSVC)
@@ -53,3 +53,11 @@ endif()
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/../frequencies.md
  ${CMAKE_CURRENT_BINARY_DIR}/frequencies.md COPYONLY)
 install(TARGETS bioresonance_gui RUNTIME DESTINATION bin)
+
+include(CTest)
+if(BUILD_TESTING)
+ add_executable(logger_smoke tests/logger_smoke.cpp)
+ target_include_directories(logger_smoke PRIVATE include)
+ target_link_libraries(logger_smoke PRIVATE Threads::Threads)
+ add_test(NAME logger_reentrancy COMMAND logger_smoke)
+endif()
