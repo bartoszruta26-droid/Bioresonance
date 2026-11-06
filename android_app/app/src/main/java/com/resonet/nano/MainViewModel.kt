@@ -429,8 +429,6 @@ class MainViewModel : ViewModel() {
     override fun onCleared() {
         super.onCleared()
         therapySessionManager.cleanup()
-        viewModelScope.launch {
-            communication.disconnect()
-        }
+        communication.close()
     }
 }
