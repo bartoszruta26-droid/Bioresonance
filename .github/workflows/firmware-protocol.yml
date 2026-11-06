@@ -1,0 +1,41 @@
+name: Firmware protocol host checks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ResoNet_Nano/protocol_v1.*"
+      - "ResoNet_Nano/network_system.*"
+      - "ResoNet_Nano/network_config.h"
+      - "tests/host/**"
+      - ".github/workflows/firmware-protocol.yml"
+  pull_request:
+    paths:
+      - "ResoNet_Nano/protocol_v1.*"
+      - "ResoNet_Nano/network_system.*"
+      - "ResoNet_Nano/network_config.h"
+      - "tests/host/**"
+      - ".github/workflows/firmware-protocol.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: firmware-protocol-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  protocol-host:
+    name: Protocol codec host tests (not hardware tests)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile with strict warnings
+        run: |
+          g++ -std=c++11 -Wall -Wextra -Werror -pedantic \
+            -I ResoNet_Nano \
+            ResoNet_Nano/protocol_v1.cpp tests/host/protocol_v1_test.cpp \
+            -o protocol_v1_test
+      - name: Run protocol host tests
+        run: ./protocol_v1_test
