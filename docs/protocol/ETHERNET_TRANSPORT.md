@@ -26,7 +26,7 @@ Wartości w pliku są przykładową konfiguracją prywatnej podsieci, a nie uniw
 - Niepoprawne ramki nie są przekazywane do handlera.
 - Nieobsługiwane są stare, niewersjonowane pakiety terapii i konfiguracji.
 - Brak komend uruchamiania PWM, IR LED, piezo lub wibratora.
-- STATUS_RESP zawsze deklaruje `output_inhibited=1`; pomiar temperatury zewnętrznego efektora nie jest dostępny, więc pole temperatury ma wartość sentinel `0x7FFF`.
+- STATUS_RESP ustawia `output_inhibited=0`, ponieważ firmware nie ma niezależnego potwierdzenia fizycznego odcięcia wszystkich wyjść. Pole temperatury zewnętrznego efektora ma wartość sentinel `0x7FFF`. Nie należy interpretować tego statusu jako potwierdzenia bezpieczeństwa urządzenia.
 
 ## Ograniczenia i dalsze prace
 
