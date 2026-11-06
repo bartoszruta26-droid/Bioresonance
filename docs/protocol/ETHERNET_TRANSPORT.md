@@ -16,7 +16,7 @@ Aby włączyć transport, ustaw `RESONET_ENABLE_ETHERNET 1` i zweryfikuj, że:
 
 Wartości w pliku są przykładową konfiguracją prywatnej podsieci, a nie uniwersalnym ustawieniem.
 
-Skrypt kompilacyjny ogranicza zasoby stosu: `UIP_CONF_UDP=0`, `UIP_CONF_MAX_CONNECTIONS=1`, `UIP_CONF_MAX_LISTENPORTS=1`, `UIP_CONF_BUFFER_SIZE=128`, `UIP_SOCKET_NUMPACKETS=1`, bufory UART RX/TX po 32 bajty. Bufor uIP 128 B jest dobrany do krótkich ramek diagnostycznych v1 (maksymalna odpowiedź 25 B), kosztem przepustowości; nie należy go traktować jako konfiguracji do dużych transferów. UDP jest wyłączone, więc DHCP i DNS są niedostępne; wymagany jest statyczny adres IP. Jeden klient TCP i pojedynczy bufor pakietu ograniczają przepustowość.
+Skrypt kompilacyjny ogranicza zasoby stosu: `UIP_CONF_UDP=0`, `UIP_CONF_MAX_CONNECTIONS=1`, `UIP_CONF_MAX_LISTENPORTS=1`, `UIP_CONF_BUFFER_SIZE=128`, `UIP_CONF_ARPTAB_SIZE=2`, `UIP_SOCKET_NUMPACKETS=1`, bufory UART RX/TX po 32 bajty. Bufor uIP 128 B jest dobrany do krótkich ramek diagnostycznych v1 (maksymalna odpowiedź 25 B), kosztem przepustowości; nie należy go traktować jako konfiguracji do dużych transferów. UDP jest wyłączone, więc DHCP i DNS są niedostępne; wymagany jest statyczny adres IP. Jeden klient TCP i pojedynczy bufor pakietu ograniczają przepustowość.
 
 ## Zachowanie serwera
 
