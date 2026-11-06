@@ -186,6 +186,14 @@ class ArduinoCommunication {
                 if (response.type != expectedType) {
                     throw IOException("Nieoczekiwany typ odpowiedzi: 0x${response.type.toString(16)}")
                 }
+                val expectedPayloadLength = when (expectedType) {
+                    ResoNetProtocolV1.TYPE_PONG -> 0
+                    ResoNetProtocolV1.TYPE_STATUS_RESP -> 14
+                    else -> throw IOException("Nieobsługiwany typ odpowiedzi diagnostycznej")
+                }
+                if (response.payload.size != expectedPayloadLength) {
+                    throw IOException("Nieprawidłowa długość payloadu odpowiedzi")
+                }
                 Result.success(response)
             } catch (error: Exception) {
                 closeSocketLocked()
