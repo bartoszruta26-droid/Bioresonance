@@ -102,6 +102,24 @@ bool NetworkClient::connect(const std::string& ip, int port_num) {
                      "Failed to create socket");
         return false;
     }
+#ifdef _WIN32
+    DWORD send_timeout_ms = 2000;
+    if (setsockopt(candidate, SOL_SOCKET, SO_SNDTIMEO,
+                   reinterpret_cast<const char*>(&send_timeout_ms),
+                   sizeof(send_timeout_ms)) != 0) {
+#else
+    struct timeval send_timeout{};
+    send_timeout.tv_sec = 2;
+    send_timeout.tv_usec = 0;
+    if (setsockopt(candidate, SOL_SOCKET, SO_SNDTIMEO,
+                   &send_timeout, sizeof(send_timeout)) != 0) {
+#endif
+        CLOSE_SOCKET(candidate);
+        REPORT_ERROR(ErrorCode::ERR_NETWORK_SOCKET_FAILED, ErrorCategory::NETWORK,
+                     "Failed to configure bounded socket send timeout");
+        return false;
+    }
+
     const auto close_candidate = [&candidate]() {
         if (candidate != INVALID_SOCKET_VALUE) {
             CLOSE_SOCKET(candidate);
