@@ -223,7 +223,7 @@ flowchart TD
     end
     
     subgraph IR_System["💡 SYSTEM PODCZERWIENI"]
-        IR1["<b>OPTOIZOLATOR IR</b><br/>6N137 Pin1-2: LED<br/>Pin4-5: Photo<br/>Isolation 2500V"]
+        IR1["<b>OPTOIZOLATOR IR</b><br/>6N137 Pin1-2: LED<br/>Pin4-5: Photo<br/>rating elementu; system niezweryfikowany"]
         IR2["<b>MOSFET IR</b><br/>IRLZ44N<br/>Logic-level<br/>Gate←Opto"]
         IR3["<b>IR LED STRIP</b><br/>850nm/940nm<br/>60 LED/m, 5V<br/>Drain→LED"]
     end
