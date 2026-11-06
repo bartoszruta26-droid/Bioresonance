@@ -635,7 +635,7 @@ flowchart LR
     
     subgraph Distribution["ROZDZIAŁ ZASILANIA"]
         D1["Arduino Nano<br/>5V/GND"]
-        D2["Izolator DC-DC<br/>2500V RMS"]
+        D2["Izolator DC-DC<br/>rating katalogowy elementu; system niezweryfikowany"]
         D3["LDO 3.3V<br/>ENC28J60"]
     end
     
