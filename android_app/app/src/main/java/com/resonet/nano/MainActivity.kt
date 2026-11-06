@@ -212,8 +212,7 @@ class MainActivity : AppCompatActivity() {
      * Aktualizuje UI logów
      */
     private fun updateLogsUI(entries: List<LogEntry>) {
-        val logText = entries.joinToString("
-") { entry ->
+        val logText = entries.joinToString("\n") { entry ->
             "[${entry.level.displayName}] ${entry.message}"
         }
         binding.tvLogs.text = logText.ifEmpty { "Brak logów" }
