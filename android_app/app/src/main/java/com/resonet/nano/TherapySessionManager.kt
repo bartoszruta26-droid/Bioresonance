@@ -69,38 +69,35 @@ class TherapySessionManager {
             return
         }
         
+        if (preset.frequencies.isEmpty()) {
+            _sessionState.value = SessionState.Error("Preset nie zawiera częstotliwości")
+            return
+        }
+
         currentPreset = preset
         _sessionState.value = SessionState.Preparing
-        startTime = System.currentTimeMillis()
-        
+
         job = scope.launch {
             try {
+                // Stan Running wolno ustawić dopiero po potwierdzeniu operacji urządzenia.
+                val firstFreq = preset.frequencies[0]
+                val firstConfig = ChannelConfig(
+                    id = 1,
+                    name = preset.name,
+                    frequency = firstFreq.toFloat(),
+                    intensity = preset.intensity,
+                    modulation = preset.modulation,
+                    enabled = true
+                )
+                communication.configureChannel(firstConfig).getOrThrow()
+                communication.startTherapy().getOrThrow()
+
+                startTime = System.currentTimeMillis()
                 _isRunning.value = true
-                
-                // Konfiguruj pierwszy kanał z pierwszą częstotliwością
-                if (preset.frequencies.isNotEmpty()) {
-                    val firstFreq = preset.frequencies[0]
-                    val config = ChannelConfig(
-                        id = 1,
-                        name = preset.name,
-                        frequency = firstFreq.toFloat(),
-                        intensity = preset.intensity,
-                        modulation = preset.modulation,
-                        enabled = true
-                    )
-                    
-                    communication.configureChannel(config)
-                }
-                
-                // Uruchom terapię
-                communication.startTherapy()
-                
-                // Wykonaj sekwencję częstotliwości
                 runFrequencySequence(preset)
-                
-                // Zakończ sesję
-                communication.stopTherapy()
-                
+
+                communication.stopTherapy().getOrThrow()
+
                 val summary = SessionSummary(
                     presetId = preset.id,
                     presetName = preset.name,
@@ -110,13 +107,13 @@ class TherapySessionManager {
                     totalSteps = preset.frequencies.size,
                     totalDurationSeconds = preset.totalDuration
                 )
-                
                 _sessionState.value = SessionState.Completed(summary)
                 _isRunning.value = false
-                
             } catch (e: Exception) {
-                _sessionState.value = SessionState.Error("Błąd sesji: ${e.message}")
                 _isRunning.value = false
+                // Best-effort stop; the original failure remains the reported cause.
+                withContext(NonCancellable) { communication.stopTherapy() }
+                _sessionState.value = SessionState.Error("Sesja nie została uruchomiona lub zakończona: ${e.message}")
             }
         }
     }
@@ -147,7 +144,7 @@ class TherapySessionManager {
                 enabled = true
             )
             
-            communication.configureChannel(config)
+            communication.configureChannel(config).getOrThrow()
             
             // Odliczaj czas dla tej częstotliwości
             for (remaining in preset.durationPerFrequency downTo 1) {
