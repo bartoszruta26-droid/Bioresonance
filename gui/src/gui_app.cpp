@@ -591,7 +591,7 @@ void GuiApp::run() {
         
         renderUI();
         
-        ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
+        ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData());
         SDL_RenderPresent(renderer);
         
         // Frame timing - calculate delta time and limit to 60 FPS
