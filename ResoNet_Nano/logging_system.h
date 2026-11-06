@@ -22,8 +22,8 @@
 #endif
 
 // Rozmiar bufora
-#define LOG_BUFFER_SIZE 256
-#define LOG_MESSAGE_MAX_LEN 64
+#define LOG_BUFFER_SIZE 4
+#define LOG_MESSAGE_MAX_LEN 24
 
 // Flagi konfiguracyjne
 #define ENABLE_SERIAL_LOG true
