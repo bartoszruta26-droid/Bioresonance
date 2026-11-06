@@ -223,49 +223,6 @@ bool NetworkClient::sendTherapyPacket(const TherapyPacket& packet) {
     REPORT_ERROR(ErrorCode::ERR_NETWORK_SEND_FAILED, ErrorCategory::NETWORK,
                  "Therapy packet transmission is disabled until RNP is implemented");
     return false;
-
-    if (!isConnected()) {
-        REPORT_ERROR(ErrorCode::ERR_NETWORK_DISCONNECTED, ErrorCategory::NETWORK, 
-                    "Cannot send therapy packet - not connected");
-        return false;
-    }
-    
-    std::lock_guard<std::mutex> lock(tx_mutex);
-    
-    const char* data = reinterpret_cast<const char*>(&packet);
-    size_t total_sent = 0;
-    int send_flags = 0;
-#ifndef _WIN32
-#ifdef MSG_NOSIGNAL
-    send_flags |= MSG_NOSIGNAL;
-#endif
-#endif
-    while (total_sent < sizeof(packet)) {
-#ifdef _WIN32
-        int sent = ::send(socket_fd, data + total_sent,
-                          static_cast<int>(sizeof(packet) - total_sent), send_flags);
-#else
-        ssize_t sent = ::send(socket_fd, data + total_sent,
-                              sizeof(packet) - total_sent, send_flags);
-#endif
-        if (sent < 0) {
-#ifdef _WIN32
-            if (WSAGetLastError() == WSAEINTR) continue;
-#else
-            if (errno == EINTR) continue;
-#endif
-        }
-        if (sent <= 0) {
-            connected = false;
-            CLOSE_SOCKET(socket_fd);
-            socket_fd = INVALID_SOCKET_VALUE;
-            REPORT_ERROR(ErrorCode::ERR_NETWORK_SEND_FAILED, ErrorCategory::NETWORK,
-                        "Failed to send complete therapy packet; connection closed");
-            return false;
-        }
-        total_sent += static_cast<size_t>(sent);
-    }
-    return true;
 }
 
 bool NetworkClient::sendCommand(const std::string& cmd) {
