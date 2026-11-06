@@ -10,12 +10,10 @@ on:
       - "gui/src/network_client.cpp"
       - "gui/src/gui_app.cpp"
       - "gui/CMakeLists.txt"
-      - "gui/src/gui_app.cpp"
-      - "gui/CMakeLists.txt"
       - "gui/tests/network_client_smoke.cpp"
-      - "webui/diagnostics.php"
       - "gui/tests/resonet_protocol_v1_smoke.cpp"
       - "bash_tui/**"
+      - "webui/diagnostics.php"
       - ".github/workflows/desktop-protocol.yml"
   pull_request:
     paths:
@@ -23,6 +21,8 @@ on:
       - "gui/include/network_client.h"
       - "gui/include/types.h"
       - "gui/src/network_client.cpp"
+      - "gui/src/gui_app.cpp"
+      - "gui/CMakeLists.txt"
       - "gui/tests/network_client_smoke.cpp"
       - "gui/tests/resonet_protocol_v1_smoke.cpp"
       - "bash_tui/**"
@@ -38,7 +38,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - name: Compile with strict warnings
+      - name: Compile protocol codec with strict warnings
         run: g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I gui/include gui/tests/resonet_protocol_v1_smoke.cpp -o protocol_v1_smoke
       - name: Run protocol codec tests
         run: ./protocol_v1_smoke
