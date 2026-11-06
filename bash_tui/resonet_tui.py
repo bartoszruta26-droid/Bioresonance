@@ -89,6 +89,8 @@ class DiagnosticClient:
         hello = self._request(HELLO_REQ, HELLO_RESP)
         if len(hello) != 13:
             raise ValueError("Nieprawidłowa długość HELLO_RESP")
+        if hello[11:13] != b"\\x00\\x00":
+            raise ValueError("Nieobsługiwane capability w protokole v1")
         return hello
 
     def ping(self) -> None:
@@ -100,9 +102,13 @@ class DiagnosticClient:
         if len(data) != 14:
             raise ValueError("Nieprawidłowa długość STATUS_RESP")
         temp = struct.unpack(">h", data[9:11])[0]
+        state = data[0]
+        fault_flags = struct.unpack(">H", data[1:3])[0]
+        if state > 5 or fault_flags & ~0x0003 or data[13] not in (0, 1):
+            raise ValueError("STATUS_RESP zawiera nieobsługiwane wartości zarezerwowane")
         return {
-            "state": data[0],
-            "fault_flags": struct.unpack(">H", data[1:3])[0],
+            "state": state,
+            "fault_flags": fault_flags,
             "uptime_seconds": struct.unpack(">I", data[3:7])[0],
             "free_memory_bytes": struct.unpack(">H", data[7:9])[0],
             "temperature_centi_c": None if temp == 0x7FFF else temp,
