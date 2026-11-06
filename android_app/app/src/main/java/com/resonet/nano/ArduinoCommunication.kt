@@ -161,6 +161,13 @@ class ArduinoCommunication {
         try { old?.close() } catch (_: IOException) {}
     }
 
+    /** Synchronous lifecycle cleanup for ViewModel.onCleared(). */
+    fun close() {
+        closeSocketLocked()
+        connectionState = ConnectionState.Disconnected
+        notifyListeners(connectionState)
+    }
+
     suspend fun getStatus(): Result<SystemStatus> =
         sendCommand(CMD_STATUS).mapCatching { parseStatusResponse(it) }
 
