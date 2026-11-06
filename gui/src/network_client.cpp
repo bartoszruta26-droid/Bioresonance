@@ -61,6 +61,12 @@ NetworkClient::~NetworkClient() {
 }
 
 bool NetworkClient::connect(const std::string& ip, int port_num) {
+    // A reconnect replaces the previous descriptor instead of leaking it.
+    if (socket_fd != INVALID_SOCKET_VALUE) {
+        CLOSE_SOCKET(socket_fd);
+        socket_fd = INVALID_SOCKET_VALUE;
+    }
+    connected = false;
 #ifdef _WIN32
     if (!winsock_acquired) return false;
 #endif
@@ -81,6 +87,13 @@ bool NetworkClient::connect(const std::string& ip, int port_num) {
     ip_address = ip;
     port = port_num;
     
+    struct in_addr parsed_address{};
+    if (inet_pton(AF_INET, ip.c_str(), &parsed_address) != 1) {
+        REPORT_ERROR(ErrorCode::ERR_NETWORK_UNREACHABLE, ErrorCategory::NETWORK,
+                    "Invalid IPv4 address format: " + ip);
+        return false;
+    }
+
     socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (socket_fd == INVALID_SOCKET_VALUE) {
         REPORT_ERROR(ErrorCode::ERR_NETWORK_SOCKET_FAILED, ErrorCategory::NETWORK,
@@ -90,30 +103,39 @@ bool NetworkClient::connect(const std::string& ip, int port_num) {
     
 #ifdef _WIN32
     u_long mode = 1;  // non-blocking
-    ioctlsocket(socket_fd, FIONBIO, &mode);
+    if (ioctlsocket(socket_fd, FIONBIO, &mode) != 0) {
+        CLOSE_SOCKET(socket_fd);
+        socket_fd = INVALID_SOCKET_VALUE;
+        REPORT_ERROR(ErrorCode::ERR_NETWORK_SOCKET_FAILED, ErrorCategory::NETWORK,
+                    "Failed to set non-blocking socket mode");
+        return false;
+    }
 #else
-    // Non-blocking connect
+    // Non-blocking connect; both descriptor operations must succeed.
     int flags = fcntl(socket_fd, F_GETFL, 0);
-    fcntl(socket_fd, F_SETFL, flags | O_NONBLOCK);
+    if (flags < 0 || fcntl(socket_fd, F_SETFL, flags | O_NONBLOCK) < 0) {
+        CLOSE_SOCKET(socket_fd);
+        socket_fd = INVALID_SOCKET_VALUE;
+        REPORT_ERROR(ErrorCode::ERR_NETWORK_SOCKET_FAILED, ErrorCategory::NETWORK,
+                    "Failed to set non-blocking socket mode");
+        return false;
+    }
 #endif
     
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(static_cast<u_short>(port));
     
-    if (inet_pton(AF_INET, ip.c_str(), &server_addr.sin_addr) <= 0) {
-        CLOSE_SOCKET(socket_fd);
-        socket_fd = INVALID_SOCKET_VALUE;
-        REPORT_ERROR(ErrorCode::ERR_NETWORK_UNREACHABLE, ErrorCategory::NETWORK,
-                    "Invalid IP address format: " + ip);
-        return false;
-    }
+    server_addr.sin_addr = parsed_address;
     
     int result = ::connect(socket_fd, (struct sockaddr*)&server_addr, sizeof(server_addr));
 #ifdef _WIN32
-    if (result < 0 && WSAGetLastError() != WSAEWOULDBLOCK) {
+    const int connect_error = result < 0 ? WSAGetLastError() : 0;
+    if (result < 0 && connect_error != WSAEWOULDBLOCK &&
+        connect_error != WSAEINPROGRESS && connect_error != WSAEALREADY) {
 #else
-    if (result < 0 && errno != EINPROGRESS) {
+    const int connect_error = result < 0 ? errno : 0;
+    if (result < 0 && connect_error != EINPROGRESS && connect_error != EWOULDBLOCK) {
 #endif
         CLOSE_SOCKET(socket_fd);
         socket_fd = INVALID_SOCKET_VALUE;
@@ -137,10 +159,12 @@ bool NetworkClient::connect(const std::string& ip, int port_num) {
     result = select(socket_fd + 1, NULL, &write_fds, NULL, &tv);
 #endif
     if (result <= 0) {
+        const bool timed_out = (result == 0);
         CLOSE_SOCKET(socket_fd);
         socket_fd = INVALID_SOCKET_VALUE;
-        REPORT_ERROR(ErrorCode::ERR_NETWORK_TIMEOUT, ErrorCategory::NETWORK,
-                    "Connection timeout");
+        REPORT_ERROR(timed_out ? ErrorCode::ERR_NETWORK_TIMEOUT : ErrorCode::ERR_NETWORK_UNREACHABLE,
+                    ErrorCategory::NETWORK,
+                    timed_out ? "Connection timeout" : "Connection readiness check failed");
         return false;
     }
     
@@ -162,12 +186,17 @@ bool NetworkClient::connect(const std::string& ip, int port_num) {
     
 #ifdef _WIN32
     u_long blocking_mode = 0;
-    ioctlsocket(socket_fd, FIONBIO, &blocking_mode);
+    if (ioctlsocket(socket_fd, FIONBIO, &blocking_mode) != 0) {
 #else
-    // Set blocking mode
     int restore_flags = fcntl(socket_fd, F_GETFL, 0);
-    fcntl(socket_fd, F_SETFL, restore_flags & ~O_NONBLOCK);
+    if (restore_flags < 0 || fcntl(socket_fd, F_SETFL, restore_flags & ~O_NONBLOCK) < 0) {
 #endif
+        CLOSE_SOCKET(socket_fd);
+        socket_fd = INVALID_SOCKET_VALUE;
+        REPORT_ERROR(ErrorCode::ERR_NETWORK_SOCKET_FAILED, ErrorCategory::NETWORK,
+                    "Failed to restore blocking socket mode");
+        return false;
+    }
     
     connected = true;
     LOG_INFO("Connected to " + ip + ":" + std::to_string(port));
@@ -233,6 +262,11 @@ bool NetworkClient::sendTherapyPacket(const TherapyPacket& packet) {
 }
 
 bool NetworkClient::sendCommand(const std::string& cmd) {
+    if (cmd.empty()) {
+        REPORT_ERROR(ErrorCode::ERR_NETWORK_SEND_FAILED, ErrorCategory::NETWORK,
+                    "Cannot send an empty command");
+        return false;
+    }
     if (!isConnected()) {
         REPORT_ERROR(ErrorCode::ERR_NETWORK_DISCONNECTED, ErrorCategory::NETWORK,
                     "Cannot send command - not connected");
