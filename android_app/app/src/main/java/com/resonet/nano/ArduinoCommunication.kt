@@ -1,337 +1,282 @@
 package com.resonet.nano
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.io.PrintWriter
+import java.io.ByteArrayOutputStream
+import java.io.IOException
+import java.net.InetSocketAddress
 import java.net.Socket
+import java.net.SocketTimeoutException
+import java.nio.ByteBuffer
+import java.nio.charset.CodingErrorAction
+import java.nio.charset.StandardCharsets
+import java.util.concurrent.CopyOnWriteArrayList
 
 /**
- * Interfejs komunikacyjny dla Arduino Nano z Ethernet HAT
- * Implementuje protokół TCP zgodny z webui i bashtui
+ * Klient TCP dla historycznego tekstowego interfejsu diagnostycznego.
+ * Firmware nie implementuje obecnie rzeczywistego serwera TCP.
+ * Wielowierszowa odpowiedź legacy jest ograniczona rozmiarem i czasem bezczynności;
+ * docelowy protokół musi mieć jawny znacznik końca ramki.
  */
 class ArduinoCommunication {
-    
     companion object {
         const val DEFAULT_PORT = 5001
         const val CONNECTION_TIMEOUT_MS = 3000
         const val COMMAND_TIMEOUT_MS = 2000
-        
-        // Komendy systemu zgodne z .ino
+        const val MAX_RESPONSE_BYTES = 8192
+        const val MAX_COMMAND_LENGTH = 256
         const val CMD_STATUS = "s"
         const val CMD_START_THERAPY = "START"
         const val CMD_STOP_THERAPY = "STOP"
         const val CMD_LOGS = "l"
-        const val CMD_EVENT_STATS = "e"
         const val CMD_DEVICE_SCAN = "d"
     }
-    
-    private var socket: Socket? = null
-    private var writer: PrintWriter? = null
-    private var reader: BufferedReader? = null
-    
-    var connectionState: ConnectionState = ConnectionState.Disconnected
+
+    private val operationMutex = Mutex()
+    @Volatile private var socket: Socket? = null
+    @Volatile var connectionState: ConnectionState = ConnectionState.Disconnected
         private set
-    
-    private val listeners = mutableListOf<ConnectionStateListener>()
-    
+    private val listeners = CopyOnWriteArrayList<ConnectionStateListener>()
+
     interface ConnectionStateListener {
         fun onConnectionStateChanged(state: ConnectionState)
     }
-    
-    /**
-     * Łączy się z urządzeniem Arduino przez TCP
-     */
-    suspend fun connect(ipAddress: String, port: Int = DEFAULT_PORT): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            connectionState = ConnectionState.Connecting
+
+    suspend fun connect(ipAddress: String, port: Int = DEFAULT_PORT): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            if (ipAddress.isBlank() || port !in 1..65535) {
+                return@withContext Result.failure(IllegalArgumentException("Nieprawidłowy adres lub port"))
+            }
             notifyListeners(ConnectionState.Connecting)
-            
-            socket = Socket().apply {
-                soTimeout = CONNECTION_TIMEOUT_MS
-                connect(java.net.InetSocketAddress(ipAddress, port), CONNECTION_TIMEOUT_MS)
+            val result = operationMutex.withLock {
+                closeSocketLocked()
+                connectionState = ConnectionState.Connecting
+                val candidate = Socket()
+                try {
+                    candidate.tcpNoDelay = true
+                    candidate.keepAlive = true
+                    candidate.connect(InetSocketAddress(ipAddress, port), CONNECTION_TIMEOUT_MS)
+                    candidate.soTimeout = COMMAND_TIMEOUT_MS
+                    socket = candidate
+                    connectionState = ConnectionState.Connected(ipAddress, port)
+                    Result.success(Unit)
+                } catch (error: Exception) {
+                    try { candidate.close() } catch (_: IOException) {}
+                    socket = null
+                    connectionState = ConnectionState.Error("Błąd połączenia: ${error.message ?: error.javaClass.simpleName}")
+                    Result.failure(error)
+                }
             }
-            
-            writer = PrintWriter(socket!!.getOutputStream(), true)
-            reader = BufferedReader(InputStreamReader(socket!!.getInputStream()))
-            
-            connectionState = ConnectionState.Connected(ipAddress, port)
             notifyListeners(connectionState)
-            
-            Result.success(Unit)
-        } catch (e: Exception) {
-            connectionState = ConnectionState.Error("Błąd połączenia: ${e.message}")
-            notifyListeners(connectionState)
-            Result.failure(e)
+            result
         }
-    }
-    
-    /**
-     * Rozłącza z urządzeniem
-     */
+
     suspend fun disconnect(): Unit = withContext(Dispatchers.IO) {
-        try {
-            reader?.close()
-            writer?.close()
-            socket?.close()
-        } catch (e: Exception) {
-            // Ignoruj błędy rozłączania
-        } finally {
-            reader = null
-            writer = null
-            socket = null
+        operationMutex.withLock {
+            closeSocketLocked()
             connectionState = ConnectionState.Disconnected
-            notifyListeners(ConnectionState.Disconnected)
         }
+        notifyListeners(connectionState)
     }
-    
-    /**
-     * Wysyła komendę i odbiera odpowiedź
-     */
+
     suspend fun sendCommand(command: String): Result<String> = withContext(Dispatchers.IO) {
-        if (connectionState !is ConnectionState.Connected) {
-            return@withContext Result.failure(IllegalStateException("Brak połączenia"))
+        if (command.isBlank() || command.length > MAX_COMMAND_LENGTH ||
+            command.contains('\n') || command.contains('\r')) {
+            return@withContext Result.failure(
+                IllegalArgumentException("Komenda jest pusta, zbyt długa lub zawiera znak końca linii")
+            )
         }
-        
-        try {
-            writer?.println(command)
-            writer?.flush()
-            
-            // Odczytaj odpowiedź z timeoutem
-            val response = StringBuilder()
-            val startTime = System.currentTimeMillis()
-            
-            while (System.currentTimeMillis() - startTime < COMMAND_TIMEOUT_MS) {
-                if (reader?.ready() == true) {
-                    val line = reader?.readLine()
-                    if (line != null) {
-                        response.appendLine(line)
-                        // Sprawdź czy to koniec odpowiedzi (OK/DONE lub limit długości)
-                        // Nie przerywaj na liniach nagłówków ===
-                        if ((line.contains("OK") || line.contains("DONE")) && 
-                            response.length > 4096) {
-                            break
-                        }
-                    }
-                } else {
-                    Thread.sleep(10)
-                }
+        var notifyError = false
+        val result = operationMutex.withLock {
+            val active = socket
+            if (active == null || active.isClosed || !active.isConnected ||
+                connectionState !is ConnectionState.Connected) {
+                return@withLock Result.failure(IllegalStateException("Brak aktywnego połączenia TCP"))
             }
-            
-            Result.success(response.toString())
-        } catch (e: Exception) {
-            Result.failure(e)
+            try {
+                active.getOutputStream().apply {
+                    write((command + "\n").toByteArray(StandardCharsets.UTF_8))
+                    flush()
+                }
+                Result.success(readLegacyResponseFrame(active))
+            } catch (error: Exception) {
+                closeSocketLocked()
+                connectionState = ConnectionState.Error("Błąd transmisji: ${error.message ?: error.javaClass.simpleName}")
+                notifyError = true
+                Result.failure(error)
+            }
         }
+        if (notifyError) notifyListeners(connectionState)
+        result
     }
-    
-    /**
-     * Pobiera status systemu
-     */
-    suspend fun getStatus(): Result<SystemStatus> = withContext(Dispatchers.IO) {
-        sendCommand(CMD_STATUS).mapCatching { response ->
-            parseStatusResponse(response)
+
+    private fun readLegacyResponseFrame(active: Socket): String {
+        val input = active.getInputStream()
+        val bytes = ByteArrayOutputStream()
+        val buffer = ByteArray(512)
+        var receivedAny = false
+        while (true) {
+            try {
+                val count = input.read(buffer)
+                if (count < 0) {
+                    if (!receivedAny) throw IOException("Połączenie zamknięte bez odpowiedzi")
+                    break
+                }
+                receivedAny = true
+                if (bytes.size() + count > MAX_RESPONSE_BYTES) {
+                    throw IOException("Odpowiedź przekracza limit ${MAX_RESPONSE_BYTES} bajtów")
+                }
+                bytes.write(buffer, 0, count)
+            } catch (timeout: SocketTimeoutException) {
+                if (!receivedAny) throw IOException("Przekroczono czas oczekiwania na odpowiedź", timeout)
+                break
+            }
         }
+        val frame = bytes.toByteArray()
+        if (frame.isEmpty()) throw IOException("Pusta odpowiedź")
+        if (frame.last() != '\n'.code.toByte()) throw IOException("Niekompletna ramka: brak końcowego LF")
+        val decoder = StandardCharsets.UTF_8.newDecoder()
+            .onMalformedInput(CodingErrorAction.REPORT)
+            .onUnmappableCharacter(CodingErrorAction.REPORT)
+        val text = decoder.decode(ByteBuffer.wrap(frame)).toString()
+        if (text.any { it == '\u0000' }) throw IOException("Odpowiedź zawiera bajt NUL")
+        return text
     }
-    
-    /**
-     * Konfiguruje kanał
-     */
-    suspend fun configureChannel(config: ChannelConfig): Result<Unit> = withContext(Dispatchers.IO) {
-        val validation = config.validate()
-        if (!validation.isValid) {
-            return@withContext Result.failure(IllegalArgumentException(validation.errorMessage))
-        }
-        
-        sendCommand(config.toCommandString()).map {
-            // Sukces konfiguracji
-        }
+
+    private fun closeSocketLocked() {
+        val old = socket
+        socket = null
+        try { old?.close() } catch (_: IOException) {}
     }
-    
-    /**
-     * Start terapii
-     */
-    suspend fun startTherapy(): Result<Unit> = withContext(Dispatchers.IO) {
-        sendCommand(CMD_START_THERAPY).map {
-            // Sukces startu
-        }
-    }
-    
-    /**
-     * Stop terapii
-     */
-    suspend fun stopTherapy(): Result<Unit> = withContext(Dispatchers.IO) {
-        sendCommand(CMD_STOP_THERAPY).map {
-            // Sukces stopu
-        }
-    }
-    
-    /**
-     * Skanowanie urządzeń (efektory/sensory)
-     */
-    suspend fun scanDevices(): Result<EffectorType> = withContext(Dispatchers.IO) {
-        sendCommand(CMD_DEVICE_SCAN).mapCatching { response ->
-            parseEffectorFromResponse(response)
-        }
-    }
-    
-    /**
-     * Pobiera logi systemowe
-     */
-    suspend fun getLogs(): Result<List<LogEntry>> = withContext(Dispatchers.IO) {
-        sendCommand(CMD_LOGS).mapCatching { response ->
-            parseLogsResponse(response)
-        }
-    }
-    
-    /**
-     * Dodaje nasłuchiwacza zmian stanu połączenia
-     */
-    fun addConnectionListener(listener: ConnectionStateListener) {
-        listeners.add(listener)
-    }
-    
-    /**
-     * Usuwa nasłuchiwacza
-     */
-    fun removeConnectionListener(listener: ConnectionStateListener) {
-        listeners.remove(listener)
-    }
-    
+
+    suspend fun getStatus(): Result<SystemStatus> =
+        sendCommand(CMD_STATUS).mapCatching { parseStatusResponse(it) }
+
+    suspend fun configureChannel(config: ChannelConfig): Result<Unit> =
+        Result.failure(UnsupportedOperationException(
+            "Konfiguracja kanałów wyłączona: brak zweryfikowanego protokołu TCP w firmware"
+        ))
+
+    suspend fun startTherapy(): Result<Unit> =
+        Result.failure(UnsupportedOperationException(
+            "Start wyjść wyłączony do czasu wdrożenia protokołu i walidacji zabezpieczeń sprzętowych"
+        ))
+
+    suspend fun stopTherapy(): Result<Unit> =
+        Result.failure(UnsupportedOperationException(
+            "Sterowanie wyjściami wyłączone do czasu wdrożenia zweryfikowanego protokołu"
+        ))
+
+    suspend fun scanDevices(): Result<EffectorType> =
+        sendCommand(CMD_DEVICE_SCAN).mapCatching { parseEffectorFromResponse(it) }
+
+    suspend fun getLogs(): Result<List<LogEntry>> =
+        sendCommand(CMD_LOGS).mapCatching { parseLogsResponse(it) }
+
+    fun addConnectionListener(listener: ConnectionStateListener) { listeners.addIfAbsent(listener) }
+    fun removeConnectionListener(listener: ConnectionStateListener) { listeners.remove(listener) }
+
     private fun notifyListeners(state: ConnectionState) {
-        listeners.forEach { it.onConnectionStateChanged(state) }
+        listeners.forEach { listener ->
+            try { listener.onConnectionStateChanged(state) } catch (_: Exception) {
+                // Błąd obserwatora nie może przerwać obsługi pozostałych.
+            }
+        }
     }
-    
-    /**
-     * Parsuje odpowiedź statusu z Arduino
-     * Format: === System Status ===\nUptime: 100s\nFree Memory: 1234 bytes\n...
-     */
+
     private fun parseStatusResponse(response: String): SystemStatus {
-        val lines = response.split("\n")
-        var uptime = 0L
-        var temp = 0.0f
-        var freeMem = 0
-        var pwmActive = false
-        var freq = 0.0f
-        var networkConn = false
-        var effector = EffectorType.NONE
-        var state = SystemState.IDLE
-        
-        for (line in lines) {
-            when {
-                line.contains("Uptime:") -> {
-                    uptime = line.substringAfter("Uptime:").substringBefore("s").trim().toLongOrNull() ?: 0L
-                }
-                line.contains("Temperature:") -> {
-                    temp = line.substringAfter("Temperature:").substringBefore("C").trim().toFloatOrNull() ?: 0.0f
-                }
-                line.contains("Free Memory:") -> {
-                    freeMem = line.substringAfter("Free Memory:").substringBefore("bytes").trim().toIntOrNull() ?: 0
-                }
-                line.contains("PWM Running:") -> {
-                    pwmActive = line.contains("YES")
-                }
-                line.contains("Frequency:") -> {
-                    freq = line.substringAfter("Frequency:").trim().toFloatOrNull() ?: 0.0f
-                }
-                line.contains("Network:") -> {
-                    networkConn = line.contains("CONNECTED")
-                }
-                line.contains("Effector:") -> {
-                    effector = parseEffectorFromString(line)
-                }
-                line.contains("State:") || line.contains("System State:") -> {
-                    state = parseSystemStateFromString(line)
-                }
-                line.contains("Safety State:") -> {
-                    state = parseSystemStateFromString(line)
+        val fields = linkedMapOf<String, String>()
+        response.lineSequence().forEach { line ->
+            val split = line.indexOf(':')
+            if (split > 0) {
+                val key = line.substring(0, split).trim()
+                if (key in setOf("Uptime", "Free Memory", "Temperature", "PWM Running",
+                        "Frequency", "Network", "Effector", "State", "System State", "Safety State")) {
+                    if (fields.put(key, line.substring(split + 1).trim()) != null)
+                        throw IOException("Powtórzone pole statusu: ${key}")
                 }
             }
         }
-        
+        fun required(key: String): String = fields[key]?.takeIf { it.isNotBlank() }
+            ?: throw IOException("Brak wymaganego pola statusu: ${key}")
+
+        val uptime = required("Uptime").removeSuffix("s").trim().toLongOrNull()
+            ?: throw IOException("Nieprawidłowe Uptime")
+        val memory = required("Free Memory").removeSuffix("bytes").trim().toIntOrNull()
+            ?: throw IOException("Nieprawidłowe Free Memory")
+        val temperature = required("Temperature").removeSuffix("C").trim().toFloatOrNull()
+            ?: throw IOException("Nieprawidłowa Temperature")
+        val pwm = when (required("PWM Running").uppercase()) {
+            "YES" -> true
+            "NO" -> false
+            else -> throw IOException("Nieprawidłowe PWM Running")
+        }
+        val network = when (required("Network").uppercase()) {
+            "CONNECTED" -> true
+            "DISCONNECTED" -> false
+            else -> throw IOException("Nieprawidłowe Network")
+        }
+        if (uptime < 0 || memory < 0 || !temperature.isFinite())
+            throw IOException("Wartości statusu poza zakresem")
+        val frequency = fields["Frequency"]?.toFloatOrNull() ?: 0.0f
+        if (!frequency.isFinite() || frequency < 0.0f) throw IOException("Nieprawidłowa Frequency")
+        val state = (fields["System State"] ?: fields["State"])?.let(::parseSystemState)
+            ?: SystemState.ERROR
+        val effector = fields["Effector"]?.let(::parseEffector) ?: EffectorType.NONE
         return SystemStatus(
-            uptimeSeconds = uptime,
-            state = state,
-            temperatureCelsius = temp,
-            freeMemoryBytes = freeMem,
-            pwmIsActive = pwmActive,
-            currentFrequency = freq,
-            networkConnected = networkConn,
-            detectedEffector = effector
+            uptimeSeconds = uptime, state = state, temperatureCelsius = temperature,
+            freeMemoryBytes = memory, pwmIsActive = pwm, currentFrequency = frequency,
+            networkConnected = network, detectedEffector = effector
         )
     }
-    
-    /**
-     * Parsuje stan systemu z odpowiedzi
-     */
-    private fun parseSystemStateFromString(line: String): SystemState {
-        return when {
-            line.contains("BOOT") -> SystemState.BOOT
-            line.contains("IDLE") -> SystemState.IDLE
-            line.contains("CONFIGUR") -> SystemState.CONFIGURING
-            line.contains("RUNNING") || line.contains("Praca") -> SystemState.RUNNING
-            line.contains("ERROR") || line.contains("Błąd") -> SystemState.ERROR
-            line.contains("SAFE_LOCKOUT") || line.contains("Blokada Bezpieczeństwa") -> SystemState.SAFE_LOCKOUT
-            line.contains("THERMAL") || line.contains("Wyłączenie Termiczne") -> SystemState.THERMAL_SHUTDOWN
-            else -> SystemState.IDLE
-        }
+
+    private fun parseSystemState(value: String): SystemState = when (value.trim().uppercase()) {
+        "BOOT", "0" -> SystemState.BOOT
+        "IDLE", "1" -> SystemState.IDLE
+        "CONFIGURING", "CONFIGURATION", "2" -> SystemState.CONFIGURING
+        "RUNNING", "3" -> SystemState.RUNNING
+        "ERROR", "4" -> SystemState.ERROR
+        "SAFE_LOCKOUT", "5" -> SystemState.SAFE_LOCKOUT
+        "THERMAL_SHUTDOWN", "6" -> SystemState.THERMAL_SHUTDOWN
+        else -> throw IOException("Nieznany stan systemu: ${value}")
     }
-    
-    /**
-     * Parsuje typ efektora z odpowiedzi
-     */
-    private fun parseEffectorFromString(line: String): EffectorType {
-        return when {
-            line.contains("Helmholtz") -> EffectorType.HELMHOLTZ
-            line.contains("Otic") -> EffectorType.OTIC
-            line.contains("Contact") -> EffectorType.CONTACT
-            line.contains("Wrap") -> EffectorType.WRAP
-            line.contains("IR LED") -> EffectorType.IR_LED_STRIP
-            line.contains("Piezo") -> EffectorType.PIEZO_SPEAKER
-            line.contains("Vibrator") -> EffectorType.VIBRATOR
-            else -> EffectorType.NONE
-        }
+
+    private fun parseEffector(value: String): EffectorType = when {
+        value.contains("Helmholtz", true) -> EffectorType.HELMHOLTZ
+        value.contains("Otic", true) -> EffectorType.OTIC
+        value.contains("Contact", true) -> EffectorType.CONTACT
+        value.contains("Wrap", true) -> EffectorType.WRAP
+        value.contains("IR LED", true) -> EffectorType.IR_LED_STRIP
+        value.contains("Piezo", true) -> EffectorType.PIEZO_SPEAKER
+        value.contains("Vibrator", true) -> EffectorType.VIBRATOR
+        value.equals("None", true) -> EffectorType.NONE
+        else -> throw IOException("Nieznany typ efektora: ${value}")
     }
-    
-    /**
-     * Parsuje wynik skanowania urządzeń
-     */
+
     private fun parseEffectorFromResponse(response: String): EffectorType {
-        val lines = response.split("\n")
-        for (line in lines) {
-            if (line.contains("Detected effector:")) {
-                return parseEffectorFromString(line)
-            }
-        }
-        return EffectorType.NONE
+        val line = response.lineSequence().firstOrNull { it.startsWith("Detected effector:") }
+            ?: throw IOException("Brak pola Detected effector")
+        return parseEffector(line.substringAfter(':').trim())
     }
-    
-    /**
-     * Parsuje logi systemowe
-     */
+
     private fun parseLogsResponse(response: String): List<LogEntry> {
         val entries = mutableListOf<LogEntry>()
-        val lines = response.split("\n")
-        
-        for (line in lines) {
-            if (line.trim().isEmpty() || line.startsWith("===")) continue
-            
-            // Proste parsowanie - w produkcji użyj regex
+        response.lineSequence().forEach { line ->
+            val value = line.trim()
+            if (value.isEmpty() || value.startsWith("===")) return@forEach
             val level = when {
-                line.contains("[ERROR]") -> LogLevel.ERROR
-                line.contains("[WARNING]") -> LogLevel.WARNING
-                line.contains("[INFO]") -> LogLevel.INFO
-                line.contains("[DEBUG]") -> LogLevel.DEBUG
-                else -> LogLevel.INFO
+                value.contains("[FATAL]") -> LogLevel.FATAL
+                value.contains("[ERROR]") -> LogLevel.ERROR
+                value.contains("[WARNING]") -> LogLevel.WARNING
+                value.contains("[INFO]") -> LogLevel.INFO
+                value.contains("[DEBUG]") -> LogLevel.DEBUG
+                else -> throw IOException("Nieznany format wpisu logu")
             }
-            
-            entries.add(LogEntry(
-                timestamp = System.currentTimeMillis(),
-                level = level,
-                message = line
-            ))
+            entries.add(LogEntry(System.currentTimeMillis(), level, value))
         }
-        
+        if (entries.isEmpty()) throw IOException("Odpowiedź nie zawiera wpisów logu")
         return entries
     }
 }
