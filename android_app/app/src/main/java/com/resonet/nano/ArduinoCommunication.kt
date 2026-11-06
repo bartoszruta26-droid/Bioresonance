@@ -272,6 +272,9 @@ class ArduinoCommunication {
             networkConnected = true,
             detectedEffector = EffectorType.NONE,
             systemStateReported = true,
+            pwmStatusKnown = false,
+            frequencyKnown = false,
+            effectorKnown = false,
             temperatureValid = temperatureValid,
             outputInhibited = if (outputInhibitedRaw == 1) true else null,
             diagnosticFaultFlags = faultFlags
