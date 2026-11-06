@@ -169,12 +169,17 @@ class MainActivity : AppCompatActivity() {
         binding.tvEffectorType.text = "Efektor: ${status.detectedEffector.displayName}"
         
         // Kolorowanie statusu bezpieczeństwa
-        val safetyColor = if (status.isSafe) 
-            android.R.color.holo_green_dark 
-        else 
-            android.R.color.holo_red_dark
+        val safetyColor = when {
+            !status.systemStateReported -> android.R.color.holo_orange_dark
+            status.hasError || !status.isSafe -> android.R.color.holo_red_dark
+            else -> android.R.color.holo_green_dark
+        }
         binding.tvSafetyStatus.setTextColor(getColor(safetyColor))
-        binding.tvSafetyStatus.text = if (status.hasError) "BŁĄD" else "OK"
+        binding.tvSafetyStatus.text = when {
+            !status.systemStateReported -> "BRAK DANYCH O STANIE"
+            status.hasError || !status.isSafe -> "BŁĄD"
+            else -> "OK"
+        }
     }
     
     /**
