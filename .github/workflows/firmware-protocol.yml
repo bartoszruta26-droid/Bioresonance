@@ -57,5 +57,5 @@ jobs:
           flash=$(sed -n 's/Sketch uses \([0-9][0-9]*\) bytes.*/\1/p' "$RUNNER_TEMP/nano-ethernet-build.log" | tail -n 1)
           ram=$(sed -n 's/Global variables use \([0-9][0-9]*\) bytes.*/\1/p' "$RUNNER_TEMP/nano-ethernet-build.log" | tail -n 1)
           test -n "$flash" && test -n "$ram"
-          test "$flash" -le 29000
+          test "$flash" -le 28800
           test "$ram" -le 1536
