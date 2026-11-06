@@ -155,6 +155,8 @@ platformio run --target upload
 
 📋 **Szczegóły:** [arduino.md](arduino.md)
 
+**Sieć diagnostyczna:** transport ENC28J60/TCP jest domyślnie wyłączony. Aby go włączyć, skonfiguruj adresację w `ResoNet_Nano/network_config.h`, ustaw `RESONET_ENABLE_ETHERNET` na `1` i zainstaluj EthernetENC `2.0.5`. Protokół v1 udostępnia wyłącznie diagnostykę; nie zawiera zdalnych poleceń aktywacji wyjść.
+
 ---
 
 ## 🖥️ Aplikacje
