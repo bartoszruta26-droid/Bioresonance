@@ -308,7 +308,8 @@ bool NetworkClient::connect(const std::string& ip, int port_num) {
     // TCP alone is not a verified device connection: require a valid v1 HELLO.
     std::vector<std::uint8_t> hello_payload;
     if (!exchange_v1(candidate, ResoNetV1::kHelloReq, ResoNetV1::kHelloResp,
-                     1, hello_payload) || hello_payload.size() != 13) {
+                     1, hello_payload) || hello_payload.size() != 13 ||
+        hello_payload[11] != 0 || hello_payload[12] != 0) {
         close_candidate();
         REPORT_ERROR(ErrorCode::ERR_NETWORK_UNREACHABLE, ErrorCategory::NETWORK,
                      "ResoNet v1 HELLO handshake failed");
@@ -378,7 +379,9 @@ bool NetworkClient::requestStatus(ResoNetStatusV1& status) {
 
     std::vector<std::uint8_t> payload;
     if (!exchange_v1(active_socket, ResoNetV1::kStatusReq,
-                     ResoNetV1::kStatusResp, sequence, payload) || payload.size() != 14) {
+                     ResoNetV1::kStatusResp, sequence, payload) || payload.size() != 14 ||
+        payload[0] > 5 || (((payload[1] << 8) | payload[2]) & ~0x0003) != 0 ||
+        payload[13] > 1) {
         std::lock_guard<std::mutex> state_lock(socket_mutex);
         if (socket_fd == active_socket) connected = false;
         return false;
