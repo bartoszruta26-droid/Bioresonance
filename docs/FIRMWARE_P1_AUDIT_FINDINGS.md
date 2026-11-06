@@ -7,8 +7,10 @@ Status: static source review only. No hardware validation has been performed. Th
 ### P1 — Emergency stop pin collision and missing integration
 - `types.h` assigns `PIN_EMERGENCY_STOP` to D3 (active LOW).
 - `ir_led_engine.h` assigns the IR carrier output to D3 / OC2B.
+- The main sketch's `setup()` calls `pwm_init()` but does not call `ir_led_init()`; the IR module lifecycle is therefore not consistently initialized from the central startup path.
 - The IR module configures D3 as OUTPUT and drives Timer2 output on it. The same physical pin therefore cannot reliably serve as an independent active-LOW emergency-stop input.
 - The main sketch and safety module must be reviewed for a complete, non-conflicting E-stop path. The safety module currently does not read `PIN_EMERGENCY_STOP`.
+- The main sketch's `setup()` does not configure or sample `PIN_EMERGENCY_STOP`; the startup safety check therefore does not verify the physical E-stop input.
 - Required action: approve a hardware pin map and independent safety input/output-disable architecture before changing pin assignments. Do not infer a safe replacement pin from source comments alone.
 
 ### P1 — Safety trip does not directly de-energize all outputs
