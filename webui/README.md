@@ -2,12 +2,12 @@
 
 ![Wersja](https://img.shields.io/badge/Wersja-2.0-blue)
 ![Platforma](https://img.shields.io/badge/Platforma-PHP%207.4%2B-green)
-![Status](https://img.shields.io/badge/Status-Zabezpieczony-success)
+![Status](https://img.shields.io/badge/Status-Tryb%20diagnostyczny-orange)
 ![Kompatybilność](https://img.shields.io/badge/Kompatybilność-Firmware%20v4.0+-orange)
 
 Interfejs webowy do obsługi efektora Arduino Nano z Ethernet HAT.
 
-**Wersja 2.0 - Zabezpieczona**: Poprawiono bezpieczeństwo XSS, dodano obsługę błędów socketów, mechanizm sprzątania zasobów i rotację logów.
+**Stan funkcjonalny: tryb diagnostyczny.** Interfejs udostępnia obecnie wyłącznie test odpowiedzi TCP i odczyt statusu przez istniejące endpointy PHP. Edycja kanałów, wysyłanie konfiguracji oraz uruchamianie wyjść są celowo wyłączone. Aktualny szkic firmware ENC28J60 nie realizuje rzeczywistego transportu sieciowego.
 
 ---
 
@@ -118,9 +118,22 @@ sudo systemctl restart apache2
 4. Port domyślny: `5001`
 5. Kliknij **Połącz**
 
-## Funkcjonalności
+## Funkcjonalności i ograniczenia bieżącej wersji
 
-### Konfiguracja Końcówek (8 kanałów)
+### Dostępne
+- Test odpowiedzi urządzenia przez `connect_test`.
+- Odczyt statusu przez `get_status`, jeśli urządzenie zwraca poprawną ramkę zakończoną znakiem nowej linii.
+- Automatyczne odświeżanie statusu po udanym teście łącza.
+
+### Celowo wyłączone
+- Konfiguracja końcówek i trybów kanałów.
+- Wysyłanie konfiguracji do urządzenia.
+- Start, pauza i sterowanie sygnałem.
+- Dziennik zdarzeń pobierany z urządzenia.
+
+Poniższe opisy konfiguracji mają charakter docelowej specyfikacji, a nie deklaracji funkcjonalności dostępnej w tej wersji.
+
+### Konfiguracja Końcówek (docelowa specyfikacja, obecnie wyłączona)
 
 Dla każdego kanału możesz skonfigurować:
 
@@ -143,17 +156,15 @@ Dla każdego kanału możesz skonfigurować:
 
 ---
 
-### Sterowanie Terapią
+### Sterowanie wyjściami
 
-- ▶️ **Start Terapii**: Rozpoczyna generowanie sygnałów na aktywnych kanałach
-- ⏹️ **Stop Terapii**: Zatrzymuje generowanie sygnałów
-- 📤 **Wyślij Wszystkie**: Wysyła konfiguracje wszystkich aktywnych kanałów do urządzenia
+Funkcje sterowania pozostają wyłączone. Nie wolno zakładać, że komenda START/STOP jest obsługiwana przez aktualny firmware ani że istnieją zweryfikowane sprzętowe blokady bezpieczeństwa.
 
 ---
 
 ### Monitorowanie Statusu
 
-Panel statusu wyświetla:
+Panel pokazuje wyłącznie pola faktycznie zwrócone przez urządzenie. Brak pola jest prezentowany jako „Brak danych”; frontend nie podstawia wartości domyślnych. Docelowo panel może wyświetlać:
 
 | Parametr | Opis |
 |----------|------|
@@ -256,6 +267,10 @@ php -r 'echo bin2hex(random_bytes(32)), PHP_EOL;'
 ```
 
 Wdrożenie musi przekazać tę wartość do środowiska PHP. Samo zapisanie zmiennej w powłoce administratora nie gwarantuje, że zobaczy ją proces Apache/PHP-FPM — należy skonfigurować ją zgodnie z używanym sposobem uruchamiania PHP.
+
+## Stan integracji z firmware
+
+`network_system.cpp` jest obecnie szkieletem: inicjalizacja ENC28J60 nie uruchamia rzeczywistej obsługi pakietów, pętla sieciowa nie odbiera ramek, a wysyłanie statusu nie realizuje transmisji UDP/TCP. Komunikacja WebUI–firmware nie jest obecnie potwierdzona. Implementacja sterownika wymaga ustalenia modelu płytki, połączeń SPI/CS/INT, biblioteki ENC28J60 i docelowego protokołu.
 
 ## Format Komend TCP do Arduino
 
