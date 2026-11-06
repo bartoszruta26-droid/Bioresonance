@@ -46,6 +46,8 @@ private:
     int port;
     std::atomic<bool> connected;
     mutable std::mutex socket_mutex;
+    // Serializes socket I/O and descriptor lifecycle; state mutex is never held during I/O.
+    mutable std::mutex io_mutex;
     std::uint64_t connection_generation = 0;
     
 public:
