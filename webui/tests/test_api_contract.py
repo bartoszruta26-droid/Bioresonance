@@ -27,6 +27,15 @@ class WebApiContractTests(unittest.TestCase):
         self.assertIn("Incomplete response frame from device", API)
         self.assertIn("Empty response from device", API)
 
+    def test_channel_limits_match_firmware_pwm_contract(self):
+        self.assertIn("count($channels) > 8", API)
+        self.assertIn("$id < 1 || $id > 8", API)
+        self.assertIn("$duty < 1 || $duty > 100", API)
+        self.assertIn("$intens > 4095", API)
+        self.assertIn("$mod > 3", API)
+        self.assertIn("(float)$ch['freq'] < 0.1", API)
+        self.assertIn("(float)$ch['freq'] > 500000", API)
+
     def test_frontend_does_not_embed_api_secret(self):
         self.assertNotIn("BIORESONANCE_API_TOKEN=", HTML)
         self.assertIn("X-Bioresonance-Token", HTML)
