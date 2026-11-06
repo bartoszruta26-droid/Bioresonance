@@ -12,6 +12,8 @@ int main() {
         out << "100|Category A|Sub A|Disease Alpha / notes|NONE|38\n";
         out << "200|Category B|Sub B|Disease Beta|AM|40\n";
         out << "300|Category C|Sub C|   |FM|42\n";
+        out << "-1|Category D|Sub D|Negative value|NONE|38\n";
+        out << "4294967296|Category E|Sub E|Overflow value|NONE|38\n";
     }
 
     FrequencyLoader loader;
