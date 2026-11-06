@@ -10,13 +10,23 @@
  */
 
 // --- KONFIGURACJA ---
-define('DEBUG_MODE', true);
+define('DEBUG_MODE', false);
 define('LOG_FILE', __DIR__ . '/debug.log');
 define('LOCK_FILE', __DIR__ . '/session.lock');
 define('LOCK_TIMEOUT', 30); // Sekundy po których lock jest uznawany za osierocony
 define('MAX_LOG_SIZE', 1048576); // 1MB limit dla pliku logów
 define('DEFAULT_ARDUINO_IP', '192.168.4.1');
 define('DEFAULT_ARDUINO_PORT', 23);
+
+// The WebUI sends JSON bodies; PHP does not populate $_POST for application/json.
+if (($_SERVER['CONTENT_TYPE'] ?? '') !== '' &&
+    stripos($_SERVER['CONTENT_TYPE'], 'application/json') !== false) {
+    $requestBody = file_get_contents('php://input');
+    $decodedBody = json_decode($requestBody, true);
+    if (is_array($decodedBody)) {
+        $_POST = array_merge($_POST, $decodedBody);
+    }
+}
 
 // Inicjalizacja sesji PHP
 if (session_status() === PHP_SESSION_NONE) {
@@ -79,15 +89,36 @@ function json_response($success, $data = null, $error = null) {
  * Walidacja adresu IP
  */
 function validate_ip($ip) {
-    return filter_var($ip, FILTER_VALIDATE_IP) !== false;
+    if (!is_string($ip) || filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) === false) return false;
+    $value = ip2long($ip);
+    if ($value === false) return false;
+    $ranges = [
+        ['10.0.0.0', '10.255.255.255'],
+        ['172.16.0.0', '172.31.255.255'],
+        ['192.168.0.0', '192.168.255.255']
+    ];
+    foreach ($ranges as [$start, $end]) {
+        if ($value >= ip2long($start) && $value <= ip2long($end)) return true;
+    }
+    return false;
 }
 
 /**
  * Walidacja portu
  */
 function validate_port($port) {
-    $p = intval($port);
-    return ($p > 0 && $p < 65536);
+    if (!is_scalar($port) || !preg_match('/^[0-9]{1,5}$/', (string)$port)) return false;
+    $p = (int)$port;
+    return $p >= 1 && $p <= 65535;
+}
+
+function require_api_token() {
+    $expected = getenv('BIORESONANCE_API_TOKEN');
+    $provided = $_SERVER['HTTP_X_BIORESONANCE_TOKEN'] ?? '';
+    if (!is_string($expected) || strlen($expected) < 32 ||
+        !is_string($provided) || !hash_equals($expected, $provided)) {
+        json_response(false, null, 'Unauthorized: configure BIORESONANCE_API_TOKEN and send X-Bioresonance-Token');
+    }
 }
 
 /**
@@ -104,16 +135,9 @@ function sanitize_command($cmd) {
  * Acquires a session lock with stale-lock detection
  */
 function acquire_lock() {
-    // Sprawdź czy nie ma osieroconego locka
-    if (file_exists(LOCK_FILE)) {
-        $fileTime = filemtime(LOCK_FILE);
-        if ((time() - $fileTime) > LOCK_TIMEOUT) {
-            debug_log("LOCK: Removing stale lock file (older than " . LOCK_TIMEOUT . "s)", "WARN");
-            @unlink(LOCK_FILE);
-        }
-    }
-
-    $fp = fopen(LOCK_FILE, 'w+');
+    // Never unlink a lock file based on age: that can split synchronization
+    // across two inodes and permit concurrent operations.
+    $fp = fopen(LOCK_FILE, 'c+');
     if (!$fp) {
         return false;
     }
@@ -193,15 +217,20 @@ function send_to_arduino($command, $ip, $port) {
         $command .= "\n";
     }
     
-    $bytesSent = socket_write($socket, $command, strlen($command));
-    if ($bytesSent === false) {
-        $err = socket_last_error($socket);
-        $msg = socket_strerror($err);
-        debug_log("TCP: Write failed - $msg", "ERROR");
-        socket_close($socket);
-        return ['success' => false, 'error' => "Send failed: $msg"];
+    $totalLength = strlen($command);
+    $offset = 0;
+    while ($offset < $totalLength) {
+        $bytesSent = @socket_write($socket, substr($command, $offset), $totalLength - $offset);
+        if ($bytesSent === false || $bytesSent === 0) {
+            $err = socket_last_error($socket);
+            $msg = socket_strerror($err);
+            debug_log("TCP: Write failed after $offset/$totalLength bytes - $msg", "ERROR");
+            socket_close($socket);
+            return ['success' => false, 'error' => "Send failed: $msg"];
+        }
+        $offset += $bytesSent;
     }
-    debug_log("TCP: Sent $bytesSent bytes: " . trim($command));
+    debug_log("TCP: Sent $offset bytes: " . trim($command));
 
     // 5. Odbieranie odpowiedzi
     $response = "";
@@ -238,14 +267,21 @@ $action = $_POST['action'] ?? $_GET['action'] ?? '';
 $ip = $_POST['ip'] ?? $_SESSION['arduino_ip'] ?? DEFAULT_ARDUINO_IP;
 $port = $_POST['port'] ?? $_SESSION['arduino_port'] ?? DEFAULT_ARDUINO_PORT;
 
+// Validate every destination before any outbound socket operation.
+// The WebUI is intended to reach a device on a private/local network only.
+if (!validate_ip($ip) || !validate_port($port)) {
+    json_response(false, null, 'Invalid device address or port; only private IPv4 targets are allowed.');
+}
+
 // Zapisz preferencje w sesji
 $_SESSION['arduino_ip'] = $ip;
-$_SESSION['arduino_port'] = $port;
+$_SESSION['arduino_port'] = (int)$port;
 
 debug_log("API Request: action=$action, ip=$ip, port=$port");
 
 switch ($action) {
     case 'connect_test':
+        require_api_token();
         if (!validate_ip($ip)) {
             json_response(false, null, "Invalid IP address format");
         }
@@ -262,6 +298,7 @@ switch ($action) {
         break;
 
     case 'get_status':
+        require_api_token();
         $fp = acquire_lock();
         if (!$fp) {
             json_response(false, null, "System busy (another operation in progress)");
@@ -287,6 +324,7 @@ switch ($action) {
         break;
 
     case 'save_config':
+        require_api_token();
         // Oczekujemy tablicy kanałów w POST
         $channels = $_POST['channels'] ?? [];
         $mode = $_POST['mode'] ?? 'SINGLE';
@@ -340,6 +378,7 @@ switch ($action) {
         break;
 
     case 'control':
+        require_api_token();
         $subAction = $_POST['sub'] ?? ''; // START, STOP, PAUSE
         
         if (!in_array($subAction, ['START', 'STOP', 'PAUSE'])) {
@@ -366,37 +405,7 @@ switch ($action) {
         break;
 
     case 'raw_command':
-        $cmd = $_POST['command'] ?? '';
-        if (empty($cmd)) {
-            json_response(false, null, "Empty command");
-        }
-
-        // Sanityzacja komendy
-        $safeCmd = sanitize_command($cmd);
-        
-        // Lista zabronionych komend (opcjonalne zabezpieczenie)
-        $forbidden = ['FORMAT', 'RESET_FACTORY']; 
-        foreach($forbidden as $bad) {
-            if (strpos(strtoupper($safeCmd), $bad) !== false) {
-                json_response(false, null, "Command blocked for safety: $bad");
-            }
-        }
-
-        $fp = acquire_lock();
-        if (!$fp) {
-            json_response(false, null, "System busy");
-        }
-
-        try {
-            $result = send_to_arduino($safeCmd . "\n", $ip, $port);
-            if ($result['success']) {
-                json_response(true, ['response' => $result['data']]);
-            } else {
-                json_response(false, null, $result['error']);
-            }
-        } finally {
-            release_lock($fp);
-        }
+        json_response(false, null, 'Raw commands are disabled; use explicitly validated API operations.');
         break;
 
     default:
