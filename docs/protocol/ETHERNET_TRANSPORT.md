@@ -42,3 +42,10 @@ Wariant z włączonym transportem kompiluje się dla Arduino Nano ATmega328P w k
 3. Dodano testy hostowe parsera i zadanie CI kompilujące firmware; wynik CI wymaga osobnego potwierdzenia. Testy sprzętowe są poza zakresem tej iteracji.
 4. Protokół v1 nie ma uwierzytelniania ani szyfrowania. Nie wystawiać portu poza zaufaną sieć.
 5. Kod transportowy nie stanowi potwierdzenia bezpieczeństwa ani przydatności klinicznej urządzenia.
+
+
+## Optymalizacja kompilacji serwerowej
+
+Dla wariantu ENC28J60 build script automatycznie modyfikuje lokalną kopię przypiętej biblioteki EthernetENC 2.0.5: ustawia `UIP_ACTIVE_OPEN=0`. Firmware działa jako serwer TCP i nie inicjuje połączeń wychodzących, dlatego kod aktywnego otwierania TCP jest zbędny. Funkcja serwera i odpowiedzi na przychodzące połączenia pozostają włączone. Skrypt przerywa kompilację, jeśli nie odnajdzie oczekiwanego pliku lub nie może bezpiecznie zastosować zmiany.
+
+Dodatkowo AVR jest kompilowany z `-mcall-prologues`, a UDP pozostaje wyłączone. CI wymaga obecnie nie więcej niż 28 800 B Flash dla wariantu Ethernet. Wynik tej optymalizacji należy potwierdzić kompilacją; nie jest to pomiar fizycznego sprzętu.
