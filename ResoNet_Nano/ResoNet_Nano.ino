@@ -234,11 +234,7 @@ static void task_stats_run() {
     stats.free_memory = freeMemory();
     
     // Loguj statystyki
-    LOG_INFO_F("Stats: Uptime=%lus, Loops=%lu, Tasks=%lu, FreeMem=%d",
-               stats.uptime_ms / 1000,
-               stats.loop_count,
-               stats.total_tasks_executed,
-               stats.free_memory);
+    LOG_INFO("System statistics updated");
     
     // Sprawdź pamięć
     if (stats.free_memory < 200) {
@@ -314,7 +310,7 @@ void setup() {
     memset(&stats, 0, sizeof(SystemStats));
     stats.free_memory = freeMemory();
     
-    LOG_INFO_F("System initialized successfully. Free memory: %d bytes", stats.free_memory);
+    LOG_INFO("System initialized");
     EVENT_INFO(EVENT_SYSTEM_RESET, "System startup complete");
     
     // Rozmieść diodę statusu
@@ -570,7 +566,7 @@ void loop() {
             digitalWrite(STATUS_LED, !digitalRead(STATUS_LED));
         }
         
-        LOG_ERROR_F("Safety fault! Code: %d", SAFE_GET_ERROR());
+        LOG_ERROR("Safety fault detected");
     }
     
     // Krótka przerwa dla stabilności (ale nie blokująca)
