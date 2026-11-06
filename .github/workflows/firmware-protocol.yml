@@ -53,7 +53,10 @@ jobs:
         run: |
           cp -a ResoNet_Nano "$RUNNER_TEMP/ResoNet_Nano"
           sed -i 's/#define RESONET_ENABLE_ETHERNET 0/#define RESONET_ENABLE_ETHERNET 1/' "$RUNNER_TEMP/ResoNet_Nano/network_config.h"
-          arduino-cli compile --fqbn arduino:avr:nano:cpu=atmega328old "$RUNNER_TEMP/ResoNet_Nano"
+          arduino-cli compile --fqbn arduino:avr:nano:cpu=atmega328old \
+            --build-property compiler.cpp.extra_flags="-DUIP_CONF_UDP=0 -DUIP_CONF_MAX_CONNECTIONS=1 -DUIP_SOCKET_NUMPACKETS=1" \
+            --build-property compiler.c.extra_flags="-DUIP_CONF_UDP=0 -DUIP_CONF_MAX_CONNECTIONS=1 -DUIP_SOCKET_NUMPACKETS=1" \
+            "$RUNNER_TEMP/ResoNet_Nano"
       - name: Diagnostic AVR memory map (temporary analysis)
         if: always()
         continue-on-error: true
