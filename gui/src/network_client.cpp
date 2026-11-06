@@ -6,6 +6,7 @@
 #include "network_client.h"
 #include "error_handler.h"
 #include <cstring>
+#include <algorithm>
 #include <chrono>
 #include <thread>
 #include <atomic>
@@ -229,14 +230,27 @@ bool NetworkClient::connect(const std::string& ip, int port_num) {
 }
 
 void NetworkClient::disconnect() {
+    // shutdown() is safe while another thread is in select/recv/send and wakes it
+    // without closing/releasing the descriptor before the I/O owner has exited.
+    {
+        std::lock_guard<std::mutex> state_lock(socket_mutex);
+        ++connection_generation;
+        connected = false;
+        if (socket_fd != INVALID_SOCKET_VALUE) {
+#ifdef _WIN32
+            ::shutdown(socket_fd, SD_BOTH);
+#else
+            ::shutdown(socket_fd, SHUT_RDWR);
+#endif
+        }
+    }
+
     std::lock_guard<std::mutex> io_lock(io_mutex);
-    std::unique_lock<std::mutex> socket_lock(socket_mutex);
-    ++connection_generation;
+    std::lock_guard<std::mutex> state_lock(socket_mutex);
     if (socket_fd != INVALID_SOCKET_VALUE) {
         CLOSE_SOCKET(socket_fd);
         socket_fd = INVALID_SOCKET_VALUE;
     }
-    connected = false;
     LOG_INFO("Disconnected from device");
 }
 
@@ -322,6 +336,8 @@ std::string NetworkClient::receiveData(int timeout_ms) {
                      "Receive timeout must be non-negative");
         return "";
     }
+    // Keep disconnect latency bounded even if a caller requests an excessive wait.
+    timeout_ms = std::min(timeout_ms, 5000);
 
     std::unique_lock<std::mutex> io_lock(io_mutex);
     socket_t active_socket = INVALID_SOCKET_VALUE;
