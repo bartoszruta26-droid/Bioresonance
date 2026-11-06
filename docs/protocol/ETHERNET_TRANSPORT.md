@@ -16,7 +16,7 @@ Aby włączyć transport, ustaw `RESONET_ENABLE_ETHERNET 1` i zweryfikuj, że:
 
 Wartości w pliku są przykładową konfiguracją prywatnej podsieci, a nie uniwersalnym ustawieniem.
 
-Skrypt kompilacyjny ogranicza zasoby stosu: `UIP_CONF_UDP=0`, `UIP_CONF_MAX_CONNECTIONS=1`, `UIP_SOCKET_NUMPACKETS=1`, bufory UART RX/TX po 32 bajty. UDP jest wyłączone, więc DHCP i DNS są niedostępne; wymagany jest statyczny adres IP. Jeden klient TCP i pojedynczy bufor pakietu ograniczają przepustowość.
+Skrypt kompilacyjny ogranicza zasoby stosu: `UIP_CONF_UDP=0`, `UIP_CONF_MAX_CONNECTIONS=1`, `UIP_CONF_MAX_LISTENPORTS=1`, `UIP_CONF_BUFFER_SIZE=128`, `UIP_SOCKET_NUMPACKETS=1`, bufory UART RX/TX po 32 bajty. Bufor uIP 128 B jest dobrany do krótkich ramek diagnostycznych v1 (maksymalna odpowiedź 25 B), kosztem przepustowości; nie należy go traktować jako konfiguracji do dużych transferów. UDP jest wyłączone, więc DHCP i DNS są niedostępne; wymagany jest statyczny adres IP. Jeden klient TCP i pojedynczy bufor pakietu ograniczają przepustowość.
 
 ## Zachowanie serwera
 
@@ -48,4 +48,4 @@ Poprzednia kompilacja wariantu EthernetENC przed wyłączeniem aktywnego otwiera
 
 Dla wariantu ENC28J60 build script automatycznie modyfikuje lokalną kopię przypiętej biblioteki EthernetENC 2.0.5: ustawia `UIP_ACTIVE_OPEN=0`. Firmware działa jako serwer TCP i nie inicjuje połączeń wychodzących, dlatego kod aktywnego otwierania TCP jest zbędny. Funkcja serwera i odpowiedzi na przychodzące połączenia pozostają włączone. Skrypt wykonuje kopię zapasową pliku konfiguracyjnego i przywraca oryginał po kompilacji (także po błędzie). Przerywa kompilację, jeśli nie odnajdzie oczekiwanej wersji biblioteki lub nie może bezpiecznie zastosować zmiany.
 
-Dodatkowo AVR jest kompilowany z `-mcall-prologues`, a UDP pozostaje wyłączone. CI wymaga obecnie nie więcej niż 28 800 B Flash dla wariantu Ethernet, czyli co najmniej 1 920 B rezerwy względem limitu 30 720 B. **Nowy wynik liczbowy nie został jeszcze potwierdzony**; do czasu zielonej kompilacji nie należy uznawać celu pamięciowego za osiągnięty. Nie jest to pomiar fizycznego sprzętu.
+Dodatkowo AVR jest kompilowany z `-mcall-prologues`, a UDP pozostaje wyłączone. Ograniczenie bufora uIP do 128 B oraz listy nasłuchu do jednego portu zmniejsza przede wszystkim zużycie RAM. CI wymaga obecnie nie więcej niż 28 800 B Flash dla wariantu Ethernet, czyli co najmniej 1 920 B rezerwy względem limitu 30 720 B. **Nowy wynik liczbowy nie został jeszcze potwierdzony**; do czasu zielonej kompilacji nie należy uznawać celu pamięciowego za osiągnięty. Nie jest to pomiar fizycznego sprzętu.
