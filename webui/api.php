@@ -18,6 +18,16 @@ define('MAX_LOG_SIZE', 1048576); // 1MB limit dla pliku logów
 define('DEFAULT_ARDUINO_IP', '192.168.4.1');
 define('DEFAULT_ARDUINO_PORT', 23);
 
+// The WebUI sends JSON bodies; PHP does not populate $_POST for application/json.
+if (($_SERVER['CONTENT_TYPE'] ?? '') !== '' &&
+    stripos($_SERVER['CONTENT_TYPE'], 'application/json') !== false) {
+    $requestBody = file_get_contents('php://input');
+    $decodedBody = json_decode($requestBody, true);
+    if (is_array($decodedBody)) {
+        $_POST = array_merge($_POST, $decodedBody);
+    }
+}
+
 // Inicjalizacja sesji PHP
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
