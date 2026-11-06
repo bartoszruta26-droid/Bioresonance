@@ -40,8 +40,8 @@
 - ✅ **Non-blocking Timing** - Wszystkie operacje oparte na `millis()`
 - ✅ **Bezpieczeństwo Medyczne** - Zgodność z IEC 60601-1
 - ✅ **Watchdog Timer** - Wielopoziomowy monitoring
-- ✅ **Ring Buffer Logów** - 256 wpisów historii
-- ✅ **Event Queue** - Kolejka FIFO 32 zdarzeń
+- ✅ **Ring Buffer Logów** - 4 wpisy historii
+- ✅ **Event Queue** - Kolejka FIFO 4 zdarzenia
 
 ---
 
@@ -61,11 +61,11 @@ blockDiagram
         style fill:#ffcdd2,stroke:#c62828,stroke-width:2px
     end
     
-    block:Logging["📝 logging_system<br/>100ms<br/>Ring Buffer 256"]
+    block:Logging["📝 logging_system<br/>100ms<br/>Ring Buffer 4"]
         style fill:#fff9c4,stroke:#f9a825,stroke-width:2px
     end
     
-    block:Events["⚡ event_system<br/>50ms<br/>FIFO 32 events"]
+    block:Events["⚡ event_system<br/>50ms<br/>FIFO 4 events"]
         style fill:#e1bee7,stroke:#7b1fa2,stroke-width:2px
     end
     
@@ -140,7 +140,7 @@ flowchart LR
     end
     
     subgraph Logging["logging_system.*"]
-        L1["Ring Buffer<br/>256 entries<br/>6 levels"]
+        L1["Ring Buffer<br/>4 entries<br/>6 levels"]
     end
     
     subgraph Events["event_system.*"]
@@ -217,7 +217,7 @@ flowchart LR
 
 **Konfiguracja:**
 ```cpp
-#define LOG_BUFFER_SIZE 256        // Ring buffer entries
+#define LOG_BUFFER_SIZE 4          // Ring buffer entries (ATmega328P SRAM budget)
 #define LOG_MESSAGE_MAX_LEN 64     // Max długość wiadomości
 #define CURRENT_LOG_LEVEL LOG_VERBOSE  // Poziom logowania
 ```
@@ -457,7 +457,7 @@ Po podłączeniu przez USB i otwarciu monitora szeregowego (115200 baud):
 | `s` | **Status** - Pełny raport systemu |
 | `t` | **Test PWM** - Uruchom 727 Hz na 5s |
 | `x` | **Stop PWM** - Zatrzymaj generator |
-| `l` | **Log History** - Pokaż 256 ostatnich logów |
+| `l` | **Log History** - Pokaż historię ostatnich 4 logów |
 | `e` | **Event Stats** - Statystyki zdarzeń |
 | `h` | **Help** - Lista komend |
 
