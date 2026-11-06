@@ -61,81 +61,73 @@ NetworkClient::~NetworkClient() {
 }
 
 bool NetworkClient::connect(const std::string& ip, int port_num) {
-    std::unique_lock<std::mutex> socket_lock(socket_mutex);
-    // A reconnect replaces the previous descriptor instead of leaking it.
-    if (socket_fd != INVALID_SOCKET_VALUE) {
-        CLOSE_SOCKET(socket_fd);
-        socket_fd = INVALID_SOCKET_VALUE;
+    // Invalidate any previous connection attempt and detach the old socket quickly.
+    // The potentially blocking network handshake uses a private local socket.
+    std::uint64_t attempt_generation = 0;
+    {
+        std::lock_guard<std::mutex> lock(socket_mutex);
+        attempt_generation = ++connection_generation;
+        if (socket_fd != INVALID_SOCKET_VALUE) {
+            CLOSE_SOCKET(socket_fd);
+            socket_fd = INVALID_SOCKET_VALUE;
+        }
+        connected = false;
     }
-    connected = false;
+
 #ifdef _WIN32
     if (!winsock_acquired) return false;
 #endif
-    // Validate IP address format (basic check)
     if (ip.empty()) {
-        socket_lock.unlock();
         REPORT_ERROR(ErrorCode::ERR_NETWORK_UNREACHABLE, ErrorCategory::NETWORK,
-                    "Empty IP address");
+                     "Empty IP address");
         return false;
     }
-    
-    // Validate port range
     if (port_num < 1 || port_num > 65535) {
-        socket_lock.unlock();
         REPORT_ERROR(ErrorCode::ERR_NETWORK_SOCKET_FAILED, ErrorCategory::NETWORK,
-                    "Invalid port number: " + std::to_string(port_num));
-        return false;
-    }
-    
-    ip_address = ip;
-    port = port_num;
-    
-    struct in_addr parsed_address{};
-    if (inet_pton(AF_INET, ip.c_str(), &parsed_address) != 1) {
-        socket_lock.unlock();
-        REPORT_ERROR(ErrorCode::ERR_NETWORK_UNREACHABLE, ErrorCategory::NETWORK,
-                    "Invalid IPv4 address format: " + ip);
+                     "Invalid port number: " + std::to_string(port_num));
         return false;
     }
 
-    socket_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (socket_fd == INVALID_SOCKET_VALUE) {
-        socket_lock.unlock();
-        REPORT_ERROR(ErrorCode::ERR_NETWORK_SOCKET_FAILED, ErrorCategory::NETWORK,
-                    "Failed to create socket");
+    struct in_addr parsed_address{};
+    if (inet_pton(AF_INET, ip.c_str(), &parsed_address) != 1) {
+        REPORT_ERROR(ErrorCode::ERR_NETWORK_UNREACHABLE, ErrorCategory::NETWORK,
+                     "Invalid IPv4 address format: " + ip);
         return false;
     }
-    
+
+    socket_t candidate = socket(AF_INET, SOCK_STREAM, 0);
+    if (candidate == INVALID_SOCKET_VALUE) {
+        REPORT_ERROR(ErrorCode::ERR_NETWORK_SOCKET_FAILED, ErrorCategory::NETWORK,
+                     "Failed to create socket");
+        return false;
+    }
+    const auto close_candidate = [&candidate]() {
+        if (candidate != INVALID_SOCKET_VALUE) {
+            CLOSE_SOCKET(candidate);
+            candidate = INVALID_SOCKET_VALUE;
+        }
+    };
+
 #ifdef _WIN32
-    u_long mode = 1;  // non-blocking
-    if (ioctlsocket(socket_fd, FIONBIO, &mode) != 0) {
-        CLOSE_SOCKET(socket_fd);
-        socket_fd = INVALID_SOCKET_VALUE;
-        socket_lock.unlock();
-        REPORT_ERROR(ErrorCode::ERR_NETWORK_SOCKET_FAILED, ErrorCategory::NETWORK,
-                    "Failed to set non-blocking socket mode");
-        return false;
-    }
+    u_long mode = 1;
+    if (ioctlsocket(candidate, FIONBIO, &mode) != 0) {
 #else
-    // Non-blocking connect; both descriptor operations must succeed.
-    int flags = fcntl(socket_fd, F_GETFL, 0);
-    if (flags < 0 || fcntl(socket_fd, F_SETFL, flags | O_NONBLOCK) < 0) {
-        CLOSE_SOCKET(socket_fd);
-        socket_fd = INVALID_SOCKET_VALUE;
-        socket_lock.unlock();
+    int flags = fcntl(candidate, F_GETFL, 0);
+    if (flags < 0 || fcntl(candidate, F_SETFL, flags | O_NONBLOCK) < 0) {
+#endif
+        close_candidate();
         REPORT_ERROR(ErrorCode::ERR_NETWORK_SOCKET_FAILED, ErrorCategory::NETWORK,
-                    "Failed to set non-blocking socket mode");
+                     "Failed to set non-blocking socket mode");
         return false;
     }
-#endif
-    
-    memset(&server_addr, 0, sizeof(server_addr));
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(static_cast<u_short>(port));
-    
-    server_addr.sin_addr = parsed_address;
-    
-    int result = ::connect(socket_fd, (struct sockaddr*)&server_addr, sizeof(server_addr));
+
+    struct sockaddr_in candidate_address{};
+    candidate_address.sin_family = AF_INET;
+    candidate_address.sin_port = htons(static_cast<u_short>(port_num));
+    candidate_address.sin_addr = parsed_address;
+
+    int result = ::connect(candidate, reinterpret_cast<struct sockaddr*>(&candidate_address),
+                           sizeof(candidate_address));
 #ifdef _WIN32
     const int connect_error = result < 0 ? WSAGetLastError() : 0;
     if (result < 0 && connect_error != WSAEWOULDBLOCK &&
@@ -144,78 +136,82 @@ bool NetworkClient::connect(const std::string& ip, int port_num) {
     const int connect_error = result < 0 ? errno : 0;
     if (result < 0 && connect_error != EINPROGRESS && connect_error != EWOULDBLOCK) {
 #endif
-        CLOSE_SOCKET(socket_fd);
-        socket_fd = INVALID_SOCKET_VALUE;
-        socket_lock.unlock();
+        close_candidate();
         REPORT_ERROR(ErrorCode::ERR_NETWORK_UNREACHABLE, ErrorCategory::NETWORK,
-                    "Connection failed");
+                     "Connection failed");
         return false;
     }
-    
-    // Wait for connection - use portable select with proper socket handling
+
     fd_set write_fds;
     FD_ZERO(&write_fds);
-    FD_SET(socket_fd, &write_fds);
-    
-    struct timeval tv;
-    tv.tv_sec = 5;
-    tv.tv_usec = 0;
-    
+    FD_SET(candidate, &write_fds);
+    struct timeval timeout{};
+    timeout.tv_sec = 5;
 #ifdef _WIN32
-    result = select(0, NULL, &write_fds, NULL, &tv);
+    result = select(0, nullptr, &write_fds, nullptr, &timeout);
 #else
-    result = select(socket_fd + 1, NULL, &write_fds, NULL, &tv);
+    result = select(candidate + 1, nullptr, &write_fds, nullptr, &timeout);
 #endif
     if (result <= 0) {
         const bool timed_out = (result == 0);
-        CLOSE_SOCKET(socket_fd);
-        socket_fd = INVALID_SOCKET_VALUE;
-        socket_lock.unlock();
+        close_candidate();
         REPORT_ERROR(timed_out ? ErrorCode::ERR_NETWORK_TIMEOUT : ErrorCode::ERR_NETWORK_UNREACHABLE,
-                    ErrorCategory::NETWORK,
-                    timed_out ? "Connection timeout" : "Connection readiness check failed");
+                     ErrorCategory::NETWORK,
+                     timed_out ? "Connection timeout" : "Connection readiness check failed");
         return false;
     }
-    
-    // Check for connection errors - portable cast for getsockopt
-    int so_error = 0;
+
+    int socket_error = 0;
 #ifdef _WIN32
-    int len = sizeof(so_error);
-    if (getsockopt(socket_fd, SOL_SOCKET, SO_ERROR, (char*)&so_error, &len) < 0 || so_error != 0) {
+    int error_length = sizeof(socket_error);
+    const int option_result = getsockopt(candidate, SOL_SOCKET, SO_ERROR,
+                                         reinterpret_cast<char*>(&socket_error), &error_length);
 #else
-    socklen_t len = sizeof(so_error);
-    if (getsockopt(socket_fd, SOL_SOCKET, SO_ERROR, &so_error, &len) < 0 || so_error != 0) {
+    socklen_t error_length = sizeof(socket_error);
+    const int option_result = getsockopt(candidate, SOL_SOCKET, SO_ERROR,
+                                         &socket_error, &error_length);
 #endif
-        CLOSE_SOCKET(socket_fd);
-        socket_fd = INVALID_SOCKET_VALUE;
-        socket_lock.unlock();
+    if (option_result < 0 || socket_error != 0) {
+        close_candidate();
         REPORT_ERROR(ErrorCode::ERR_NETWORK_UNREACHABLE, ErrorCategory::NETWORK,
-                    "Connection error: " + std::to_string(so_error));
+                     "Connection error: " + std::to_string(socket_error));
         return false;
     }
-    
+
 #ifdef _WIN32
     u_long blocking_mode = 0;
-    if (ioctlsocket(socket_fd, FIONBIO, &blocking_mode) != 0) {
+    if (ioctlsocket(candidate, FIONBIO, &blocking_mode) != 0) {
 #else
-    int restore_flags = fcntl(socket_fd, F_GETFL, 0);
-    if (restore_flags < 0 || fcntl(socket_fd, F_SETFL, restore_flags & ~O_NONBLOCK) < 0) {
+    const int restore_flags = fcntl(candidate, F_GETFL, 0);
+    if (restore_flags < 0 || fcntl(candidate, F_SETFL, restore_flags & ~O_NONBLOCK) < 0) {
 #endif
-        CLOSE_SOCKET(socket_fd);
-        socket_fd = INVALID_SOCKET_VALUE;
-        socket_lock.unlock();
+        close_candidate();
         REPORT_ERROR(ErrorCode::ERR_NETWORK_SOCKET_FAILED, ErrorCategory::NETWORK,
-                    "Failed to restore blocking socket mode");
+                     "Failed to restore blocking socket mode");
         return false;
     }
-    
-    connected = true;
-    LOG_INFO("Connected to " + ip + ":" + std::to_string(port));
+
+    {
+        std::lock_guard<std::mutex> lock(socket_mutex);
+        // disconnect() or a newer connect() supersedes this attempt.
+        if (connection_generation != attempt_generation) {
+            close_candidate();
+            return false;
+        }
+        socket_fd = candidate;
+        candidate = INVALID_SOCKET_VALUE;
+        ip_address = ip;
+        port = port_num;
+        connected = true;
+    }
+
+    LOG_INFO("Connected to " + ip + ":" + std::to_string(port_num));
     return true;
 }
 
 void NetworkClient::disconnect() {
     std::unique_lock<std::mutex> socket_lock(socket_mutex);
+    ++connection_generation;
     if (socket_fd != INVALID_SOCKET_VALUE) {
         CLOSE_SOCKET(socket_fd);
         socket_fd = INVALID_SOCKET_VALUE;
