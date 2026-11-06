@@ -61,6 +61,12 @@ if(BUILD_TESTING)
  target_link_libraries(logger_smoke PRIVATE Threads::Threads)
  add_test(NAME logger_reentrancy COMMAND logger_smoke)
 
+ add_executable(error_handler_smoke tests/error_handler_smoke.cpp)
+ target_include_directories(error_handler_smoke PRIVATE include)
+ target_link_libraries(error_handler_smoke PRIVATE Threads::Threads)
+ add_test(NAME error_handler_reentrancy COMMAND error_handler_smoke)
+ set_tests_properties(error_handler_reentrancy PROPERTIES TIMEOUT 10)
+
  add_executable(frequency_loader_smoke tests/frequency_loader_smoke.cpp src/frequency_loader.cpp)
  target_include_directories(frequency_loader_smoke PRIVATE include)
  target_link_libraries(frequency_loader_smoke PRIVATE Threads::Threads)
