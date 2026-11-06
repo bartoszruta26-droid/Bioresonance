@@ -107,6 +107,39 @@ void log_add_entry(uint8_t level, uint16_t event_code, const char* message) {
 }
 
 /**
+ * @brief Adds a log entry whose message resides in program memory.
+ */
+void log_add_entry_P(uint8_t level, uint16_t event_code, PGM_P message) {
+    if (level < CURRENT_LOG_LEVEL || message == NULL) return;
+
+    cli();
+    if (log_buffer.count >= LOG_BUFFER_SIZE) {
+        log_buffer.overflow_count++;
+        log_buffer.tail = (log_buffer.tail + 1) % LOG_BUFFER_SIZE;
+        log_buffer.count--;
+    }
+
+    LogEntry* entry = &log_buffer.entries[log_buffer.head];
+    entry->timestamp = millis();
+    entry->level = level;
+    entry->event_code = event_code;
+    strncpy_P(entry->message, message, sizeof(entry->message) - 1);
+    entry->message[sizeof(entry->message) - 1] = '\\0';
+    log_buffer.head = (log_buffer.head + 1) % LOG_BUFFER_SIZE;
+    log_buffer.count++;
+    sei();
+
+    if (ENABLE_SERIAL_LOG && Serial) {
+        Serial.print(F("[LOG "));
+        Serial.print(millis());
+        Serial.print(F("ms] "));
+        Serial.print(get_log_level_name(level));
+        Serial.print(F(": "));
+        Serial.println((const __FlashStringHelper*)message);
+    }
+}
+
+/**
  * @brief Pobiera nazwę poziomu logowania
  * @param level Poziom logowania
  * @return Nazwa jako string z pamięci FLASH
