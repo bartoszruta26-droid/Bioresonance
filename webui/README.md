@@ -129,7 +129,7 @@ Dla każdego kanału możesz skonfigurować:
 | 🏷️ **Nazwa** | Dowolna nazwa opisowa | Tekst |
 | 🔌 **Typ** | Rodzaj aplikatora | `FLAT_COIL`, `FERRITE_ROD`, `CAPACITIVE_PLATE`, `PEN_APPLICATOR`, `MAT_APPLICATOR`, `LOCAL_PAD`, `RING_APPLICATOR`, `CUSTOM` |
 | 📊 **Częstotliwość** | Wartość w Hz | np. `727.00` |
-| ⚡ **Duty Cycle** | Współczynnik wypełnienia | `0-100%` |
+| ⚡ **Duty Cycle** | Współczynnik wypełnienia | `1-100%` |
 | 📈 **Intensywność** | Wartość mocy | `0-4095` |
 | 📡 **Modulacja** | Typ modulacji | `Brak`, `AM`, `FM`, `Burst`, `Sweep` |
 | 🔘 **Status** | Stan kanału | `Włącz` / `Wyłącz` |
