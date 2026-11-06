@@ -1,4 +1,5 @@
 #include "network_client.h"
+#include "error_handler.h"
 
 #include <atomic>
 #include <chrono>
@@ -77,8 +78,19 @@ int main() {
 
                     {
                         NetworkClient client;
+                        std::atomic<bool> callback_reentered{false};
+                        ErrorHandler::getInstance().registerCallback(
+                            [&client, &callback_reentered](const ErrorInfo&) {
+                                (void)client.isConnected();
+                                callback_reentered = true;
+                            });
+                        // Error callbacks may query the client; never invoke them
+                        // while socket_mutex is held.
+                        if (client.sendCommand("")) exit_code = 10;
+                        if (!callback_reentered.load() && exit_code == 0) exit_code = 11;
+
                         const int port = static_cast<int>(ntohs(address.sin_port));
-                        if (!client.connect("127.0.0.1", port)) {
+                        if (exit_code == 0 && !client.connect("127.0.0.1", port)) {
                             exit_code = 5;
                         } else if (!client.sendCommand("ping")) {
                             exit_code = 6;
