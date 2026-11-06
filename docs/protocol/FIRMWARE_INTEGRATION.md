@@ -11,7 +11,7 @@ Wprowadzono niezależny moduł `protocol_v1.h/.cpp` do kodowania ramek, obliczan
 - Handler otrzymuje widok payloadu ważny wyłącznie podczas wywołania zwrotnego; nie wolno zachowywać wskaźnika po powrocie.
 - Parser wywołuje handler wyłącznie po walidacji wersji, flag, typu, długości, CRC.
 - Moduł nie zawiera typów ani funkcji uruchamiania efektorów.
-- Nieznany typ jest odrzucany lokalnie; warstwa transportowa może w przyszłości wygenerować NACK, ale musi zrobić to jawnie.
+- Typy spoza protokołu są odrzucane przez parser. Rozpoznane typy odpowiedzi przesłane w kierunku klient → urządzenie otrzymują NACK.
 - `rejectedFrames()` jest 16-bitowym licznikiem diagnostycznym; może się zawinąć.
 
 ## Integracja z siecią
