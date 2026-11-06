@@ -24,7 +24,7 @@ GuiApp::GuiApp()
       imgui_context_created(false), imgui_sdl_backend_initialized(false),
       imgui_renderer_backend_initialized(false), selected_probe(1), running(false),
       device_ip("192.168.1.100"), device_port(5001),
-      show_frequency_browser(false), show_probe_settings(true), 
+      show_frequency_browser(false), frequency_search_active(false), show_probe_settings(true), 
       show_system_status(true), current_tab(0) {
 }
 
@@ -395,36 +395,35 @@ void GuiApp::renderProbePanel() {
 }
 
 void GuiApp::renderFrequencyBrowser() {
-    // Use member variable or persistent storage instead of static local
-    // For now, use a local buffer that persists via ImGui's internal state
-    static char search_buffer[256] = "";  // ImGui manages the text input state internally
-    std::vector<FrequencyEntry> filtered_results;
-    bool search_triggered = false;
-    
     ImGui::Text("Przeglądarka częstotliwości");
     ImGui::Separator();
-    
-    // Search bar
-    if (ImGui::InputText("##Search", search_buffer, sizeof(search_buffer), ImGuiInputTextFlags_EnterReturnsTrue)) {
-        filtered_results = frequency_loader.searchByDisease(search_buffer);
-        search_triggered = true;
-    }
+
+    const bool submitted = ImGui::InputText(
+        "##Search", &frequency_search, ImGuiInputTextFlags_EnterReturnsTrue);
     ImGui::SameLine();
-    
-    if (ImGui::Button("Szukaj choroby")) {
-        filtered_results = frequency_loader.searchByDisease(search_buffer);
-        search_triggered = true;
-    }
+    const bool search_clicked = ImGui::Button("Szukaj choroby");
     ImGui::SameLine();
-    
-    if (ImGui::Button("Pokaż wszystkie")) {
-        filtered_results.clear();
-        search_triggered = false;
+    const bool show_all_clicked = ImGui::Button("Pokaż wszystkie");
+
+    if (submitted || search_clicked) {
+        filtered_frequencies = frequency_loader.searchByDisease(frequency_search);
+        frequency_search_active = true;
     }
-    
+    if (show_all_clicked) {
+        filtered_frequencies.clear();
+        frequency_search_active = false;
+    }
+
     ImGui::Separator();
-    
-    // Results table
+
+    const auto& results = frequency_search_active
+        ? filtered_frequencies
+        : frequency_loader.getFrequencyDatabase();
+
+    if (frequency_search_active && results.empty()) {
+        ImGui::TextWrapped("Brak wyników dla podanej frazy.");
+    }
+
     if (ImGui::BeginTable("FreqTable", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_ScrollY)) {
         ImGui::TableSetupScrollFreeze(0, 1);
         ImGui::TableSetupColumn("Częstotliwość (Hz)");
@@ -432,22 +431,19 @@ void GuiApp::renderFrequencyBrowser() {
         ImGui::TableSetupColumn("Choroba");
         ImGui::TableSetupColumn("Akcje");
         ImGui::TableHeadersRow();
-        
-        const auto& db = frequency_loader.getFrequencyDatabase();
-        const auto& results = search_triggered ? filtered_results : db;
-        
+
         for (const auto& entry : results) {
             ImGui::TableNextRow();
-            
+
             ImGui::TableNextColumn();
             ImGui::Text("%u", entry.frequency_hz);
-            
+
             ImGui::TableNextColumn();
             ImGui::Text("%s", entry.category.c_str());
-            
+
             ImGui::TableNextColumn();
             ImGui::Text("%s", entry.disease_name.c_str());
-            
+
             ImGui::TableNextColumn();
             char button_label[64];
             snprintf(button_label, sizeof(button_label), "Użyj##%u", entry.frequency_hz);
@@ -455,7 +451,7 @@ void GuiApp::renderFrequencyBrowser() {
                 onFrequencySelected(entry.frequency_hz);
             }
         }
-        
+
         ImGui::EndTable();
     }
 }
