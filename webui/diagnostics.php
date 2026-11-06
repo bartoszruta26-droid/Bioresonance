@@ -144,6 +144,7 @@ try {
     $deviceId = bin2hex(substr($hello, 0, 8));
     $firmware = [ord($hello[8]), ord($hello[9]), ord($hello[10])];
     $capabilities = unpack('nvalue', substr($hello, 11, 2))['value'];
+    if ($capabilities !== 0) throw new RuntimeException('Nieobsługiwane capability w protokole v1');
 
     if ($action === 'ping') {
         $pong = exchange($socket, 0x03, 0x04, $sequence++);
@@ -163,7 +164,11 @@ try {
     $faultFlags = unpack('nvalue', substr($data, 1, 2))['value'];
     $sensorFlags = unpack('nvalue', substr($data, 11, 2))['value'];
     $state = ord($data[0]);
-    $outputInhibited = ord($data[13]) === 1 ? true : null;
+    $outputFlag = ord($data[13]);
+    if ($state > 5 || ($faultFlags & ~0x0003) !== 0 || !in_array($outputFlag, [0, 1], true)) {
+        throw new RuntimeException('STATUS_RESP zawiera nieobsługiwane wartości zarezerwowane');
+    }
+    $outputInhibited = $outputFlag === 1 ? true : null;
 
     respond(200, ['success' => true, 'device_id' => $deviceId,
         'firmware' => implode('.', $firmware), 'capabilities' => $capabilities,
