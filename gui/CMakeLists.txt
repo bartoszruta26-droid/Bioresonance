@@ -16,7 +16,7 @@ set(IMGUI_SOURCES
 set(SOURCES src/main.cpp src/gui_app.cpp src/network_client.cpp
  src/probe_manager.cpp src/frequency_loader.cpp ${IMGUI_SOURCES})
 set(HEADERS include/gui_app.h include/network_client.h include/probe_manager.h
- include/frequency_loader.h include/types.h include/logger.h
+ include/frequency_loader.h include/types.h include/resonet_protocol_v1.h include/logger.h
  include/event_system.h include/error_handler.h)
 add_executable(bioresonance_gui ${SOURCES} ${HEADERS})
 target_include_directories(bioresonance_gui PRIVATE include imgui_lib
@@ -56,6 +56,9 @@ install(TARGETS bioresonance_gui RUNTIME DESTINATION bin)
 
 include(CTest)
 if(BUILD_TESTING)
+ add_executable(resonet_protocol_v1_smoke tests/resonet_protocol_v1_smoke.cpp)
+ target_include_directories(resonet_protocol_v1_smoke PRIVATE include)
+ add_test(NAME resonet_protocol_v1_codec COMMAND resonet_protocol_v1_smoke)
  add_executable(logger_smoke tests/logger_smoke.cpp)
  target_include_directories(logger_smoke PRIVATE include)
  target_link_libraries(logger_smoke PRIVATE Threads::Threads)
