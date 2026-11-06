@@ -32,7 +32,19 @@
     #define CLOSE_SOCKET close
 #endif
 
-struct ResoNetStatusV1 {\n    std::uint8_t state = 0;\n    std::uint16_t fault_flags = 0;\n    std::uint32_t uptime_seconds = 0;\n    std::uint16_t free_memory_bytes = 0;\n    std::int16_t temperature_centi_c = 0;\n    bool temperature_valid = false;\n    std::uint16_t sensor_valid_flags = 0;\n    bool output_inhibited_known = false;\n    bool output_inhibited = false;\n};\n\nclass NetworkClient {
+struct ResoNetStatusV1 {
+    std::uint8_t state = 0;
+    std::uint16_t fault_flags = 0;
+    std::uint32_t uptime_seconds = 0;
+    std::uint16_t free_memory_bytes = 0;
+    std::int16_t temperature_centi_c = 0;
+    bool temperature_valid = false;
+    std::uint16_t sensor_valid_flags = 0;
+    bool output_inhibited_known = false;
+    bool output_inhibited = false;
+};
+
+class NetworkClient {
 private:
     socket_t socket_fd;
 #ifdef _WIN32
@@ -49,7 +61,8 @@ private:
     mutable std::mutex socket_mutex;
     // Serializes socket I/O and descriptor lifecycle; state mutex is never held during I/O.
     mutable std::mutex io_mutex;
-    std::uint64_t connection_generation = 0;\n    std::uint16_t protocol_sequence = 0;
+    std::uint64_t connection_generation = 0;
+    std::uint16_t protocol_sequence = 0;
     
 public:
     NetworkClient();
@@ -57,7 +70,8 @@ public:
     
     bool connect(const std::string& ip, int port_num);
     void disconnect();
-    bool isConnected() const;\n    bool requestStatus(ResoNetStatusV1& status);
+    bool isConnected() const;
+    bool requestStatus(ResoNetStatusV1& status);
     bool sendTherapyPacket(const TherapyPacket& packet);
     bool sendCommand(const std::string& cmd);
     std::string receiveData(int timeout_ms = 100);
