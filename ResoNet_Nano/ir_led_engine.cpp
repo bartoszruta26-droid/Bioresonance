@@ -63,7 +63,7 @@ static void timer2_configure_carrier(uint16_t carrier_freq_hz) {
     
     sei();
     
-    LOG_INFO_F("Timer2 configured for %u Hz carrier on pin 3", carrier_freq_hz);
+    LOG_INFO("Timer2 carrier configured");
 }
 
 /**
@@ -264,11 +264,7 @@ bool ir_led_set_config(const IRLedConfig* config) {
     ir_status.current_modulation = config->modulation_type;
     ir_status.carrier_enabled = true;
     
-    LOG_INFO_F("IR LED configured: therapy=%lu.%02lu Hz, carrier=%u Hz, duty %u%%", 
-               config->therapy_freq_hz_x100 / 100,
-               config->therapy_freq_hz_x100 % 100,
-               config->carrier_freq_hz,
-               config->duty_cycle);
+    LOG_INFO("IR LED configured");
     
     return true;
 }
