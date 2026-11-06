@@ -14,6 +14,7 @@
 #define ERROR_HANDLER_H
 
 #include <string>
+#include <cstddef>
 #include <vector>
 #include <functional>
 #include <mutex>
