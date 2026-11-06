@@ -36,6 +36,21 @@ class WebApiContractTests(unittest.TestCase):
         self.assertIn("(float)$ch['freq'] < 0.1", API)
         self.assertIn("(float)$ch['freq'] > 500000", API)
 
+    def test_frontend_uses_only_diagnostic_mode_until_transport_is_verified(self):
+        self.assertIn("const DIAGNOSTIC_ONLY = true;", HTML)
+        self.assertIn("apiCall('connect_test'", HTML)
+        self.assertIn("apiCall('get_status')", HTML)
+        self.assertIn("TRYB DIAGNOSTYCZNY", HTML)
+        self.assertIn("async function startTherapy()", HTML)
+        self.assertIn("Funkcja wyłączona", HTML)
+
+    def test_frontend_does_not_call_unimplemented_actions_from_active_handlers(self):
+        diagnostic = HTML.split("const DIAGNOSTIC_ONLY = true;", 1)[1]
+        self.assertNotIn("apiCall('get_logs')", diagnostic)
+        self.assertNotIn("apiCall('get_probes')", diagnostic)
+        self.assertNotIn("apiCall('start_therapy')", diagnostic)
+        self.assertNotIn("apiCall('send_config')", diagnostic)
+
     def test_frontend_does_not_embed_api_secret(self):
         self.assertNotIn("BIORESONANCE_API_TOKEN=", HTML)
         self.assertIn("X-Bioresonance-Token", HTML)
