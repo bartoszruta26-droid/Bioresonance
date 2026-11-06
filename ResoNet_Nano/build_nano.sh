@@ -35,11 +35,12 @@ if grep -Eq '^#define[[:space:]]+RESONET_ENABLE_ETHERNET[[:space:]]+1' "$SKETCH_
   echo "EthernetENC 2.0.5: UIP_ACTIVE_OPEN=0 (inbound TCP only)"
 fi
 
-MEMORY_FLAGS="-mcall-prologues -DUIP_CONF_UDP=0 -DUIP_CONF_MAX_CONNECTIONS=1 -DUIP_CONF_MAX_LISTENPORTS=1 -DUIP_CONF_BUFFER_SIZE=128 -DUIP_SOCKET_NUMPACKETS=1 -DSERIAL_RX_BUFFER_SIZE=32 -DSERIAL_TX_BUFFER_SIZE=32"
+MEMORY_FLAGS="-mcall-prologues -maccumulate-args -DUIP_CONF_UDP=0 -DUIP_CONF_MAX_CONNECTIONS=1 -DUIP_CONF_MAX_LISTENPORTS=1 -DUIP_CONF_BUFFER_SIZE=128 -DUIP_SOCKET_NUMPACKETS=1 -DSERIAL_RX_BUFFER_SIZE=32 -DSERIAL_TX_BUFFER_SIZE=32"
 CPP_FLAGS="$MEMORY_FLAGS -fno-rtti -fno-exceptions"
 
 arduino-cli compile \
   --fqbn "$FQBN" \
   --build-property "compiler.cpp.extra_flags=$CPP_FLAGS" \
   --build-property "compiler.c.extra_flags=$MEMORY_FLAGS" \
+  --build-property "compiler.c.elf.extra_flags=-Wl,--relax" \
   "$SKETCH_DIR"
