@@ -23,7 +23,9 @@ int main() {
         std::remove(path.c_str());
         return 3;
     }
-    if (loader.searchByFrequency(0, 150).size() != 2) {
+    if (loader.searchByFrequency(0, 150).size() != 1 ||
+        loader.searchByFrequency(200, 0).size() != 1 ||
+        loader.searchByFrequency(0, 0).size() != 0) {
         std::remove(path.c_str());
         return 4;
     }
