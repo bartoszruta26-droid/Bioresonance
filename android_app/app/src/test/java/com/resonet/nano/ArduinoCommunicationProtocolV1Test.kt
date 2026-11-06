@@ -62,7 +62,7 @@ class ArduinoCommunicationProtocolV1Test {
         try {
             val connected = communication.connect("127.0.0.1", server.localPort)
             assertTrue(connected.isSuccess)
-            assertEquals("RN000000000001", communication.deviceIdentity?.deviceIdHex)
+            assertEquals("524E000000000001", communication.deviceIdentity?.deviceIdHex)
             assertEquals("4.0.0", communication.deviceIdentity?.firmwareVersion)
 
             val status = communication.getStatus().getOrThrow()
