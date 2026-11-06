@@ -24,7 +24,7 @@ GuiApp::GuiApp()
       imgui_context_created(false), imgui_sdl_backend_initialized(false),
       imgui_renderer_backend_initialized(false), selected_probe(1), running(false),
       device_ip("192.168.1.100"), device_port(5001),
-      show_frequency_browser(false), frequency_search_active(false), show_probe_settings(true), 
+      show_frequency_browser(false), frequency_search_active(false), show_probe_settings(false), 
       show_system_status(true), current_tab(0) {
 }
 
@@ -156,10 +156,24 @@ bool GuiApp::connectToDevice(const std::string& ip, int port) {
     addLog("Łączenie z " + ip + ":" + std::to_string(port) + "...");
     
     if (network.connect(ip, port)) {
+        ResoNetStatusV1 diagnostic;
+        if (!network.requestStatus(diagnostic)) {
+            network.disconnect();
+            status.connected = false;
+            addLog("Połączenie TCP bez poprawnej odpowiedzi STATUS_RESP — urządzenie nie zostało uznane za gotowe diagnostycznie.");
+            return false;
+        }
         status.connected = true;
+        status.uptime_seconds = diagnostic.uptime_seconds;
+        status.free_memory = diagnostic.free_memory_bytes;
+        status.temperature = diagnostic.temperature_valid
+            ? static_cast<float>(diagnostic.temperature_centi_c) / 100.0f : 0.0f;
+        status.safety_state = diagnostic.state == 5 ? "SAFE_LOCKOUT" :
+            diagnostic.state == 4 ? "FAULT" :
+            diagnostic.state == 1 ? "IDLE" : "UNKNOWN";
         device_ip = ip;
         device_port = port;
-        addLog("Nawiązano połączenie TCP; identyfikacja urządzenia i telemetria nie są jeszcze obsługiwane.");
+        addLog("Protokół v1: HELLO i STATUS poprawne. Klient działa wyłącznie diagnostycznie; wyjścia pozostają poza zakresem.");
         return true;
     } else {
         status.connected = false;
