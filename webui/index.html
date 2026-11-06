@@ -1594,11 +1594,6 @@
 
             document.getElementById('statusText').textContent = 'Rozłączono — brak testu TCP';
             updateConnectionStatus(false);
-            try {
-                await loadFrequencies(); // wyłącznie informacja o lokalnym pliku; nie uruchamia sprzętu
-            } catch (_) {
-                // Brak lokalnej bazy nie wpływa na diagnostykę łącza.
-            }
         }
 
         // Twarda blokada operacji, których backend/firmware nie implementuje.
