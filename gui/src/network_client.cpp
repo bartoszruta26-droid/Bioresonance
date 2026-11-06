@@ -171,13 +171,24 @@ bool NetworkClient::sendTherapyPacket(const TherapyPacket& packet) {
     
     std::lock_guard<std::mutex> lock(tx_mutex);
     
-    ssize_t sent = send(socket_fd, (const char*)&packet, sizeof(packet), 0);
-    if (sent < 0) {
-        REPORT_ERROR(ErrorCode::ERR_NETWORK_SEND_FAILED, ErrorCategory::NETWORK,
-                    "Failed to send therapy packet");
-        return false;
+    const char* data = reinterpret_cast<const char*>(&packet);
+    size_t total_sent = 0;
+    while (total_sent < sizeof(packet)) {
+#ifdef _WIN32
+        int sent = ::send(socket_fd, data + total_sent,
+                          static_cast<int>(sizeof(packet) - total_sent), 0);
+#else
+        ssize_t sent = ::send(socket_fd, data + total_sent,
+                              sizeof(packet) - total_sent, 0);
+#endif
+        if (sent <= 0) {
+            REPORT_ERROR(ErrorCode::ERR_NETWORK_SEND_FAILED, ErrorCategory::NETWORK,
+                        "Failed to send complete therapy packet");
+            return false;
+        }
+        total_sent += static_cast<size_t>(sent);
     }
-    return (static_cast<size_t>(sent) == sizeof(packet));
+    return true;
 }
 
 bool NetworkClient::sendCommand(const std::string& cmd) {
@@ -188,13 +199,23 @@ bool NetworkClient::sendCommand(const std::string& cmd) {
     }
     
     std::lock_guard<std::mutex> lock(tx_mutex);
-    ssize_t sent = send(socket_fd, cmd.c_str(), cmd.length(), 0);
-    if (sent < 0) {
-        REPORT_ERROR(ErrorCode::ERR_NETWORK_SEND_FAILED, ErrorCategory::NETWORK,
-                    "Failed to send command");
-        return false;
+    size_t total_sent = 0;
+    while (total_sent < cmd.length()) {
+#ifdef _WIN32
+        int sent = ::send(socket_fd, cmd.data() + total_sent,
+                          static_cast<int>(cmd.length() - total_sent), 0);
+#else
+        ssize_t sent = ::send(socket_fd, cmd.data() + total_sent,
+                              cmd.length() - total_sent, 0);
+#endif
+        if (sent <= 0) {
+            REPORT_ERROR(ErrorCode::ERR_NETWORK_SEND_FAILED, ErrorCategory::NETWORK,
+                        "Failed to send complete command");
+            return false;
+        }
+        total_sent += static_cast<size_t>(sent);
     }
-    return (sent > 0);
+    return true;
 }
 
 std::string NetworkClient::receiveData(int timeout_ms) {
@@ -216,7 +237,11 @@ std::string NetworkClient::receiveData(int timeout_ms) {
     if (result <= 0) return "";
     
     char buffer[1024];
-    ssize_t received = recv(socket_fd, buffer, sizeof(buffer) - 1, 0);
+#ifdef _WIN32
+    int received = ::recv(socket_fd, buffer, static_cast<int>(sizeof(buffer) - 1), 0);
+#else
+    ssize_t received = ::recv(socket_fd, buffer, sizeof(buffer) - 1, 0);
+#endif
     if (received < 0) {
 #ifdef _WIN32
         int err = WSAGetLastError();
@@ -236,6 +261,10 @@ std::string NetworkClient::receiveData(int timeout_ms) {
         buffer[received] = '\0';
         return std::string(buffer, static_cast<size_t>(received));
     }
-    
+    if (received == 0) {
+        connected = false;
+        CLOSE_SOCKET(socket_fd);
+        socket_fd = INVALID_SOCKET_VALUE;
+    }
     return "";
 }
