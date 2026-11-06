@@ -69,7 +69,10 @@ data class SystemStatus(
     val systemStateReported: Boolean = false,
     val temperatureValid: Boolean = false,
     val outputInhibited: Boolean? = null,
-    val diagnosticFaultFlags: Int = 0
+    val diagnosticFaultFlags: Int = 0,
+    val pwmStatusKnown: Boolean = false,
+    val frequencyKnown: Boolean = false,
+    val effectorKnown: Boolean = false
 ) {
     val isSafe: Boolean
         get() = state == SystemState.IDLE || state == SystemState.RUNNING
