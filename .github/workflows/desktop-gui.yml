@@ -33,7 +33,7 @@ jobs:
         run: python3 -m unittest discover -s webui/tests -v
       - name: JavaScript syntax check
         run: |
-          python3 -c 'import os,re,pathlib; s=pathlib.Path("webui/index.html").read_text(encoding="utf-8"); m=re.search(r"<script>([\\s\\S]*?)</script>", s); assert m, "inline script not found"; pathlib.Path(os.environ["RUNNER_TEMP"], "webui.js").write_text(m.group(1), encoding="utf-8")'
+          python3 -c 'import os,re,pathlib; s=pathlib.Path("webui/index.html").read_text(encoding="utf-8"); m=re.search(r"<script\\b[^>]*>([\\s\\S]*?)</script>", s); assert m, "inline script not found"; pathlib.Path(os.environ["RUNNER_TEMP"], "webui.js").write_text(m.group(1), encoding="utf-8")'
           node --check "$RUNNER_TEMP/webui.js"
       - name: Configure
         run: cmake -S gui -B build/gui -G Ninja -DCMAKE_BUILD_TYPE=Release
