@@ -6,6 +6,7 @@ Only HELLO_REQ, PING and STATUS_REQ are emitted. No actuator API exists.
 from __future__ import annotations
 
 import argparse
+import ipaddress
 import socket
 import struct
 import sys
@@ -84,7 +85,15 @@ class DiagnosticClient:
         return payload
 
     def connect(self) -> bytes:
-        self.sock = socket.create_connection((self.host, self.port), self.timeout)
+        address = ipaddress.IPv4Address(self.host)
+        allowed = address.is_loopback or any(address in network for network in (
+            ipaddress.IPv4Network("10.0.0.0/8"),
+            ipaddress.IPv4Network("172.16.0.0/12"),
+            ipaddress.IPv4Network("192.168.0.0/16"),
+        ))
+        if not allowed:
+            raise ValueError("Dozwolone są wyłącznie adresy IPv4 prywatne RFC1918 lub loopback")
+        self.sock = socket.create_connection((str(address), self.port), self.timeout)
         self.sock.settimeout(self.timeout)
         hello = self._request(HELLO_REQ, HELLO_RESP)
         if len(hello) != 13:
