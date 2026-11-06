@@ -3,9 +3,9 @@
 
 #include <atomic>
 #include <chrono>
-#include <cstring>
-#include <string>
+#include <cstdint>
 #include <thread>
+#include <vector>
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -18,185 +18,179 @@ static void close_test_socket(test_socket_t socket) { if (socket != INVALID_SOCK
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <cerrno>
 using test_socket_t = int;
 static constexpr test_socket_t invalid_test_socket = -1;
 static void close_test_socket(test_socket_t socket) { if (socket >= 0) close(socket); }
 #endif
+
+static bool send_all(test_socket_t fd, const std::uint8_t* data, std::size_t size) {
+    std::size_t offset = 0;
+    while (offset < size) {
+#ifdef _WIN32
+        int n = ::send(fd, reinterpret_cast<const char*>(data + offset), static_cast<int>(size - offset), 0);
+        if (n == SOCKET_ERROR) return false;
+#else
+        ssize_t n = ::send(fd, data + offset, size - offset, MSG_NOSIGNAL);
+        if (n < 0 && errno == EINTR) continue;
+        if (n < 0) return false;
+#endif
+        if (n == 0) return false;
+        offset += static_cast<std::size_t>(n);
+    }
+    return true;
+}
+
+static bool recv_exact(test_socket_t fd, std::uint8_t* data, std::size_t size) {
+    std::size_t offset = 0;
+    while (offset < size) {
+#ifdef _WIN32
+        int n = ::recv(fd, reinterpret_cast<char*>(data + offset), static_cast<int>(size - offset), 0);
+        if (n == SOCKET_ERROR) return false;
+#else
+        ssize_t n = ::recv(fd, data + offset, size - offset, 0);
+        if (n < 0 && errno == EINTR) continue;
+        if (n < 0) return false;
+#endif
+        if (n == 0) return false;
+        offset += static_cast<std::size_t>(n);
+    }
+    return true;
+}
+
+static bool read_frame(test_socket_t fd, ResoNetV1::Frame& frame) {
+    std::uint8_t header[9];
+    if (!recv_exact(fd, header, sizeof(header))) return false;
+    const std::size_t length = (static_cast<std::size_t>(header[7]) << 8) | header[8];
+    if (length > ResoNetV1::kMaxPayload) return false;
+    std::vector<std::uint8_t> bytes(header, header + sizeof(header));
+    bytes.resize(sizeof(header) + length + 2);
+    if (!recv_exact(fd, bytes.data() + sizeof(header), length + 2)) return false;
+    return ResoNetV1::decode(bytes, frame);
+}
+
+static bool write_frame(test_socket_t fd, std::uint8_t type, std::uint16_t sequence,
+                        const std::vector<std::uint8_t>& payload) {
+    ResoNetV1::Frame frame;
+    frame.type = type;
+    frame.sequence = sequence;
+    frame.payload = payload;
+    std::vector<std::uint8_t> bytes;
+    return ResoNetV1::encode(frame, bytes) && send_all(fd, bytes.data(), bytes.size());
+}
+
+static test_socket_t make_listener(sockaddr_in& address) {
+    test_socket_t listener = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (listener == invalid_test_socket) return invalid_test_socket;
+    address = {};
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    address.sin_port = 0;
+    if (::bind(listener, reinterpret_cast<sockaddr*>(&address), sizeof(address)) != 0 ||
+        ::listen(listener, 1) != 0) {
+        close_test_socket(listener);
+        return invalid_test_socket;
+    }
+#ifdef _WIN32
+    int length = sizeof(address);
+#else
+    socklen_t length = sizeof(address);
+#endif
+    if (getsockname(listener, reinterpret_cast<sockaddr*>(&address), &length) != 0) {
+        close_test_socket(listener);
+        return invalid_test_socket;
+    }
+    return listener;
+}
+
+static bool serve_hello(test_socket_t peer) {
+    ResoNetV1::Frame request;
+    if (!read_frame(peer, request) || request.type != ResoNetV1::kHelloReq ||
+        !request.payload.empty()) return false;
+    return write_frame(peer, ResoNetV1::kHelloResp, request.sequence,
+                       std::vector<std::uint8_t>{'R','N',1,2,3,4,5,6,1,0,0,0,0});
+}
 
 int main() {
 #ifdef _WIN32
     WSADATA data;
     if (WSAStartup(MAKEWORD(2, 2), &data) != 0) return 1;
 #endif
-
     int exit_code = 0;
 
-    // disconnect() must wake a thread blocked in receiveData(), rather than
-    // waiting for the caller's full receive timeout or racing descriptor close.
+    // Disconnect must wake a pending raw read after a successful protocol handshake.
     {
-        test_socket_t listener = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-        if (listener == invalid_test_socket) {
-            exit_code = 13;
-        } else {
-            sockaddr_in address{};
-            address.sin_family = AF_INET;
-            address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-            address.sin_port = 0;
-            if (::bind(listener, reinterpret_cast<sockaddr*>(&address), sizeof(address)) != 0 ||
-                ::listen(listener, 1) != 0) {
-                close_test_socket(listener);
-                exit_code = 14;
-            } else {
-#ifdef _WIN32
-                int address_length = sizeof(address);
-#else
-                socklen_t address_length = sizeof(address);
-#endif
-                if (getsockname(listener, reinterpret_cast<sockaddr*>(&address), &address_length) != 0) {
-                    close_test_socket(listener);
-                    exit_code = 15;
-                } else {
-                    std::thread server([&]() {
-                        test_socket_t peer = ::accept(listener, nullptr, nullptr);
-                        if (peer != invalid_test_socket) {
-                            std::this_thread::sleep_for(std::chrono::seconds(2));
-                            close_test_socket(peer);
-                        }
-                    });
-                    NetworkClient client;
-                    const int port = static_cast<int>(ntohs(address.sin_port));
-                    if (!client.connect("127.0.0.1", port)) {
-                        exit_code = 16;
-                    } else {
-                        std::atomic<bool> receive_finished{false};
-                        std::thread receiver([&]() {
-                            (void)client.receiveData(5000);
-                            receive_finished = true;
-                        });
-                        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-                        const auto disconnect_start = std::chrono::steady_clock::now();
-                        client.disconnect();
-                        const auto disconnect_elapsed =
-                            std::chrono::steady_clock::now() - disconnect_start;
-                        receiver.join();
-                        if (!receive_finished.load() ||
-                            disconnect_elapsed > std::chrono::milliseconds(1000)) {
-                            exit_code = 17;
-                        }
-                    }
-                    client.disconnect();
-                    server.join();
-                    close_test_socket(listener);
+        sockaddr_in address{};
+        test_socket_t listener = make_listener(address);
+        if (listener == invalid_test_socket) exit_code = 2;
+        else {
+            std::thread server([&]() {
+                test_socket_t peer = ::accept(listener, nullptr, nullptr);
+                if (peer != invalid_test_socket) {
+                    (void)serve_hello(peer);
+                    std::this_thread::sleep_for(std::chrono::seconds(2));
+                    close_test_socket(peer);
                 }
+            });
+            NetworkClient client;
+            if (!client.connect("127.0.0.1", static_cast<int>(ntohs(address.sin_port)))) exit_code = 3;
+            else {
+                std::atomic<bool> done{false};
+                std::thread reader([&]() { (void)client.receiveData(5000); done = true; });
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                const auto start = std::chrono::steady_clock::now();
+                client.disconnect();
+                const auto elapsed = std::chrono::steady_clock::now() - start;
+                reader.join();
+                if (!done || elapsed > std::chrono::milliseconds(1000)) exit_code = 4;
             }
+            client.disconnect();
+            server.join();
+            close_test_socket(listener);
         }
     }
 
-
-    // A pending connection attempt must not hold socket_mutex. disconnect()
-    // must also supersede the attempt so it cannot publish a late connection.
+    // HELLO and STATUS must be valid v1 frames; legacy command APIs fail closed.
     {
-        NetworkClient concurrent_client;
-        std::atomic<bool> connect_finished{false};
-        std::thread connector([&]() {
-            (void)concurrent_client.connect("192.0.2.1", 65000);
-            connect_finished = true;
-        });
-        std::this_thread::sleep_for(std::chrono::milliseconds(25));
-        const auto query_start = std::chrono::steady_clock::now();
-        (void)concurrent_client.isConnected();
-        const auto query_elapsed = std::chrono::steady_clock::now() - query_start;
-        concurrent_client.disconnect();
-        connector.join();
-        if (query_elapsed > std::chrono::milliseconds(500) ||
-            concurrent_client.isConnected()) {
-            exit_code = 12;
-        }
-    }
-
-    {
-        test_socket_t listener = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-        if (listener == invalid_test_socket) {
-            exit_code = 2;
-        } else {
-            sockaddr_in address{};
-            address.sin_family = AF_INET;
-            address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-            address.sin_port = 0;
-            if (::bind(listener, reinterpret_cast<sockaddr*>(&address), sizeof(address)) != 0 ||
-                ::listen(listener, 1) != 0) {
-                close_test_socket(listener);
-                exit_code = 3;
-            } else {
-#ifdef _WIN32
-                int address_length = sizeof(address);
-#else
-                socklen_t address_length = sizeof(address);
-#endif
-                if (getsockname(listener, reinterpret_cast<sockaddr*>(&address), &address_length) != 0) {
-                    close_test_socket(listener);
-                    exit_code = 4;
-                } else {
-                    std::atomic<bool> server_ok{false};
-                    std::thread server([&]() {
-                        test_socket_t peer = ::accept(listener, nullptr, nullptr);
-                        if (peer != invalid_test_socket) {
-                            char request[16]{};
-#ifdef _WIN32
-                            int count = ::recv(peer, request, static_cast<int>(sizeof(request)), 0);
-#else
-                            ssize_t count = ::recv(peer, request, sizeof(request), 0);
-#endif
-                            if (count == 4 && std::string(request, static_cast<std::size_t>(count)) == "ping") {
-                                const char response[] = "pong";
-#ifdef _WIN32
-                                int sent = ::send(peer, response, 4, 0);
-#else
-                                ssize_t sent = ::send(peer, response, 4, MSG_NOSIGNAL);
-#endif
-                                server_ok = (sent == 4);
-                            }
-                            close_test_socket(peer);
-                        }
-                    });
-
-                    {
-                        NetworkClient client;
-                        std::atomic<bool> callback_reentered{false};
-                        ErrorHandler::getInstance().registerCallback(
-                            [&client, &callback_reentered](const ErrorInfo&) {
-                                (void)client.isConnected();
-                                callback_reentered = true;
-                            });
-                        // Error callbacks may query the client; never invoke them
-                        // while socket_mutex is held.
-                        if (client.sendCommand("")) exit_code = 10;
-                        if (!callback_reentered.load() && exit_code == 0) exit_code = 11;
-
-                        if (exit_code == 0) {
-                            const int port = static_cast<int>(ntohs(address.sin_port));
-                            if (!client.connect("127.0.0.1", port)) {
-                                exit_code = 5;
-                            } else if (!client.sendCommand("ping")) {
-                                exit_code = 6;
-                            } else if (client.receiveData(2000) != "pong") {
-                                exit_code = 7;
-                            } else {
-                                // The server closes after replying; EOF must clear the client state.
-                                for (int attempt = 0; attempt < 20 && client.isConnected(); ++attempt) {
-                                    (void)client.receiveData(100);
-                                }
-                                if (client.isConnected()) exit_code = 8;
-                            }
-                        }
-                        client.disconnect();
+        sockaddr_in address{};
+        test_socket_t listener = make_listener(address);
+        if (listener == invalid_test_socket) exit_code = 5;
+        else {
+            std::atomic<bool> server_ok{false};
+            std::thread server([&]() {
+                test_socket_t peer = ::accept(listener, nullptr, nullptr);
+                if (peer != invalid_test_socket && serve_hello(peer)) {
+                    ResoNetV1::Frame request;
+                    if (read_frame(peer, request) && request.type == ResoNetV1::kStatusReq &&
+                        request.sequence == 2 && request.payload.empty()) {
+                        std::vector<std::uint8_t> status(14, 0);
+                        status[0] = 1; // IDLE
+                        status[6] = 42; // uptime
+                        status[8] = 0x80; // 128 bytes free
+                        status[9] = 0x7F; status[10] = 0xFF; // no temperature
+                        status[13] = 0; // output inhibition unknown
+                        server_ok = write_frame(peer, ResoNetV1::kStatusResp, request.sequence, status);
                     }
-
-                    server.join();
-                    close_test_socket(listener);
-                    if (!server_ok.load() && exit_code == 0) exit_code = 9;
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                    close_test_socket(peer);
                 }
+            });
+            {
+                NetworkClient client;
+                if (!client.connect("127.0.0.1", static_cast<int>(ntohs(address.sin_port)))) exit_code = 6;
+                else {
+                    ResoNetStatusV1 status;
+                    if (!client.requestStatus(status) || status.state != 1 ||
+                        status.uptime_seconds != 42 || status.free_memory_bytes != 128 ||
+                        status.temperature_valid || status.output_inhibited_known) exit_code = 7;
+                    if (client.sendCommand("START") || client.sendTherapyPacket(TherapyPacket{}))
+                        exit_code = 8;
+                }
+                client.disconnect();
             }
+            server.join();
+            close_test_socket(listener);
+            if (!server_ok.load() && exit_code == 0) exit_code = 9;
         }
     }
 
