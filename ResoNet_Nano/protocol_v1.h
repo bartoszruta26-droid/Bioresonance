@@ -21,6 +21,8 @@ static const uint16_t MAX_PAYLOAD = 192;
 static const uint16_t HEADER_SIZE = 9;
 static const uint16_t CRC_SIZE = 2;
 static const uint16_t MAX_FRAME_SIZE = HEADER_SIZE + MAX_PAYLOAD + CRC_SIZE;
+static const uint16_t MAX_REQUEST_FRAME_SIZE = HEADER_SIZE + CRC_SIZE;
+static const uint16_t MAX_DIAGNOSTIC_RESPONSE_FRAME_SIZE = HEADER_SIZE + 14 + CRC_SIZE;
 
 enum MessageType : uint8_t {
     HELLO_REQ = 0x01,
@@ -86,7 +88,7 @@ private:
         READ_BODY
     };
 
-    uint8_t buffer_[MAX_FRAME_SIZE];
+    uint8_t buffer_[MAX_REQUEST_FRAME_SIZE];
     uint16_t used_;
     uint16_t expected_size_;
     uint16_t rejected_frames_;
