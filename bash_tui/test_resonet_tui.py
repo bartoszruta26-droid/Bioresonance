@@ -20,6 +20,8 @@ class ProtocolV1Tests(unittest.TestCase):
         self.assertEqual(frame[:2], b"RN")
         self.assertEqual(frame[5:7], b"\x12\x34")
         self.assertEqual(int.from_bytes(frame[-2:], "big"), client_module.crc16(frame[:-2]))
+        canonical = client_module.encode_frame(client_module.HELLO_REQ, 1)
+        self.assertEqual(canonical, bytes.fromhex("52 4E 01 01 00 00 01 00 00 70 02"))
 
     def test_fragmented_tcp_response(self):
         client_sock, server_sock = socket.socketpair()
