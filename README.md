@@ -7,7 +7,7 @@
 ![License](https://img.shields.io/badge/license-AGPLv3-orange)
 ![Version](https://img.shields.io/badge/version-2.0-purple)
 
-**Zaawansowany system biorezonansu z architekturą rozproszoną opartą o Arduino Nano i Ethernet.**
+**Eksperymentalna platforma oprogramowania do generowania sygnałów i diagnostyki, z aplikacjami wieloplatformowymi.**
 
 </div>
 
@@ -57,11 +57,11 @@ sudo ./installer.sh
 
 ## 🌟 Opis Projektu
 
-**ResoNet-Nano** to open-source'owy system biorezonansu wykorzystujący Arduino Nano jako jednostkę wykonawczą. System generuje precyzyjne sygnały PWM (0.01 Hz - 500 kHz) emitowane przez antenę EMF.
+**ResoNet-Nano** to eksperymentalny projekt open source wykorzystujący Arduino Nano. Zakresy częstotliwości, parametry wyjść i właściwości elektryczne wymagają niezależnych pomiarów i walidacji; nie są tu deklarowane jako potwierdzone parametry urządzenia.
 
 ### Kluczowe cechy:
-- 🎯 **Precyzja**: Generator XV-LPWM z rozdzielczością 0.01 Hz
-- 🔒 **Bezpieczeństwo**: Izolacja galwaniczna 2500V RMS
+- 🎯 **Generator sygnałów**: parametry PWM konfigurowane programowo; rzeczywiste parametry wymagają pomiaru
+- 🔒 **Zabezpieczenia**: mechanizmy programowe; izolacja galwaniczna nie została tu zwalidowana
 - 🌐 **Ethernet**: Komunikacja TCP/UDP przez ENC28J60
 - 💻 **Multi-platformowość**: Android, WebUI (PHP), GUI (C++), TUI (Bash)
 
@@ -89,7 +89,7 @@ graph TD
     end
 
     subgraph Wyjście["Wyjście EMF"]
-        I[ProbeHolder<br/>Izolacja 2500V RMS]
+        I[ProbeHolder<br/>Izolacja niezwalidowana]
         J[Antena EMF<br/>Antena rezonator Schumanna]
     end
 
@@ -237,7 +237,7 @@ chmod +x bioresonance_tui.sh
 
 ## ⚕️ Bezpieczeństwo
 
-⚠️ **WAŻNE**: To urządzenie eksperymentalne. Nie używaj do celów medycznych bez odpowiednich certyfikatów.
+⚠️ **WAŻNE**: To prototyp eksperymentalny. Nie potwierdzono zgodności z IEC 60601-1, izolacji 2500 V RMS ani bezpieczeństwa klinicznego. Nie używaj do terapii ludzi. Mechanizmy programowe nie zastępują niezależnych zabezpieczeń sprzętowych.
 
 ### Zasady bezpieczeństwa:
 - Używaj tylko zasilaczy izolowanych
