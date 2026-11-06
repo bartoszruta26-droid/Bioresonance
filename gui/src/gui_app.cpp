@@ -203,31 +203,10 @@ void GuiApp::onFrequencySelected(uint32_t frequency_hz) {
 }
 
 void GuiApp::onStartTherapy() {
-    if (!network.isConnected()) {
-        status.connected = false;
-        status.pwm_running = false;
-        addLog("Błąd: Nie podłączono do urządzenia!");
-        return;
-    }
-    
-    ProbeConfig* probe = probe_manager.getProbe(selected_probe);
-    if (probe && probe->enabled) {
-        TherapyPacket packet;
-        packet.frequency_hz_x100 = probe->frequency_hz_x100;
-        packet.duration_sec = probe->duration_sec;
-        packet.modulation_type = (uint8_t)probe->modulation;
-        packet.duty_cycle = probe->duty_cycle;
-        packet.intensity_level = probe->intensity_level;
-        packet.channel_id = probe->channel_id;
-        packet.checksum = calculateChecksum(packet);  // Calculate proper checksum
-        
-        if (network.sendTherapyPacket(packet)) {
-            status.pwm_running = true;
-            addLog("Rozpoczęto terapię na kanale " + std::to_string(probe->channel_id));
-        } else {
-            addLog("Błąd wysyłania pakietu terapeutycznego");
-        }
-    }
+    // The firmware currently has no implemented network transport or RNP parser.
+    // Sending a packed C++ struct here would not constitute a negotiated protocol.
+    status.pwm_running = false;
+    addLog("Sterowanie wyjściami zablokowane: transport urządzenia i parser RNP nie są wdrożone.");
 }
 
 uint8_t GuiApp::calculateChecksum(const TherapyPacket& packet) {
@@ -255,13 +234,9 @@ uint8_t GuiApp::calculateChecksum(const TherapyPacket& packet) {
 }
 
 void GuiApp::onStopTherapy() {
-    if (network.sendCommand("STOP")) {
-        addLog("Wysłano polecenie STOP; oczekiwanie na potwierdzenie urządzenia");
-    } else {
-        addLog("Nie udało się wysłać polecenia STOP — stan wyjścia urządzenia jest nieznany");
-    }
-    // A successful TCP write is not an authoritative device acknowledgement.
-    // Keep the running state until a real status/ACK protocol is implemented.
+    // Deliberately do not send an unframed text command to an unimplemented
+    // firmware transport. A local UI action cannot confirm physical shutdown.
+    addLog("Polecenie STOP niedostępne: brak wdrożonego protokołu urządzenia.");
 }
 
 void GuiApp::renderMenuBar() {
@@ -407,16 +382,13 @@ void GuiApp::renderProbePanel() {
         
         ImGui::Separator();
         
-        // Therapy control buttons
-        if (!status.pwm_running) {
-            if (ImGui::Button("Rozpocznij terapię", ImVec2(200, 40))) {
-                onStartTherapy();
-            }
-        } else {
-            if (ImGui::Button("Zatrzymaj terapię", ImVec2(200, 40))) {
-                onStopTherapy();
-            }
-        }
+        // Output control stays unavailable until firmware transport, protocol parser,
+        // device acknowledgement, and hardware safety interlocks are implemented.
+        ImGui::BeginDisabled();
+        ImGui::Button("Sterowanie wyjściami niedostępne", ImVec2(260, 40));
+        ImGui::EndDisabled();
+        ImGui::TextWrapped("Protokół komunikacyjny urządzenia nie jest jeszcze wdrożony. "
+                           "Interfejs nie wysyła poleceń uruchamiających ani zatrzymujących wyjścia.");
     }
     
     ImGui::EndChild();
