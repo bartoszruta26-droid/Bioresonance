@@ -34,7 +34,7 @@ static bool server_started = false;
 static const uint32_t PARTIAL_FRAME_TIMEOUT_MS = 2000;
 static const uint32_t CLIENT_IDLE_TIMEOUT_MS = 30000;
 static const uint8_t MAX_RX_BYTES_PER_LOOP = 24;
-static uint8_t tx_buffer[ResoNetProtocolV1::MAX_FRAME_SIZE];
+static uint8_t tx_buffer[ResoNetProtocolV1::MAX_DIAGNOSTIC_RESPONSE_FRAME_SIZE];
 
 static uint16_t freeMemoryBytes() {
     extern int __heap_start, *__brkval;
