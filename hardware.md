@@ -2,18 +2,20 @@
 
 <div align="center">
 
-![Hardware Version](https://img.shields.io/badge/hardware-v2.0%20(Medical%20Grade)-blue)
-![PCB Status](https://img.shields.io/badge/PCB-4%20Layer%20FR4-green)
-![Isolation](https://img.shields.io/badge/isolation-2500V%20RMS-red)
-![Compliance](https://img.shields.io/badge/compliance-IEC%2060601--1-orange)
+![Hardware Version](https://img.shields.io/badge/hardware-v2.0%20(experimental)-orange)
+![PCB Status](https://img.shields.io/badge/PCB-design%20documentation-blue)
+![Isolation](https://img.shields.io/badge/system%20isolation-unverified-red)
+![Compliance](https://img.shields.io/badge/IEC%2060601--1-not%20assessed-lightgrey)
 
-**Kompletna dokumentacja połączeń, komponentów i montażu systemu biorezonansu ResoNet-Nano**
+**Projektowa dokumentacja połączeń i komponentów eksperymentalnego prototypu ResoNet-Nano**
 
 [Schemat Połączeń](#-schemat-połączeń-i-pinout) • [Opis Elementów](#-opis-elementów-sprzętowych) • [Połączenia Pinów](#-szczegółowe-połączenia-pinów) • [Elementy Dodatkowe](#-elementy-dodatkowe-i-akcesoria) • [Elementy Mechaniczne](#-elementy-mechaniczne-i-obudowa) • [Bezpieczeństwo Montażu](#-bezpieczeństwo-montażu-i-testy)
 
 </div>
 
 ---
+
+> **WAŻNE — STATUS PROJEKTOWY, NIE CERTYFIKACJA.** Dokument opisuje założenia i przykładowe komponenty. Nie potwierdzono izolacji galwanicznej kompletnego urządzenia, napięć probierczych, odstępów izolacyjnych, EMC, bezpieczeństwa elektrycznego, certyfikacji CE/UL ani zgodności z IEC 60601-1. Wartości z kart katalogowych pojedynczych elementów nie są dowodem parametrów całego zmontowanego układu. Nie podłączać do sieci energetycznej ani człowieka i nie stosować klinicznie przed niezależnym przeglądem projektu oraz badaniami przez kompetentne laboratorium.
 
 ## 📋 Spis Treści
 
@@ -35,7 +37,7 @@
 
 ```mermaid
 flowchart TD
-    subgraph Zasilacz["⚡ ZASILACZ MEDYCZNY<br/>5V/2A, IEC 60601-1"]
+    subgraph Zasilacz["⚡ ZASILACZ 5V/2A<br/>certyfikacja niepotwierdzona"]
         direction TB
         Z5V["5V DC"]
         ZGND["GND"]
@@ -197,7 +199,7 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph Zasilanie["⚡ SYSTEM ZASILANIA"]
-        Z1["<b>ZASILACZ SIECIOWY</b><br/>230V AC → 5V DC<br/>IEC 60601-1 Medical"]
+        Z1["<b>ZASILACZ SIECIOWY</b><br/>230V AC → 5V DC<br/>wymaga oceny bezpieczeństwa"]
         Z2["<b>FILTR LC</b><br/>10µH + 100µF<br/>Filtracja zakłóceń"]
         Z3["<b>IZOLATOR DC-DC PWM</b><br/>2500V RMS<br/>B0505S-1W"]
         Z4["<b>IZOLATOR DC-DC IR</b><br/>2500V RMS<br/>B0505S-2W"]
@@ -275,7 +277,7 @@ flowchart TD
 
 ## 🔧 Opis Elementów Sprzętowych
 
-### 1. 🧠 Arduino Nano (Medical Grade)
+### 1. 🧠 Arduino Nano (prototyp eksperymentalny)
 
 **Funkcja**: Jednostka centralna przetwarzająca pakiety sieciowe na sygnały PWM o precyzji medycznej.
 
@@ -469,7 +471,7 @@ flowchart LR
 - **C1**: 100µF + 100nF (filtracja zasilania 5V_ISO)
 
 **Bezpieczeństwo**:
-- **Izolacja Galwaniczna**: Optoizolator 2500V RMS między Arduino a paskiem LED
+- **Izolacja Galwaniczna**: optoizolator o parametrach katalogowych; izolacja całego układu niezweryfikowana
 - **Ochrona Termiczna**: MOSFET na radiatorze jeśli moc >3W
 - **Ograniczenie Prądu**: Bezpiecznik resetowalny 1A w linii 5V_ISO
 - **UV/IR Warning**: Oznaczenie na obudowie "Niewidoczne promieniowanie IR"
@@ -596,7 +598,7 @@ void vibrator_stop();                  // Zatrzymaj wibracje
 - ✅ Połączenie z terapią EMF dla efektu multisensorycznego
 
 **Bezpieczeństwo**:
-- **Izolacja Galwaniczna**: Optoizolator 2500V RMS
+- **Izolacja Galwaniczna**: optoizolator o parametrach katalogowych; izolacja całego układu niezweryfikowana
 - **Ochrona Termiczna**: Monitoring temperatury silniczka
 - **Limit Czasu**: Auto-stop po 30 minutach
 - ⚠️ Przeciwwskazane w ciąży, rozrusznik serca
@@ -612,7 +614,7 @@ void vibrator_stop();                  // Zatrzymaj wibracje
 - **Prąd Maksymalny**: 2A minimum (3A zalecane)
 - **Izolacja**: 4000V AC między wejściem a wyjściem
 - **Prąd Upływu**: <10 µA (wymóg medyczny)
-- **Certyfikaty**: CE, UL, IEC 60601-1
+- **Certyfikaty**: brak potwierdzonej certyfikacji CE/UL/IEC 60601-1
 
 **Rekomendowane Modele**:
 - **Mean Well GS25A05-P1J**: 25W, 5V/5A, medyczny
@@ -1014,7 +1016,7 @@ ContactQuality_t detectElectrodes() {
 **Bezpieczeństwo**:
 - ⚠️ Bezwzględne przeciwwskazanie dla rozruszników serca
 - ⚠️ Nie stosować poprzecznie przez klatkę piersiową
-- ✅ Izolacja galwaniczna 2500V RMS
+- ⚠️ Izolacja systemu niezweryfikowana; rating elementu wymaga potwierdzenia w karcie katalogowej
 - ✅ Limit prądu 100 mA
 - ✅ Detekcja jakości kontaktu
 
@@ -1163,7 +1165,7 @@ WrapStatus_t detectWrapApplicator() {
 - **HRV (Heart Rate Variability)**: 30-200 BPM, dokładność ±2 BPM
 - **Temperatura**: 20-40°C, dokładność ±0.3°C
 - **Częstotliwość próbkowania**: 100-1000 Hz
-- **Izolacja**: 2500V RMS
+- **Izolacja**: rating elementu nie potwierdza izolacji kompletnego urządzenia
 
 **Podłączenie Elektryczne**:
 
@@ -1438,7 +1440,7 @@ flowchart LR
 | Arduino Nano Pin | Funkcja | ProbeHolder Pin | Izolacja | Uwagi |
 |------------------|---------|-----------------|----------|-------|
 | **D9 (OC1A)** | PWM_OUT | PWM_IN | ✅ Opto 6N137 | Timer1 Channel A |
-| **GND** | DGND | GND_ISO | ✅ 2500V | Oddzielne masy! |
+| **GND** | DGND | GND_ISO | niezweryfikowane | Wymagane badanie izolacji całego układu |
 
 **Obwód Izolacji PWM**:
 
@@ -1685,14 +1687,14 @@ flowchart LR
 
 #### Izolacja Galwaniczna DC
 - **Komponent**: Przetwornica DC-DC z izolacją (B0505S-1W lub medyczna)
-- **Napięcie Izolacji**: 2500V RMS przez 1 minutę
+- **Napięcie Izolacji**: parametr katalogowy elementu; brak badania dielektrycznego kompletnego urządzenia
 - **Rezystancja Izolacji**: >100 MΩ @ 500V DC
 - **Pojemność Pasożytnicza**: <20 pF
 
 #### Izolacja Sygnałowa PWM
 - **Komponent**: 6N137 High-Speed Optocoupler
 - **Prędkość**: 10 MBd
-- **Napięcie Izolacji**: 2500V RMS
+- **Napięcie Izolacji**: parametr katalogowy elementu; brak badania dielektrycznego kompletnego urządzenia
 - **CMTI**: 10 kV/µs (Common Mode Transient Immunity)
 
 #### Transformator Ethernet
@@ -1785,7 +1787,7 @@ flowchart LR
 ```
 ⚠️ URZĄDZENIE MEDYCZNE - TYLKO DLA WYKWALIFIKOWANEGO PERSONELU
 ⚠️ RYZYKO PORAŻENIA - NIE OTWIERAĆ PODCZAS PRACY
-⚠️ IZOLACJA 2500V - SPRAWDZAĆ REGULARNIE
+⚠️ NIE ZAKŁADAĆ IZOLACJI — WYMAGANE BADANIE DIELEKTRYCZNE CAŁEGO UKŁADU
 ⚠️ NIE STOSOWAĆ U PACJENTÓW Z ROZRUSZNIKIEM SERCA
 ```
 
