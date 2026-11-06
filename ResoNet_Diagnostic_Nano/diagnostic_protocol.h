@@ -21,12 +21,9 @@ struct Request {
 
 class Parser {
 public:
-    Parser() : state_(0), used_(0), last_byte_ms_(0) {}
+    Parser() : state_(0), used_(0) {}
 
     void reset() { state_ = 0; used_ = 0; }
-    bool partial() const { return state_ != 0; }
-    void markByteTime(uint32_t now) { last_byte_ms_ = now; }
-    uint32_t lastByteTime() const { return last_byte_ms_; }
 
     // Returns true only for a complete, CRC-validated empty-payload request.
     bool feed(uint8_t byte, Request& request) {
@@ -72,18 +69,6 @@ public:
         }
     }
 
-private:
-    uint8_t buffer_[11];
-    uint8_t state_;
-    uint8_t used_;
-    uint32_t last_byte_ms_;
-
-    void restart(uint8_t byte) {
-        state_ = 0;
-        used_ = 0;
-        if (byte == 0x52) { buffer_[0] = byte; used_ = 1; state_ = 1; }
-    }
-
     static uint16_t crc16(const uint8_t* data, size_t length) {
         uint16_t crc = 0xFFFF;
         for (size_t i = 0; i < length; ++i) {
@@ -94,6 +79,18 @@ private:
         }
         return crc;
     }
+
+private:
+    uint8_t buffer_[11];
+    uint8_t state_;
+    uint8_t used_;
+
+    void restart(uint8_t byte) {
+        state_ = 0;
+        used_ = 0;
+        if (byte == 0x52) { buffer_[0] = byte; used_ = 1; state_ = 1; }
+    }
+
 };
 
 inline size_t encode(uint8_t type, uint16_t sequence, const uint8_t* payload,
