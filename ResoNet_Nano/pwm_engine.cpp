@@ -254,10 +254,7 @@ bool pwm_set_config(const PWMConfig* config) {
     pwm_status.current_duty = config->duty_cycle;
     pwm_status.current_modulation = config->modulation_type;
     
-    LOG_INFO_F("PWM configured: %lu.%02lu Hz, duty %u%%", 
-               config->frequency_hz_x100 / 100,
-               config->frequency_hz_x100 % 100,
-               config->duty_cycle);
+    LOG_INFO("PWM configured");
     
     return true;
 }
