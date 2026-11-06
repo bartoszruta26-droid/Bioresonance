@@ -15,7 +15,7 @@
 
 ## 2. Transport i ograniczenia
 
-- Transport: TCP; port konfigurowalny. Port 5001 może być użyty po wdrożeniu serwera.
+- Transport: TCP; port konfigurowalny. Firmware udostępnia diagnostyczny serwer na porcie 5001, gdy `RESONET_ENABLE_ETHERNET=1` i skonfigurowano adresację.
 - TCP jest strumieniem bajtów: odczyt nie jest równoznaczny z ramką.
 - Parser musi obsługiwać podział ramki między odczyty oraz wiele ramek w jednym odczycie.
 - Maksymalny payload: 192 bajty.
