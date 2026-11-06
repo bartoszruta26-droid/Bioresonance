@@ -16,7 +16,7 @@ Base: `main` at merge commit `914d109a8ad78a5d3d7d22cd740b4a386bf2476e`
 ### WebUI API
 - Disabled debug logging by default.
 - Disabled unrestricted `raw_command`. A deny-list is not a safe command authorization mechanism.
-- Added private IPv4 destination validation (RFC1918 and link-local ranges only) and strict port parsing before outbound connections.
+- Added private IPv4 destination validation (RFC1918 ranges only; link-local and public targets are rejected) and strict port parsing before outbound connections.
 - Added a minimum-32-character `BIORESONANCE_API_TOKEN` environment secret requirement for `save_config` and `control`; callers must send it in `X-Bioresonance-Token`.
 - Changed lock-file opening to `c+` and removed age-based unlinking. Unlinking a lock file while another process holds its inode can split mutual exclusion across two inodes.
 - Added parsing of JSON request bodies because the WebUI sends `application/json`; PHP does not populate `$_POST` for that content type.
