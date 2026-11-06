@@ -10,6 +10,82 @@
 #include <chrono>
 #include <thread>
 #include <atomic>
+#include <vector>
+
+
+static bool send_all_v1(socket_t fd, const std::uint8_t* data, std::size_t size) {
+    std::size_t offset = 0;
+    while (offset < size) {
+#ifdef _WIN32
+        const int sent = ::send(fd, reinterpret_cast<const char*>(data + offset),
+                                static_cast<int>(size - offset), 0);
+        if (sent == SOCKET_ERROR) {
+            if (WSAGetLastError() == WSAEINTR) continue;
+            return false;
+        }
+#else
+        const ssize_t sent = ::send(fd, data + offset, size - offset,
+#ifdef MSG_NOSIGNAL
+                                    MSG_NOSIGNAL
+#else
+                                    0
+#endif
+        );
+        if (sent < 0 && errno == EINTR) continue;
+        if (sent < 0) return false;
+#endif
+        if (sent == 0) return false;
+        offset += static_cast<std::size_t>(sent);
+    }
+    return true;
+}
+
+static bool recv_exact_v1(socket_t fd, std::uint8_t* data, std::size_t size) {
+    std::size_t offset = 0;
+    while (offset < size) {
+#ifdef _WIN32
+        const int received = ::recv(fd, reinterpret_cast<char*>(data + offset),
+                                    static_cast<int>(size - offset), 0);
+        if (received == SOCKET_ERROR) {
+            if (WSAGetLastError() == WSAEINTR) continue;
+            return false;
+        }
+#else
+        const ssize_t received = ::recv(fd, data + offset, size - offset, 0);
+        if (received < 0 && errno == EINTR) continue;
+        if (received < 0) return false;
+#endif
+        if (received == 0) return false;
+        offset += static_cast<std::size_t>(received);
+    }
+    return true;
+}
+
+static bool exchange_v1(socket_t fd, std::uint8_t request_type,
+                        std::uint8_t expected_type, std::uint16_t sequence,
+                        std::vector<std::uint8_t>& payload) {
+    ResoNetV1::Frame request;
+    request.type = request_type;
+    request.sequence = sequence;
+    std::vector<std::uint8_t> encoded;
+    if (!ResoNetV1::encode(request, encoded) ||
+        !send_all_v1(fd, encoded.data(), encoded.size())) return false;
+
+    std::uint8_t header[ResoNetV1::kHeaderSize];
+    if (!recv_exact_v1(fd, header, sizeof(header))) return false;
+    if (header[0] != 0x52 || header[1] != 0x4E ||
+        header[2] != ResoNetV1::kVersion || header[4] != 0) return false;
+    const std::size_t length = (static_cast<std::size_t>(header[7]) << 8) | header[8];
+    if (length > ResoNetV1::kMaxPayload) return false;
+    std::vector<std::uint8_t> response(header, header + sizeof(header));
+    response.resize(sizeof(header) + length + 2);
+    if (!recv_exact_v1(fd, response.data() + sizeof(header), length + 2)) return false;
+    ResoNetV1::Frame decoded;
+    if (!ResoNetV1::decode(response, decoded) || decoded.sequence != sequence ||
+        decoded.type != expected_type) return false;
+    payload.swap(decoded.payload);
+    return true;
+}
 
 #ifdef _WIN32
     // Serialize Winsock lifetime management; count only successful acquisitions.
@@ -121,6 +197,24 @@ bool NetworkClient::connect(const std::string& ip, int port_num) {
         return false;
     }
 
+#ifdef _WIN32
+    DWORD receive_timeout_ms = 2000;
+    if (setsockopt(candidate, SOL_SOCKET, SO_RCVTIMEO,
+                   reinterpret_cast<const char*>(&receive_timeout_ms),
+                   sizeof(receive_timeout_ms)) != 0) {
+#else
+    struct timeval receive_timeout{};
+    receive_timeout.tv_sec = 2;
+    receive_timeout.tv_usec = 0;
+    if (setsockopt(candidate, SOL_SOCKET, SO_RCVTIMEO,
+                   &receive_timeout, sizeof(receive_timeout)) != 0) {
+#endif
+        CLOSE_SOCKET(candidate);
+        REPORT_ERROR(ErrorCode::ERR_NETWORK_SOCKET_FAILED, ErrorCategory::NETWORK,
+                     "Failed to configure bounded socket receive timeout");
+        return false;
+    }
+
     const auto close_candidate = [&candidate]() {
         if (candidate != INVALID_SOCKET_VALUE) {
             CLOSE_SOCKET(candidate);
@@ -211,6 +305,16 @@ bool NetworkClient::connect(const std::string& ip, int port_num) {
         return false;
     }
 
+    // TCP alone is not a verified device connection: require a valid v1 HELLO.
+    std::vector<std::uint8_t> hello_payload;
+    if (!exchange_v1(candidate, ResoNetV1::kHelloReq, ResoNetV1::kHelloResp,
+                     1, hello_payload) || hello_payload.size() != 13) {
+        close_candidate();
+        REPORT_ERROR(ErrorCode::ERR_NETWORK_UNREACHABLE, ErrorCategory::NETWORK,
+                     "ResoNet v1 HELLO handshake failed");
+        return false;
+    }
+
     {
         std::lock_guard<std::mutex> lock(socket_mutex);
         // disconnect() or a newer connect() supersedes this attempt.
@@ -223,6 +327,7 @@ bool NetworkClient::connect(const std::string& ip, int port_num) {
         ip_address = ip;
         port = port_num;
         connected = true;
+        protocol_sequence = 1;
     }
 
     LOG_INFO("Connected to " + ip + ":" + std::to_string(port_num));
@@ -259,6 +364,46 @@ bool NetworkClient::isConnected() const {
     return connected.load() && socket_fd != INVALID_SOCKET_VALUE;
 }
 
+bool NetworkClient::requestStatus(ResoNetStatusV1& status) {
+    std::unique_lock<std::mutex> io_lock(io_mutex);
+    socket_t active_socket = INVALID_SOCKET_VALUE;
+    std::uint16_t sequence = 0;
+    {
+        std::lock_guard<std::mutex> state_lock(socket_mutex);
+        if (!connected.load() || socket_fd == INVALID_SOCKET_VALUE) return false;
+        active_socket = socket_fd;
+        protocol_sequence = static_cast<std::uint16_t>(protocol_sequence + 1);
+        sequence = protocol_sequence;
+    }
+
+    std::vector<std::uint8_t> payload;
+    if (!exchange_v1(active_socket, ResoNetV1::kStatusReq,
+                     ResoNetV1::kStatusResp, sequence, payload) || payload.size() != 14) {
+        std::lock_guard<std::mutex> state_lock(socket_mutex);
+        if (socket_fd == active_socket) connected = false;
+        return false;
+    }
+    const auto u16 = [&payload](std::size_t i) {
+        return static_cast<std::uint16_t>((payload[i] << 8) | payload[i + 1]);
+    };
+    const auto u32 = [&payload](std::size_t i) {
+        return (static_cast<std::uint32_t>(payload[i]) << 24) |
+               (static_cast<std::uint32_t>(payload[i + 1]) << 16) |
+               (static_cast<std::uint32_t>(payload[i + 2]) << 8) |
+               static_cast<std::uint32_t>(payload[i + 3]);
+    };
+    status.state = payload[0];
+    status.fault_flags = u16(1);
+    status.uptime_seconds = u32(3);
+    status.free_memory_bytes = u16(7);
+    status.temperature_centi_c = static_cast<std::int16_t>(u16(9));
+    status.temperature_valid = status.temperature_centi_c != 0x7FFF;
+    status.sensor_valid_flags = u16(11);
+    status.output_inhibited_known = payload[13] == 1;
+    status.output_inhibited = payload[13] == 1;
+    return true;
+}
+
 bool NetworkClient::sendTherapyPacket(const TherapyPacket& packet) {
     (void)packet;
     // The packed host structure is not a wire protocol. Firmware currently
@@ -269,65 +414,9 @@ bool NetworkClient::sendTherapyPacket(const TherapyPacket& packet) {
 }
 
 bool NetworkClient::sendCommand(const std::string& cmd) {
-    if (cmd.empty()) {
-        REPORT_ERROR(ErrorCode::ERR_NETWORK_SEND_FAILED, ErrorCategory::NETWORK,
-                     "Cannot send an empty command");
-        return false;
-    }
-
-    std::unique_lock<std::mutex> io_lock(io_mutex);
-    socket_t active_socket = INVALID_SOCKET_VALUE;
-    {
-        std::lock_guard<std::mutex> state_lock(socket_mutex);
-        if (!connected.load() || socket_fd == INVALID_SOCKET_VALUE) {
-            io_lock.unlock();
-            REPORT_ERROR(ErrorCode::ERR_NETWORK_DISCONNECTED, ErrorCategory::NETWORK,
-                         "Cannot send command - not connected");
-            return false;
-        }
-        active_socket = socket_fd;
-    }
-
-    size_t total_sent = 0;
-    int send_flags = 0;
-#ifndef _WIN32
-#ifdef MSG_NOSIGNAL
-    send_flags |= MSG_NOSIGNAL;
-#endif
-#endif
-    while (total_sent < cmd.size()) {
-#ifdef _WIN32
-        int sent = ::send(active_socket, cmd.data() + total_sent,
-                          static_cast<int>(cmd.size() - total_sent), send_flags);
-#else
-        ssize_t sent = ::send(active_socket, cmd.data() + total_sent,
-                              cmd.size() - total_sent, send_flags);
-#endif
-        if (sent < 0) {
-#ifdef _WIN32
-            if (WSAGetLastError() == WSAEINTR) continue;
-#else
-            if (errno == EINTR) continue;
-#endif
-        }
-        if (sent <= 0) {
-            {
-                std::lock_guard<std::mutex> state_lock(socket_mutex);
-                if (socket_fd == active_socket) {
-                    connected = false;
-                    CLOSE_SOCKET(socket_fd);
-                    socket_fd = INVALID_SOCKET_VALUE;
-                    ++connection_generation;
-                }
-            }
-            io_lock.unlock();
-            REPORT_ERROR(ErrorCode::ERR_NETWORK_SEND_FAILED, ErrorCategory::NETWORK,
-                         "Failed to send complete command; connection closed");
-            return false;
-        }
-        total_sent += static_cast<size_t>(sent);
-    }
-    return true;
+    (void)cmd;
+    // Protocol v1 is diagnostic-only; raw text commands are never transmitted.
+    return false;
 }
 
 std::string NetworkClient::receiveData(int timeout_ms) {
