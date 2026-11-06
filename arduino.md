@@ -595,3 +595,8 @@ Dokumentacja zgodna z wersją firmware **4.0.0**
 **Autor:** ResoNet Development Team  
 **Licencja:** MIT (sprzęt), GPL v3 (oprogramowanie)  
 **Status:** prototyp eksperymentalny; brak deklaracji klasy wyrobu medycznego i brak potwierdzenia zgodności z IEC 60601-1.
+
+
+### EthernetENC — wariant serwera TCP
+
+Dla kompilacji z `RESONET_ENABLE_ETHERNET=1` używaj wyłącznie `bash ResoNet_Nano/build_nano.sh`. Skrypt w przypiętej bibliotece EthernetENC 2.0.5 wyłącza `UIP_ACTIVE_OPEN`, ponieważ Nano przyjmuje połączenia diagnostyczne i nie inicjuje połączeń TCP wychodzących. Kompilacja przez samo `arduino-cli compile` lub inny system budowania pomija tę optymalizację. Jeśli firmware będzie wymagał połączeń wychodzących, trzeba przywrócić `UIP_ACTIVE_OPEN=1` i ponownie ocenić budżet pamięci.
