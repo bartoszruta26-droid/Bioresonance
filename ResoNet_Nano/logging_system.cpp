@@ -55,7 +55,7 @@ void logging_loop() {
         last_stats_log = now;
         
         if (log_buffer.overflow_count > 0) {
-            LOG_WARN_F("Log buffer overflow: %u entries lost", log_buffer.overflow_count);
+            LOG_WARN("Log buffer overflow");
         }
     }
 }
