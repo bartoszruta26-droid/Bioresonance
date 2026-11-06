@@ -32,6 +32,6 @@ Wartości w pliku są przykładową konfiguracją prywatnej podsieci, a nie uniw
 
 1. Biblioteka EthernetENC używa własnych buforów i stosu TCP; należy zmierzyć zużycie RAM/flash w kompilacji dla ATmega328P.
 2. Obecny timeout częściowej ramki powinien zostać dopracowany przez dodanie jawnej metody `Parser::isIdle()` lub czasu ostatniego bajtu wewnątrz parsera. Nie należy resetować parsera wyłącznie na podstawie licznika odrzuceń.
-3. Należy dodać testy hostowe parsera i testy kompilacji firmware w CI; testy sprzętowe są poza zakresem tej iteracji.
+3. Dodano testy hostowe parsera i zadanie CI kompilujące firmware; wynik CI wymaga osobnego potwierdzenia. Testy sprzętowe są poza zakresem tej iteracji.
 4. Protokół v1 nie ma uwierzytelniania ani szyfrowania. Nie wystawiać portu poza zaufaną sieć.
 5. Kod transportowy nie stanowi potwierdzenia bezpieczeństwa ani przydatności klinicznej urządzenia.
