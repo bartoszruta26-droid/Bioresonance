@@ -6,6 +6,7 @@ on:
     paths:
       - "gui/include/resonet_protocol_v1.h"
       - "gui/tests/resonet_protocol_v1_smoke.cpp"
+      - "bash_tui/**"
       - ".github/workflows/desktop-protocol.yml"
   pull_request:
     paths:
@@ -26,3 +27,5 @@ jobs:
         run: g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I gui/include gui/tests/resonet_protocol_v1_smoke.cpp -o protocol_v1_smoke
       - name: Run protocol codec tests
         run: ./protocol_v1_smoke
+      - name: Run read-only TUI protocol tests
+        run: python3 -m unittest discover -s bash_tui -p "test_*.py"
