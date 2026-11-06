@@ -66,7 +66,7 @@ flowchart TD
         E_GND["Pin 3 - GND"]
     end
     
-    subgraph IzolacjaDC["🔒 IZOLACJA DC-DC<br/>2500V RMS<br/>B0505S-1W"]
+    subgraph IzolacjaDC["🔒 IZOLACJA DC-DC<br/>2500V RMS (rating elementu)<br/>B0505S-1W"]
         direction TB
         I_IN5V["5V IN"]
         I_INGND["GND IN"]
@@ -74,7 +74,7 @@ flowchart TD
         I_OUTGND["AGND OUT"]
     end
     
-    subgraph IzolacjaDCIR["🔒 IZOLACJA DC-DC IR<br/>2500V RMS<br/>B0505S-2W"]
+    subgraph IzolacjaDCIR["🔒 IZOLACJA DC-DC IR<br/>2500V RMS (rating elementu)<br/>B0505S-2W"]
         direction TB
         IR_IN5V["5V IN"]
         IR_INGND["GND IN"]
@@ -201,8 +201,8 @@ flowchart TD
     subgraph Zasilanie["⚡ SYSTEM ZASILANIA"]
         Z1["<b>ZASILACZ SIECIOWY</b><br/>230V AC → 5V DC<br/>wymaga oceny bezpieczeństwa"]
         Z2["<b>FILTR LC</b><br/>10µH + 100µF<br/>Filtracja zakłóceń"]
-        Z3["<b>IZOLATOR DC-DC PWM</b><br/>2500V RMS<br/>B0505S-1W"]
-        Z4["<b>IZOLATOR DC-DC IR</b><br/>2500V RMS<br/>B0505S-2W"]
+        Z3["<b>IZOLATOR DC-DC PWM</b><br/>2500V RMS (rating elementu)<br/>B0505S-1W"]
+        Z4["<b>IZOLATOR DC-DC IR</b><br/>2500V RMS (rating elementu)<br/>B0505S-2W"]
     end
     
     subgraph Sterowanie["🎛️ SYSTEM STEROWANIA"]
@@ -289,7 +289,7 @@ flowchart TD
 - **GPIO**: 14 pinów cyfrowych (6 PWM), 8 analogowych
 - **Zasilanie**: 5V przez USB lub VIN (7-12V zalecane)
 
-**Wersja Medical Grade**:
+**Wersja prototypowa — bez certyfikacji**:
 - Wzmocniona ochrona ESD (±8kV contact, ±15kV air)
 - Warystory TVS na wszystkich liniach wejściowych
 - Filtr LC na zasilaniu analogowym
@@ -346,7 +346,7 @@ flowchart TD
 
 **PCB**:
 - **Warstwy**: 4-layer (Top, GND, Power, Bottom)
-- **Materiał**: FR-4 klasy medycznej, grubość 1.6mm
+- **Materiał**: FR-4, grubość 1.6mm; parametry materiału i procesu wymagają potwierdzenia
 - **Powłoka**: ENIG (Electroless Nickel Immersion Gold)
 - **Ścieżki Wysokiego Napięcia**: Poszerzone do 2mm
 
@@ -630,7 +630,7 @@ flowchart LR
     end
     
     subgraph PSU["ZASILACZ MEDYCZNY"]
-        P1["IEC 60601-1<br/>5V DC, 2A"]
+        P1["Zasilacz 5V DC, 2A<br/>certyfikacja niepotwierdzona"]
     end
     
     subgraph Distribution["ROZDZIAŁ ZASILANIA"]
@@ -1362,7 +1362,7 @@ void adaptBasedOnHRV(float hrvScore, float lfHfRatio) {
 ```
 
 **Bezpieczeństwo**:
-- ✅ Izolacja galwaniczna 2500V RMS
+- ⚠️ Rating izolacji pojedynczego elementu wymaga potwierdzenia; izolacja całego układu niezweryfikowana
 - ✅ Elektrody jednorazowe Ag/AgCl
 - ✅ Monitoring jakości sygnału w czasie rzeczywistym
 - ✅ Auto-adaptacja parametrów terapii
@@ -1451,7 +1451,7 @@ flowchart LR
         A2["GND"]
     end
     
-    subgraph Opto["Optoizolator 6N137<br/>2500V Isolation"]
+    subgraph Opto["Optoizolator 6N137<br/>rating katalogowy; system niezweryfikowany"]
         O1["Anode Pin 1"]
         O2["Cathode Pin 2"]
         O3["Emitter Pin 4"]
@@ -1494,7 +1494,7 @@ flowchart LR
 |------------------|---------|---------------|----------|-------|
 | **D5 (PWM)** | IR_CARRIER | PWM_IN | ✅ Opto 6N137 | Timer0/Timer2 - 38kHz carrier |
 | **D6 (PWM)** | IR_MOD | MOD_IN | ✅ Opto 6N137 | Modulacja terapeutyczna |
-| **GND** | DGND | GND_ISO | ✅ 2500V | Oddzielne masy! |
+| **GND** | DGND | GND_ISO | niezweryfikowane | Wymagane badanie izolacji kompletnego układu |
 
 **Obwód Izolacji IR**:
 
@@ -1576,11 +1576,11 @@ flowchart TD
         VREG["VREG"]
     end
     
-    subgraph Isolation1["Izolator DC-DC 2500V"]
+    subgraph Isolation1["Izolator DC-DC — rating elementu, system niezweryfikowany"]
         ISO1["5V_ISO"]
     end
     
-    subgraph Isolation2["Izolator DC-DC 2500V"]
+    subgraph Isolation2["Izolator DC-DC — rating elementu, system niezweryfikowany"]
         ISO2["5V_ISO_IR"]
     end
     
@@ -1718,8 +1718,8 @@ flowchart LR
 | **Bezpiecznik** | 2A slow-blow, 5x20mm | 1 szt. | Schurter |
 | **Gniazdo Bezpiecznika** | Panel mount | 1 szt. | Schurter |
 | **LDO 3.3V** | MCP1700-3.3, 250mA | 1 szt. | Microchip |
-| **Izolator DC-DC** | B0505S-1W, 1W, 2500V | 2 szt. | MORNSUN (ProbeHolder + IR) |
-| **Izolator DC-DC** | B0505S-2W, 2W, 2500V | 1 szt. | MORNSUN (IR Strip - wyższy prąd) |
+| **Izolator DC-DC** | B0505S-1W, 1W, rating katalogowy 2500V (system niezweryfikowany) | 2 szt. | MORNSUN (ProbeHolder + IR) |
+| **Izolator DC-DC** | B0505S-2W, 2W, rating katalogowy 2500V (system niezweryfikowany) | 1 szt. | MORNSUN (IR Strip - wyższy prąd) |
 | **Optoizolator** | 6N137, DIP-8 | 4 szt. | Everlight (2x PWM, 2x IR) |
 | **MOSFET Logic-Level** | IRLZ44N lub AO3400 | 2 szt. | Vishay, Diodes Inc |
 | **Pasek LED IR** | 5V, 850nm/940nm, 60LED/m | 1-3 metry | Custom, AliExpress |
