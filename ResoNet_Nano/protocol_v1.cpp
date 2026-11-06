@@ -145,9 +145,10 @@ ParseResult Parser::feed(uint8_t byte, FrameHandler handler, void* context) {
             buffer_[used_++] = byte;
             if (used_ == HEADER_SIZE) {
                 const uint16_t payload_length = readU16BE(&buffer_[7]);
+                const bool request_type = buffer_[3] == HELLO_REQ ||
+                    buffer_[3] == PING || buffer_[3] == STATUS_REQ;
                 if (buffer_[2] != VERSION || buffer_[4] != 0 ||
-                    payload_length > MAX_PAYLOAD ||
-                    !isKnownType(buffer_[3]) ||
+                    payload_length != 0 || !request_type ||
                     !validatePayloadLength(buffer_[3], payload_length)) {
                     ++rejected_frames_;
                     restartWithByte(byte);
@@ -162,7 +163,7 @@ ParseResult Parser::feed(uint8_t byte, FrameHandler handler, void* context) {
             return PARSE_NEED_MORE;
 
         case READ_BODY:
-            if (used_ >= MAX_FRAME_SIZE || used_ >= expected_size_) {
+            if (used_ >= MAX_REQUEST_FRAME_SIZE || used_ >= expected_size_) {
                 ++rejected_frames_;
                 restartWithByte(byte);
                 return PARSE_REJECTED;
