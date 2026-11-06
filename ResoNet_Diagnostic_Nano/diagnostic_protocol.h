@@ -24,6 +24,7 @@ public:
     Parser() : state_(0), used_(0) {}
 
     void reset() { state_ = 0; used_ = 0; }
+    bool partial() const { return state_ != 0; }
 
     // Returns true only for a complete, CRC-validated empty-payload request.
     bool feed(uint8_t byte, Request& request) {
