@@ -24,9 +24,9 @@ bool FrequencyLoader::loadFromFile(const std::string& filepath) {
     
     std::vector<FrequencyEntry> parsed_entries;
     const auto trim = [](std::string value) {
-        const size_t first = value.find_first_not_of(" \\t\\r\\n");
+        const size_t first = value.find_first_not_of(" \t\r\n");
         if (first == std::string::npos) return std::string{};
-        const size_t last = value.find_last_not_of(" \\t\\r\\n");
+        const size_t last = value.find_last_not_of(" \t\r\n");
         return value.substr(first, last - first + 1);
     };
 
@@ -75,10 +75,7 @@ bool FrequencyLoader::loadFromFile(const std::string& filepath) {
                 // Extract disease name (before / separator)
                 size_t slash_pos = entry.description.find('/');
                 if (slash_pos != std::string::npos) {
-                    entry.disease_name = entry.description.substr(0, slash_pos);
-                    // Trim whitespace
-                    entry.disease_name.erase(0, entry.disease_name.find_first_not_of(" \t"));
-                    entry.disease_name.erase(entry.disease_name.find_last_not_of(" \t") + 1);
+                    entry.disease_name = trim(entry.description.substr(0, slash_pos));
                 } else {
                     entry.disease_name = trim(entry.description);
                 }
