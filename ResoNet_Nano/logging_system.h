@@ -11,6 +11,7 @@
 
 #include <Arduino.h>
 #include "types.h"
+#include <avr/pgmspace.h>
 
 // ============================================================================
 // KONFIGURACJA LOGOWANIA
@@ -50,25 +51,26 @@ typedef struct {
 void logging_init();
 void logging_loop();
 void log_add_entry(uint8_t level, uint16_t event_code, const char* message);
+void log_add_entry_P(uint8_t level, uint16_t event_code, PGM_P message);
 const char* get_log_level_name(uint8_t level);
 LogBuffer* logging_get_buffer();
 void logging_flush_to_serial();
 uint16_t logging_get_overflow_count();
 
 // Makra pomocnicze
-#define LOG_VERBOSE(msg) log_add_entry(LOG_VERBOSE, 0, msg)
-#define LOG_DEBUG(msg)   log_add_entry(LOG_DEBUG, 0, msg)
-#define LOG_INFO(msg)    log_add_entry(LOG_INFO, 0, msg)
-#define LOG_WARN(msg)    log_add_entry(LOG_WARNING, 0, msg)
-#define LOG_ERROR(msg)   log_add_entry(LOG_ERROR, 0, msg)
-#define LOG_FATAL(msg)   log_add_entry(LOG_FATAL, 0, msg)
+#define LOG_VERBOSE(msg) log_add_entry_P(LOG_VERBOSE, 0, PSTR(msg))
+#define LOG_DEBUG(msg)   log_add_entry_P(LOG_DEBUG, 0, PSTR(msg))
+#define LOG_INFO(msg)    log_add_entry_P(LOG_INFO, 0, PSTR(msg))
+#define LOG_WARN(msg)    log_add_entry_P(LOG_WARNING, 0, PSTR(msg))
+#define LOG_ERROR(msg)   log_add_entry_P(LOG_ERROR, 0, PSTR(msg))
+#define LOG_FATAL(msg)   log_add_entry_P(LOG_FATAL, 0, PSTR(msg))
 
 #define LOG_EVENT(level, event, msg) log_add_entry(level, event, msg)
 
 // Logowanie z formatowaniem (ograniczone)
 #define LOG_INFO_F(fmt, ...) do { \
     char buf[LOG_MESSAGE_MAX_LEN]; \
-    snprintf(buf, sizeof(buf), fmt, ##__VA_ARGS__); \
+    snprintf_P(buf, sizeof(buf), PSTR(fmt), ##__VA_ARGS__); \
     log_add_entry(LOG_INFO, 0, buf); \
 } while(0)
 
