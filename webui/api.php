@@ -393,11 +393,11 @@ switch ($action) {
         }
 
         try {
-            $configString = "CONFIG MODE:$mode\\n";
+            $configString = "CONFIG MODE:$mode\n";
             foreach ($validatedChannels as $ch) {
-                $configString .= "CH:{$ch['id']}|{$ch['name']}|{$ch['type']}|{$ch['freq']}|{$ch['duty']}|{$ch['intensity']}|{$ch['modulation']}|{$ch['enabled']}\\n";
+                $configString .= "CH:{$ch['id']}|{$ch['name']}|{$ch['type']}|{$ch['freq']}|{$ch['duty']}|{$ch['intensity']}|{$ch['modulation']}|{$ch['enabled']}\n";
             }
-            $configString .= "END_CONFIG\\n";
+            $configString .= "END_CONFIG\n";
             if (strlen($configString) > 65536) {
                 json_response(false, null, "Configuration payload exceeds 64 KiB");
             }
