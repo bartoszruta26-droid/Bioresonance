@@ -39,3 +39,17 @@ jobs:
             -o protocol_v1_test
       - name: Run protocol host tests
         run: ./protocol_v1_test
+  arduino-nano-compile:
+    name: Arduino Nano firmware compile (no hardware tests)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: arduino/setup-arduino-cli@v2
+      - name: Install AVR core and pinned Ethernet library
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install arduino:avr
+          arduino-cli lib install EthernetENC@2.0.5
+      - name: Compile Arduino Nano firmware
+        run: |
+          arduino-cli compile --fqbn arduino:avr:nano:cpu=atmega328old ResoNet_Nano
