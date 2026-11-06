@@ -82,7 +82,6 @@ class MainViewModel : ViewModel() {
                         is ConnectionState.Connected -> {
                             showMessage("Połączono z ${state.ipAddress}:${state.port}")
                             refreshStatus()
-                            refreshLogs()
                         }
                         is ConnectionState.Error -> {
                             showMessage("Błąd: ${state.message}")
