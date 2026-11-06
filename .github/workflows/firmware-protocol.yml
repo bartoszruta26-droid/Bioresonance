@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "ResoNet_Nano/**"
+      - "ResoNet_Nano/**"\n      - "ResoNet_Diagnostic_Nano/**"
       - "tests/host/**"
       - ".github/workflows/firmware-protocol.yml"
   pull_request:
