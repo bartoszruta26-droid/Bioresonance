@@ -107,6 +107,18 @@ bool event_push(uint16_t event_code, uint8_t severity, uint32_t data, const char
 }
 
 /**
+ * @brief Adds an event whose description is stored in program memory.
+ */
+bool event_push_P(uint16_t event_code, uint8_t severity, uint32_t data,
+                  PGM_P description) {
+    if (description == NULL) return false;
+    char description_ram[EVENT_DESC_MAX_LEN];
+    strncpy_P(description_ram, description, sizeof(description_ram) - 1);
+    description_ram[sizeof(description_ram) - 1] = '\\0';
+    return event_push(event_code, severity, data, description_ram);
+}
+
+/**
  * @brief Pobiera zdarzenie z kolejki (FIFO)
  * @param event Wskaźnik do struktury zdarzenia
  * @return true jeśli pobrano zdarzenie, false jeśli kolejka pusta
