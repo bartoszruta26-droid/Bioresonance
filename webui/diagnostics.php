@@ -131,12 +131,39 @@ if (!in_array($action, ['status', 'ping'], true)) {
 $socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
 if ($socket === false) respond(502, ['success' => false, 'error' => 'Nie można utworzyć gniazda TCP']);
 try {
+    if (!socket_set_nonblock($socket)) {
+        throw new RuntimeException('Nie można ustawić nieblokującego trybu połączenia');
+    }
+    $connected = @socket_connect($socket, $ip, 5001);
+    if (!$connected) {
+        $connectError = socket_last_error($socket);
+        $pendingErrors = array_filter([
+            defined('SOCKET_EINPROGRESS') ? SOCKET_EINPROGRESS : null,
+            defined('SOCKET_EALREADY') ? SOCKET_EALREADY : null,
+            defined('SOCKET_EWOULDBLOCK') ? SOCKET_EWOULDBLOCK : null,
+            defined('SOCKET_EAGAIN') ? SOCKET_EAGAIN : null,
+        ], static function ($value) { return $value !== null; });
+        if (!in_array($connectError, $pendingErrors, true)) {
+            throw new RuntimeException('Nie można połączyć z urządzeniem na porcie 5001');
+        }
+        $readSockets = [];
+        $writeSockets = [$socket];
+        $exceptSockets = [$socket];
+        $ready = @socket_select($readSockets, $writeSockets, $exceptSockets, 2, 0);
+        if ($ready === false || $ready === 0 || !empty($exceptSockets) || empty($writeSockets)) {
+            throw new RuntimeException('Przekroczono limit czasu połączenia TCP');
+        }
+        $socketError = socket_get_option($socket, SOL_SOCKET, SO_ERROR);
+        if ($socketError !== 0) {
+            throw new RuntimeException('Połączenie TCP nie powiodło się (kod ' . $socketError . ')');
+        }
+    }
+    if (!socket_set_block($socket)) {
+        throw new RuntimeException('Nie można przywrócić blokującego trybu gniazda');
+    }
     if (!socket_set_option($socket, SOL_SOCKET, SO_RCVTIMEO, ['sec' => 2, 'usec' => 0]) ||
         !socket_set_option($socket, SOL_SOCKET, SO_SNDTIMEO, ['sec' => 2, 'usec' => 0])) {
         throw new RuntimeException('Nie można ustawić limitów czasu gniazda');
-    }
-    if (!@socket_connect($socket, $ip, 5001)) {
-        throw new RuntimeException('Nie można połączyć z urządzeniem na porcie 5001');
     }
     $sequence = 1;
     $hello = exchange($socket, 0x01, 0x02, $sequence++);
