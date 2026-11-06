@@ -3,9 +3,9 @@ package com.resonet.nano
 /**
  * Diagnostic-only ResoNet Protocol v1 frame codec.
  *
- * This codec does not expose actuator commands. It is deliberately separate
- * from ArduinoCommunication until firmware and all clients implement the same
- * protocol and pass shared conformance tests.
+ * This codec does not expose actuator commands. ArduinoCommunication uses it
+ * for the diagnostic TCP handshake and status exchange. Other client platforms
+ * still require their own protocol v1 adapters and conformance checks.
  */
 object ResoNetProtocolV1 {
     const val VERSION = 1
