@@ -61,7 +61,7 @@ NetworkClient::~NetworkClient() {
 }
 
 bool NetworkClient::connect(const std::string& ip, int port_num) {
-    std::lock_guard<std::mutex> socket_lock(socket_mutex);
+    std::unique_lock<std::mutex> socket_lock(socket_mutex);
     // A reconnect replaces the previous descriptor instead of leaking it.
     if (socket_fd != INVALID_SOCKET_VALUE) {
         CLOSE_SOCKET(socket_fd);
@@ -73,6 +73,7 @@ bool NetworkClient::connect(const std::string& ip, int port_num) {
 #endif
     // Validate IP address format (basic check)
     if (ip.empty()) {
+        socket_lock.unlock();
         REPORT_ERROR(ErrorCode::ERR_NETWORK_UNREACHABLE, ErrorCategory::NETWORK,
                     "Empty IP address");
         return false;
@@ -80,6 +81,7 @@ bool NetworkClient::connect(const std::string& ip, int port_num) {
     
     // Validate port range
     if (port_num < 1 || port_num > 65535) {
+        socket_lock.unlock();
         REPORT_ERROR(ErrorCode::ERR_NETWORK_SOCKET_FAILED, ErrorCategory::NETWORK,
                     "Invalid port number: " + std::to_string(port_num));
         return false;
@@ -90,6 +92,7 @@ bool NetworkClient::connect(const std::string& ip, int port_num) {
     
     struct in_addr parsed_address{};
     if (inet_pton(AF_INET, ip.c_str(), &parsed_address) != 1) {
+        socket_lock.unlock();
         REPORT_ERROR(ErrorCode::ERR_NETWORK_UNREACHABLE, ErrorCategory::NETWORK,
                     "Invalid IPv4 address format: " + ip);
         return false;
@@ -97,6 +100,7 @@ bool NetworkClient::connect(const std::string& ip, int port_num) {
 
     socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (socket_fd == INVALID_SOCKET_VALUE) {
+        socket_lock.unlock();
         REPORT_ERROR(ErrorCode::ERR_NETWORK_SOCKET_FAILED, ErrorCategory::NETWORK,
                     "Failed to create socket");
         return false;
@@ -107,6 +111,7 @@ bool NetworkClient::connect(const std::string& ip, int port_num) {
     if (ioctlsocket(socket_fd, FIONBIO, &mode) != 0) {
         CLOSE_SOCKET(socket_fd);
         socket_fd = INVALID_SOCKET_VALUE;
+        socket_lock.unlock();
         REPORT_ERROR(ErrorCode::ERR_NETWORK_SOCKET_FAILED, ErrorCategory::NETWORK,
                     "Failed to set non-blocking socket mode");
         return false;
@@ -140,6 +145,7 @@ bool NetworkClient::connect(const std::string& ip, int port_num) {
 #endif
         CLOSE_SOCKET(socket_fd);
         socket_fd = INVALID_SOCKET_VALUE;
+        socket_lock.unlock();
         REPORT_ERROR(ErrorCode::ERR_NETWORK_UNREACHABLE, ErrorCategory::NETWORK,
                     "Connection failed");
         return false;
@@ -163,6 +169,7 @@ bool NetworkClient::connect(const std::string& ip, int port_num) {
         const bool timed_out = (result == 0);
         CLOSE_SOCKET(socket_fd);
         socket_fd = INVALID_SOCKET_VALUE;
+        socket_lock.unlock();
         REPORT_ERROR(timed_out ? ErrorCode::ERR_NETWORK_TIMEOUT : ErrorCode::ERR_NETWORK_UNREACHABLE,
                     ErrorCategory::NETWORK,
                     timed_out ? "Connection timeout" : "Connection readiness check failed");
@@ -180,6 +187,7 @@ bool NetworkClient::connect(const std::string& ip, int port_num) {
 #endif
         CLOSE_SOCKET(socket_fd);
         socket_fd = INVALID_SOCKET_VALUE;
+        socket_lock.unlock();
         REPORT_ERROR(ErrorCode::ERR_NETWORK_UNREACHABLE, ErrorCategory::NETWORK,
                     "Connection error: " + std::to_string(so_error));
         return false;
@@ -194,6 +202,7 @@ bool NetworkClient::connect(const std::string& ip, int port_num) {
 #endif
         CLOSE_SOCKET(socket_fd);
         socket_fd = INVALID_SOCKET_VALUE;
+        socket_lock.unlock();
         REPORT_ERROR(ErrorCode::ERR_NETWORK_SOCKET_FAILED, ErrorCategory::NETWORK,
                     "Failed to restore blocking socket mode");
         return false;
@@ -205,7 +214,7 @@ bool NetworkClient::connect(const std::string& ip, int port_num) {
 }
 
 void NetworkClient::disconnect() {
-    std::lock_guard<std::mutex> socket_lock(socket_mutex);
+    std::unique_lock<std::mutex> socket_lock(socket_mutex);
     if (socket_fd != INVALID_SOCKET_VALUE) {
         CLOSE_SOCKET(socket_fd);
         socket_fd = INVALID_SOCKET_VALUE;
@@ -215,7 +224,7 @@ void NetworkClient::disconnect() {
 }
 
 bool NetworkClient::isConnected() const {
-    std::lock_guard<std::mutex> socket_lock(socket_mutex);
+    std::unique_lock<std::mutex> socket_lock(socket_mutex);
     return connected.load() && socket_fd != INVALID_SOCKET_VALUE;
 }
 
@@ -229,13 +238,15 @@ bool NetworkClient::sendTherapyPacket(const TherapyPacket& packet) {
 }
 
 bool NetworkClient::sendCommand(const std::string& cmd) {
-    std::lock_guard<std::mutex> socket_lock(socket_mutex);
+    std::unique_lock<std::mutex> socket_lock(socket_mutex);
     if (cmd.empty()) {
+        socket_lock.unlock();
         REPORT_ERROR(ErrorCode::ERR_NETWORK_SEND_FAILED, ErrorCategory::NETWORK,
                     "Cannot send an empty command");
         return false;
     }
     if (!connected.load() || socket_fd == INVALID_SOCKET_VALUE) {
+        socket_lock.unlock();
         REPORT_ERROR(ErrorCode::ERR_NETWORK_DISCONNECTED, ErrorCategory::NETWORK,
                     "Cannot send command - not connected");
         return false;
@@ -266,6 +277,7 @@ bool NetworkClient::sendCommand(const std::string& cmd) {
             connected = false;
             CLOSE_SOCKET(socket_fd);
             socket_fd = INVALID_SOCKET_VALUE;
+            socket_lock.unlock();
             REPORT_ERROR(ErrorCode::ERR_NETWORK_SEND_FAILED, ErrorCategory::NETWORK,
                         "Failed to send complete command; connection closed");
             return false;
@@ -276,9 +288,10 @@ bool NetworkClient::sendCommand(const std::string& cmd) {
 }
 
 std::string NetworkClient::receiveData(int timeout_ms) {
-    std::lock_guard<std::mutex> socket_lock(socket_mutex);
+    std::unique_lock<std::mutex> socket_lock(socket_mutex);
     if (!connected.load() || socket_fd == INVALID_SOCKET_VALUE) return "";
     if (timeout_ms < 0) {
+        socket_lock.unlock();
         REPORT_ERROR(ErrorCode::ERR_USER_INPUT_INVALID, ErrorCategory::USER,
                      "Receive timeout must be non-negative");
         return "";
@@ -304,6 +317,7 @@ std::string NetworkClient::receiveData(int timeout_ms) {
         connected = false;
         CLOSE_SOCKET(socket_fd);
         socket_fd = INVALID_SOCKET_VALUE;
+        socket_lock.unlock();
         REPORT_ERROR(ErrorCode::ERR_NETWORK_RECV_FAILED, ErrorCategory::NETWORK,
                      "Socket readiness check failed; connection closed");
         return "";
@@ -325,6 +339,7 @@ std::string NetworkClient::receiveData(int timeout_ms) {
         connected = false;
         CLOSE_SOCKET(socket_fd);
         socket_fd = INVALID_SOCKET_VALUE;
+        socket_lock.unlock();
         REPORT_ERROR(ErrorCode::ERR_NETWORK_RECV_FAILED, ErrorCategory::NETWORK,
                      "Receive failed; connection closed");
         return "";
