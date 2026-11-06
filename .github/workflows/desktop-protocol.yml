@@ -30,6 +30,9 @@ on:
       - "gui/tests/resonet_protocol_v1_smoke.cpp"
       - "bash_tui/**"
       - "webui/diagnostics.php"
+      - "webui/diagnostics.html"
+      - "webui/index.html"
+      - "webui/api.php"
       - ".github/workflows/desktop-protocol.yml"
   workflow_dispatch:
 
