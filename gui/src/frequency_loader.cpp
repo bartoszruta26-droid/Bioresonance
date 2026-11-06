@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cctype>
 #include <limits>
+#include <stdexcept>
 
 FrequencyLoader::FrequencyLoader() {
 }
@@ -67,7 +68,10 @@ bool FrequencyLoader::loadFromFile(const std::string& filepath) {
                 entry.description = trim(tokens[3]);
                 entry.modulation = trim(tokens[4]);
                 entry.carrier_khz = static_cast<uint32_t>(parsed_carrier);
-                
+                if (entry.frequency_hz == 0 || entry.category.empty() || entry.description.empty()) {
+                    throw std::invalid_argument("required frequency field is empty or zero");
+                }
+
                 // Extract disease name (before / separator)
                 size_t slash_pos = entry.description.find('/');
                 if (slash_pos != std::string::npos) {
