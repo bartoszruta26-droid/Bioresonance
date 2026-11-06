@@ -76,6 +76,7 @@ public:
     ParseResult feed(uint8_t byte, FrameHandler handler, void* context);
 
     uint16_t rejectedFrames() const { return rejected_frames_; }
+    bool hasPartialFrame() const { return state_ != SEEK_MAGIC_0; }
 
 private:
     enum State : uint8_t {
