@@ -231,13 +231,14 @@ class ArduinoCommunication {
             throw IOException("Wartości statusu poza zakresem")
         val frequency = fields["Frequency"]?.toFloatOrNull() ?: 0.0f
         if (!frequency.isFinite() || frequency < 0.0f) throw IOException("Nieprawidłowa Frequency")
-        val state = (fields["System State"] ?: fields["State"])?.let(::parseSystemState)
-            ?: SystemState.ERROR
+        val reportedState = fields["System State"] ?: fields["State"]
+        val state = reportedState?.let(::parseSystemState) ?: SystemState.ERROR
         val effector = fields["Effector"]?.let(::parseEffector) ?: EffectorType.NONE
         return SystemStatus(
             uptimeSeconds = uptime, state = state, temperatureCelsius = temperature,
             freeMemoryBytes = memory, pwmIsActive = pwm, currentFrequency = frequency,
-            networkConnected = network, detectedEffector = effector
+            networkConnected = network, detectedEffector = effector,
+            systemStateReported = reportedState != null
         )
     }
 
