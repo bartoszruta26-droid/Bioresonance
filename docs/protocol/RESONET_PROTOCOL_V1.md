@@ -78,7 +78,7 @@ Parser sprawdza magic, wersję, flags i długość przed przyjęciem payloadu. P
 | Pole | Rozmiar | Kodowanie |
 |---|---:|---|
 | system_state | 1 | enum poniżej |
-| fault_flags | 2 | bitmapa; nieznane bity oznaczają niezgodność |
+| fault_flags | 2 | bitmapa: bit 0 = fault, bit 1 = warning; pozostałe bity zarezerwowane |
 | uptime_seconds | 4 | uint32 |
 | free_memory_bytes | 2 | uint16 |
 | measured_temperature_centi_c | 2 | int16, setne °C; 0x7FFF = brak wiarygodnego pomiaru |
