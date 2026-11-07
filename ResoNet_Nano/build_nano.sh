@@ -61,7 +61,7 @@ PY
 fi
 
 MEMORY_FLAGS="-mcall-prologues -maccumulate-args -DUIP_CONF_ACTIVE_OPEN=0 -DUIP_CONF_UDP=0 -DUIP_CONF_MAX_CONNECTIONS=1 -DUIP_CONF_MAX_LISTENPORTS=1 -DUIP_CONF_BUFFER_SIZE=128 -DUIP_CONF_ARPTAB_SIZE=2 -DUIP_SOCKET_NUMPACKETS=1 -DSERIAL_RX_BUFFER_SIZE=32 -DSERIAL_TX_BUFFER_SIZE=32"
-CPP_FLAGS="$MEMORY_FLAGS -fno-rtti -fno-exceptions"
+CPP_FLAGS="$MEMORY_FLAGS -fno-rtti -fno-exceptions -fno-inline-small-functions -fno-inline-functions-called-once"
 
 LINK_FLAGS="-Wl,--relax"
 if [[ -n "${RESONET_MAP_FILE:-}" ]]; then
