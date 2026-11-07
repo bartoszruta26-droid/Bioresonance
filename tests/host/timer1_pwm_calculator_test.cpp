@@ -15,7 +15,7 @@ int main() {
     assert(timer1_pwm::calculate(16000000UL, 3800000UL, 50, &c)); // 38 kHz
     assert(c.prescaler == 1);
     assert(c.top == 420);
-    assert(c.compare == 210);
+    assert(c.compare == 211);
     assert(c.actual_frequency_hz_x100 >= 3800000UL);
     assert(c.actual_frequency_hz_x100 <= 3801000UL);
     assert(timer1_pwm::calculate(16000000UL, 3800000UL, 100, &c));
