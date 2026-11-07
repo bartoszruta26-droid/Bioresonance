@@ -1,8 +1,9 @@
 /**
  * @file protocol_v1.cpp
- * @brief ResoNet Protocol v1 frame codec and streaming parser.
+ * @brief ResoNet Protocol v1 frame codec and bounded streaming parser.
  */
 #include "protocol_v1.h"
+#include <string.h>
 
 namespace ResoNetProtocolV1 {
 
@@ -117,6 +118,28 @@ void Parser::restartWithByte(uint8_t byte) {
     }
 }
 
+/**
+ * Recover the earliest possible magic sequence already buffered. This matters
+ * when a corrupt frame ends with the first byte of the next frame's magic:
+ * that byte must survive until the next TCP read supplies MAGIC_1.
+ */
+void Parser::resyncFromBuffer() {
+    for (uint16_t start = 1; start < used_; ++start) {
+        if (buffer_[start] != MAGIC_0) continue;
+
+        const uint16_t remaining = (uint16_t)(used_ - start);
+        if (remaining == 1 || buffer_[start + 1] == MAGIC_1) {
+            memmove(buffer_, buffer_ + start, remaining);
+            used_ = remaining;
+            expected_size_ = 0;
+            state_ = remaining == 1 ? SEEK_MAGIC_1 : READ_HEADER;
+            return;
+        }
+    }
+
+    reset();
+}
+
 ParseResult Parser::feed(uint8_t byte, FrameHandler handler, void* context) {
     switch (state_) {
         case SEEK_MAGIC_0:
@@ -149,17 +172,15 @@ ParseResult Parser::feed(uint8_t byte, FrameHandler handler, void* context) {
                     buffer_[3] == PING || buffer_[3] == STATUS_REQ;
                 const bool known_type = isKnownType(buffer_[3]);
                 if (buffer_[2] != VERSION || buffer_[4] != 0 ||
-                    payload_length != 0 || (known_type && !request_type) ||
-                    (known_type && !validatePayloadLength(buffer_[3], payload_length))) {
+                    !known_type || !request_type ||
+                    !validatePayloadLength(buffer_[3], payload_length) ||
+                    payload_length != 0) {
                     ++rejected_frames_;
-                    restartWithByte(byte);
+                    resyncFromBuffer();
                     return PARSE_REJECTED;
                 }
                 expected_size_ = HEADER_SIZE + payload_length + CRC_SIZE;
                 state_ = READ_BODY;
-                if (expected_size_ == HEADER_SIZE + CRC_SIZE) {
-                    // Empty-payload frames still need their two CRC bytes.
-                }
             }
             return PARSE_NEED_MORE;
 
@@ -179,7 +200,7 @@ ParseResult Parser::feed(uint8_t byte, FrameHandler handler, void* context) {
 
                 if (received_crc != calculated_crc) {
                     ++rejected_frames_;
-                    restartWithByte(byte);
+                    resyncFromBuffer();
                     return PARSE_REJECTED;
                 }
 
@@ -198,6 +219,7 @@ ParseResult Parser::feed(uint8_t byte, FrameHandler handler, void* context) {
     }
 
     reset();
+    ++rejected_frames_;
     return PARSE_REJECTED;
 }
 

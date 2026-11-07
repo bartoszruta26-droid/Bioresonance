@@ -10,7 +10,6 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <stddef.h>
 
 namespace ResoNetProtocolV1 {
 
@@ -69,6 +68,7 @@ size_t encode(uint8_t type,
 /**
  * Incremental TCP-stream parser. One instance consumes one byte stream.
  * No heap allocation, String, STL containers, or blocking operations.
+ * Only HELLO_REQ, PING and STATUS_REQ with empty payloads are accepted.
  */
 class Parser {
 public:
@@ -95,6 +95,7 @@ private:
     State state_;
 
     void restartWithByte(uint8_t byte);
+    void resyncFromBuffer();
 };
 
 } // namespace ResoNetProtocolV1
