@@ -15,7 +15,7 @@ struct Config {
 inline bool calculate(uint32_t cpu_hz, uint32_t target_hz_x100,
                       uint8_t duty_percent, Config* out) {
     if (out == 0 || cpu_hz == 0 || target_hz_x100 == 0 ||
-        duty_percent == 0 || duty_percent >= 100) {
+        duty_percent == 0 || duty_percent > 100) {
         return false;
     }
 
@@ -36,7 +36,7 @@ inline bool calculate(uint32_t cpu_hz, uint32_t target_hz_x100,
         }
 
         const uint64_t actual =
-            (numerator + denominator * counts / prescalers[i] / 2ULL) /
+            (numerator + static_cast<uint64_t>(prescalers[i]) * counts / 2ULL) /
             (static_cast<uint64_t>(prescalers[i]) * counts);
         const uint64_t error = actual > target_hz_x100
             ? actual - target_hz_x100 : target_hz_x100 - actual;
