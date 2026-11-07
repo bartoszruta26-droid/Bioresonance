@@ -3,57 +3,53 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 API = (ROOT / "webui" / "api.php").read_text(encoding="utf-8")
+BRIDGE = (ROOT / "webui" / "diagnostics.php").read_text(encoding="utf-8")
 HTML = (ROOT / "webui" / "index.html").read_text(encoding="utf-8")
 
 
 class WebApiContractTests(unittest.TestCase):
-    def test_configuration_uses_real_newline_delimiters(self):
-        self.assertIn('CONFIG MODE:$mode\\n', API)
-        self.assertIn('END_CONFIG\\n', API)
-        self.assertNotIn('CONFIG MODE:$mode\\\\n', API)
+    def test_legacy_api_is_permanently_disabled(self):
+        self.assertIn("http_response_code(410);", API)
+        self.assertIn("Legacy API disabled", API)
 
-    def test_unrestricted_raw_commands_are_disabled(self):
-        self.assertIn("Raw commands are disabled", API)
+    def test_bridge_requires_post_https_and_strong_api_token(self):
+        self.assertIn("$_SERVER['REQUEST_METHOD'] !== 'POST'", BRIDGE)
+        self.assertIn("$_SERVER['HTTPS']", BRIDGE)
+        self.assertIn("strlen($expectedToken) < 32", BRIDGE)
+        self.assertIn("hash_equals($expectedToken, $providedToken)", BRIDGE)
 
-    def test_mutating_actions_require_api_token(self):
-        for action in ("save_config", "control"):
-            marker = "case '" + action + "':"
-            self.assertIn(marker, API)
-            section = API.split(marker, 1)[1].split("case '", 1)[0]
-            self.assertIn("require_api_token();", section)
+    def test_bridge_accepts_only_read_only_actions(self):
+        self.assertIn("in_array($action, ['status', 'ping'], true)", BRIDGE)
+        self.assertNotIn("'start_therapy'", BRIDGE)
+        self.assertNotIn("'stop_therapy'", BRIDGE)
+        self.assertNotIn("'configure_channel'", BRIDGE)
 
-    def test_tcp_response_is_bounded_and_framed(self):
-        self.assertIn("$maxResponseBytes = 8192;", API)
-        self.assertIn("Incomplete response frame from device", API)
-        self.assertIn("Empty response from device", API)
+    def test_frame_parser_checks_bounds_sequence_and_crc(self):
+        self.assertIn("$length > 192", BRIDGE)
+        self.assertIn("$responseSequence !== $sequence", BRIDGE)
+        self.assertIn("crc16_ccitt_false($header . $payload)", BRIDGE)
+        self.assertIn("Nieprawidłowe CRC-16/CCITT-FALSE", BRIDGE)
 
-    def test_channel_limits_match_firmware_pwm_contract(self):
-        self.assertIn("count($channels) > 8", API)
-        self.assertIn("$id < 1 || $id > 8", API)
-        self.assertIn("$duty < 1 || $duty > 100", API)
-        self.assertIn("$intens > 4095", API)
-        self.assertIn("$mod > 3", API)
-        self.assertIn("(float)$ch['freq'] < 0.1", API)
-        self.assertIn("(float)$ch['freq'] > 500000", API)
+    def test_bridge_restricts_targets_to_private_ipv4(self):
+        self.assertIn("FILTER_VALIDATE_IP", BRIDGE)
+        self.assertIn("10.0.0.0", BRIDGE)
+        self.assertIn("172.16.0.0", BRIDGE)
+        self.assertIn("192.168.0.0", BRIDGE)
+        self.assertIn("socket_connect($socket, $ip, 5001)", BRIDGE)
 
-    def test_frontend_uses_only_diagnostic_mode_until_transport_is_verified(self):
-        self.assertIn("const DIAGNOSTIC_ONLY = true;", HTML)
-        self.assertIn("apiCall('connect_test'", HTML)
-        self.assertIn("apiCall('get_status')", HTML)
-        self.assertIn("TRYB DIAGNOSTYCZNY", HTML)
-        self.assertIn("async function startTherapy()", HTML)
-        self.assertIn("Funkcja wyłączona", HTML)
+    def test_frontend_calls_only_diagnostic_bridge(self):
+        self.assertIn("fetch('diagnostics.php'", HTML)
+        self.assertIn("'X-Bioresonance-Token':token", HTML)
+        self.assertIn("run('status')", HTML)
+        self.assertIn("run('ping')", HTML)
+        self.assertNotIn("api.php", HTML)
+        self.assertNotIn("START", HTML)
+        self.assertNotIn("STOP", HTML)
 
-    def test_frontend_does_not_call_unimplemented_actions_from_active_handlers(self):
-        diagnostic = HTML.split("const DIAGNOSTIC_ONLY = true;", 1)[1]
-        self.assertNotIn("apiCall('get_logs')", diagnostic)
-        self.assertNotIn("apiCall('get_probes')", diagnostic)
-        self.assertNotIn("apiCall('start_therapy')", diagnostic)
-        self.assertNotIn("apiCall('send_config')", diagnostic)
-
-    def test_frontend_does_not_embed_api_secret(self):
-        self.assertNotIn("BIORESONANCE_API_TOKEN=", HTML)
-        self.assertIn("X-Bioresonance-Token", HTML)
+    def test_frontend_discloses_read_only_mode(self):
+        self.assertIn("lang=\"pl\"", HTML)
+        self.assertIn("Tryb wyłącznie do odczytu", HTML)
+        self.assertIn("nie steruje wyjściami", HTML)
 
 
 if __name__ == "__main__":
