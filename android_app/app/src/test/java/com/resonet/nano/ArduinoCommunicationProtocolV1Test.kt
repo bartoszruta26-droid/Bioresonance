@@ -173,6 +173,51 @@ class ArduinoCommunicationProtocolV1Test {
         assertNull(serverFailure.get())
     }
 
+    @Test
+    fun malformedStatusPayloadInvalidatesDiagnosticSession() = runBlocking {
+        val server = ServerSocket(0)
+        val serverFailure = AtomicReference<Throwable?>(null)
+        val worker = Thread {
+            try {
+                server.accept().use { peer ->
+                    peer.soTimeout = 3000
+                    val hello = readFrame(peer)
+                    writeFrame(peer, ResoNetProtocolV1.Frame(
+                        ResoNetProtocolV1.TYPE_HELLO_RESP, hello.sequence,
+                        byteArrayOf('R'.code.toByte(), 'N'.code.toByte(),
+                            0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0)
+                    ))
+                    val request = readFrame(peer)
+                    assertEquals(ResoNetProtocolV1.TYPE_STATUS_REQ, request.type)
+                    val invalid = byteArrayOf(
+                        0x7F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+                        0x01, 0x00, 0x7F, 0xFF.toByte(), 0x00, 0x00, 0x00
+                    )
+                    writeFrame(peer, ResoNetProtocolV1.Frame(
+                        ResoNetProtocolV1.TYPE_STATUS_RESP, request.sequence, invalid
+                    ))
+                }
+            } catch (error: Throwable) {
+                serverFailure.set(error)
+            }
+        }
+        worker.start()
+        val communication = ArduinoCommunication()
+        try {
+            assertTrue(communication.connect("127.0.0.1", server.localPort).isSuccess)
+            assertTrue(communication.deviceIdentity != null)
+            val result = communication.getStatus()
+            assertTrue(result.isFailure)
+            assertTrue(communication.connectionState is ConnectionState.Error)
+            assertNull(communication.deviceIdentity)
+        } finally {
+            communication.disconnect()
+            server.close()
+            worker.join(3000)
+        }
+        assertNull(serverFailure.get())
+    }
+
     private fun readFrame(socket: Socket): ResoNetProtocolV1.Frame {
         val input = DataInputStream(socket.getInputStream())
         val header = ByteArray(ResoNetProtocolV1.HEADER_BYTES)

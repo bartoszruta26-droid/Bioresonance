@@ -194,6 +194,11 @@ class ArduinoCommunication {
                 if (response.payload.size != expectedPayloadLength) {
                     throw IOException("Nieprawidłowa długość payloadu odpowiedzi")
                 }
+                // Validate the complete STATUS schema inside the transport
+                // failure boundary so invalid data also invalidates the session.
+                if (expectedType == ResoNetProtocolV1.TYPE_STATUS_RESP) {
+                    parseStatusFrame(response)
+                }
                 Result.success(response)
             } catch (error: Exception) {
                 closeSocketLocked()
