@@ -9,7 +9,7 @@ struct EffectorPinMap { uint8_t pin[EFFECTOR_CHANNEL_COUNT]; EffectorPinMap():pi
 struct EffectorGpioIo { void (*configure_output)(uint8_t,void*);void (*write_level)(uint8_t,bool,void*);void* context; };
 class EffectorGpioDriver {
 public:
- EffectorGpioDriver():ready_(false),io_{0,0,0}{for(uint8_t i=0;i<EFFECTOR_CHANNEL_COUNT;++i)pins_[i]=EFFECTOR_PIN_UNASSIGNED;}
+ EffectorGpioDriver():io_{0,0,0},ready_(false){for(uint8_t i=0;i<EFFECTOR_CHANNEL_COUNT;++i)pins_[i]=EFFECTOR_PIN_UNASSIGNED;}
  static bool validPinMap(const EffectorPinMap& m){for(uint8_t i=0;i<EFFECTOR_CHANNEL_COUNT;++i){if(m.pin[i]>ARDUINO_NANO_MAX_DIGITAL_PIN)return false;for(uint8_t j=static_cast<uint8_t>(i+1);j<EFFECTOR_CHANNEL_COUNT;++j)if(m.pin[i]==m.pin[j])return false;}return true;}
  bool begin(const EffectorPinMap& m,const EffectorGpioIo& io){shutdown();if(!validPinMap(m)||!io.configure_output||!io.write_level)return false;io_=io;for(uint8_t i=0;i<EFFECTOR_CHANNEL_COUNT;++i){pins_[i]=m.pin[i];io_.configure_output(pins_[i],io_.context);io_.write_level(pins_[i],false,io_.context);}ready_=true;return true;}
  bool setEnabled(EffectorId id,bool enabled){if(!ready_||!EffectorRuntime::validEffector(id))return false;io_.write_level(pins_[static_cast<uint8_t>(id)],enabled,io_.context);return true;}
