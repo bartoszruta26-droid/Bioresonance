@@ -2,7 +2,7 @@ name: Desktop GUI
 on:
   push:
     branches: [main]
-    paths: ["gui/**", "webui/**", "android_app/**", "frequencies.md", ".github/workflows/desktop-gui.yml"]
+    paths: ["gui/**", "webui/**", "bash_tui/**", "android_app/**", "frequencies.md", ".github/workflows/desktop-gui.yml"]
   pull_request:
     paths: ["gui/**", "webui/**", "android_app/**", "frequencies.md", ".github/workflows/desktop-gui.yml"]
   workflow_dispatch:
