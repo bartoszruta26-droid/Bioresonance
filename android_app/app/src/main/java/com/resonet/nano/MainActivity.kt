@@ -48,20 +48,11 @@ class MainActivity : AppCompatActivity() {
             }
         }
         
-        // Start terapii
-        binding.btnStartTherapy.setOnClickListener {
-            viewModel.startTherapy()
-        }
-        
-        // Stop terapii
-        binding.btnStopTherapy.setOnClickListener {
-            viewModel.stopTherapy()
-        }
-        
-        // Skanowanie urządzeń
-        binding.btnScanDevices.setOnClickListener {
-            viewModel.scanDevices()
-        }
+        // ResoNet Protocol v1 udostępnia obecnie wyłącznie diagnostykę.
+        // Nie podpinaj akcji wykonawczych, których transport nie obsługuje.
+        binding.btnStartTherapy.isEnabled = false
+        binding.btnStopTherapy.isEnabled = false
+        binding.btnScanDevices.isEnabled = false
         
         // Odśwież status
         binding.btnRefreshStatus.setOnClickListener {
