@@ -14,7 +14,7 @@ int main(){
  assert(r.enqueue(event(EVENT_START,EFFECTOR_PIEZO,2200,40,250)));assert(r.processOne(100));assert(r.state(EFFECTOR_PIEZO)->requested_on);
  r.tick(349);assert(r.state(EFFECTOR_PIEZO)->requested_on);r.tick(350);assert(!r.state(EFFECTOR_PIEZO)->requested_on);
  assert(r.enqueue(event(EVENT_START,EFFECTOR_VIBRATOR,1000,50,20)));assert(r.processOne(65530UL));r.tick(13UL);assert(r.state(EFFECTOR_VIBRATOR)->requested_on);r.tick(14UL);assert(!r.state(EFFECTOR_VIBRATOR)->requested_on);
- assert(r.enqueue(event(EVENT_START,EFFECTOR_PIEZO,1000,25,500)));assert(r.processOne(1000));assert(r.enqueue(event(EVENT_STOP,EFFECTOR_PIEZO)));assert(r.processOne(1001));r.tick(2000);assert(!r.state(EFFECTOR_PIEZO)->requested_on);
+ assert(r.enqueue(event(EVENT_START,EFFECTOR_PIEZO,1000,25,500)));assert(r.processOne(1000));assert(r.state(EFFECTOR_PIEZO)->requested_on);assert(r.enqueue(event(EVENT_STOP,EFFECTOR_PIEZO)));assert(r.processOne(1001));assert(!r.state(EFFECTOR_PIEZO)->requested_on);r.tick(2000);assert(!r.state(EFFECTOR_PIEZO)->requested_on);
  assert(!r.enqueue(event(EVENT_START,EFFECTOR_VIBRATOR,0,20,100)));assert(!r.enqueue(event(EVENT_START,EFFECTOR_VIBRATOR,1000,101,100)));assert(!r.enqueue(event(EVENT_START,EFFECTOR_VIBRATOR,1000,20,0)));
  assert(!r.enqueue(event(static_cast<EventType>(0),EFFECTOR_IR_LED)));assert(!r.enqueue(event(EVENT_STOP,static_cast<EffectorId>(3))));
  for(uint8_t i=0;i<EFFECTOR_QUEUE_CAPACITY;++i)assert(r.enqueue(event(EVENT_STOP,EFFECTOR_IR_LED)));
