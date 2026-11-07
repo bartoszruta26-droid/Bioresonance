@@ -11,7 +11,7 @@ Klient desktopowy dla Linux i Windows oparty na Qt 6 Widgets oraz Qt Charts.
 
 ## Linux
 ```bash
-sudo apt-get install -y build-essential cmake qt6-base-dev qt6-charts-dev
+sudo apt-get install -y build-essential cmake qt6-base-dev libqt6charts6-dev
 cmake -S gui -B build/gui -DCMAKE_BUILD_TYPE=Release
 cmake --build build/gui --parallel
 ctest --test-dir build/gui --output-on-failure
