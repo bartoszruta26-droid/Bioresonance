@@ -97,6 +97,7 @@ jobs:
         run: bash ResoNet_Nano/build_nano.sh
       - name: Compile full firmware with opt-in ENC28J60 TCP and enforce memory budget
         run: |
+          set -euo pipefail
           cp -a ResoNet_Nano "$RUNNER_TEMP/ResoNet_Nano"
           sed -i 's/#define RESONET_ENABLE_ETHERNET 0/#define RESONET_ENABLE_ETHERNET 1/' "$RUNNER_TEMP/ResoNet_Nano/network_config.h"
           RESONET_BUILD_DIR="$RUNNER_TEMP/full-build" RESONET_MAP_FILE="$RUNNER_TEMP/full-nano-ethernet.map" bash "$RUNNER_TEMP/ResoNet_Nano/build_nano.sh" 2>&1 | tee "$RUNNER_TEMP/nano-ethernet-build.log"
