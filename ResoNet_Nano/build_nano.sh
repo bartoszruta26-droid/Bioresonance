@@ -4,13 +4,40 @@ set -euo pipefail
 SKETCH_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FQBN="${RESONET_FQBN:-arduino:avr:nano:cpu=atmega328old}"
 
-# EthernetENC 2.0.5's EthernetClient.cpp defines connect() and references
-# uip_connect() unconditionally. Disabling UIP_ACTIVE_OPEN removes that symbol
-# from uip.c and causes a linker error, even though this firmware only accepts
-# inbound connections. Keep the library default enabled; the application does
-# not call EthernetClient::connect(), and the linker can discard unused code.
+# The firmware is a TCP server only. Remove EthernetENC's unused outbound
+# EthernetClient::connect() definitions before compiling, then disable uIP
+# active-open support. This avoids retaining outbound TCP connection code.
+ETHERNET_ENABLED=$(grep -E '^#define[[:space:]]+RESONET_ENABLE_ETHERNET[[:space:]]+1' "$SKETCH_DIR/network_config.h" || true)
+LIBRARY_CLIENT=""
+LIBRARY_BACKUP=""
+restore_ethernet_library() {
+  if [[ -n "$LIBRARY_CLIENT" && -n "$LIBRARY_BACKUP" && -f "$LIBRARY_BACKUP" ]]; then
+    cp "$LIBRARY_BACKUP" "$LIBRARY_CLIENT"
+    rm -f "$LIBRARY_BACKUP"
+  fi
+}
+if [[ -n "$ETHERNET_ENABLED" ]]; then
+  LIBRARY_CLIENT="$(find "$HOME/Arduino/libraries" -path '*/EthernetENC/src/EthernetClient.cpp' -print -quit 2>/dev/null || true)"
+  if [[ -z "$LIBRARY_CLIENT" ]]; then
+    echo "EthernetENC EthernetClient.cpp not found; install EthernetENC 2.0.5" >&2
+    exit 1
+  fi
+  LIBRARY_BACKUP="$(mktemp)"
+  cp "$LIBRARY_CLIENT" "$LIBRARY_BACKUP"
+  trap restore_ethernet_library EXIT
+  python3 - "$LIBRARY_CLIENT" <<'PY'
+import pathlib, sys
+path = pathlib.Path(sys.argv[1])
+source = path.read_text()
+start = source.find("\\nint\\nUIPClient::connect(IPAddress ip, uint16_t port)\\n")
+end = source.find("\\nvoid\\nUIPClient::stop()\\n", start)
+if start < 0 or end < 0 or end <= start:
+    raise SystemExit("EthernetENC outbound connect implementation markers changed; refusing unsafe patch")
+path.write_text(source[:start] + source[end:])
+PY
+fi
 
-MEMORY_FLAGS="-mcall-prologues -maccumulate-args -DUIP_CONF_UDP=0 -DUIP_CONF_MAX_CONNECTIONS=1 -DUIP_CONF_MAX_LISTENPORTS=1 -DUIP_CONF_BUFFER_SIZE=128 -DUIP_CONF_ARPTAB_SIZE=2 -DUIP_SOCKET_NUMPACKETS=1 -DSERIAL_RX_BUFFER_SIZE=32 -DSERIAL_TX_BUFFER_SIZE=32"
+MEMORY_FLAGS="-mcall-prologues -maccumulate-args -DUIP_ACTIVE_OPEN=0 -DUIP_CONF_UDP=0 -DUIP_CONF_MAX_CONNECTIONS=1 -DUIP_CONF_MAX_LISTENPORTS=1 -DUIP_CONF_BUFFER_SIZE=128 -DUIP_CONF_ARPTAB_SIZE=2 -DUIP_SOCKET_NUMPACKETS=1 -DSERIAL_RX_BUFFER_SIZE=32 -DSERIAL_TX_BUFFER_SIZE=32"
 CPP_FLAGS="$MEMORY_FLAGS -fno-rtti -fno-exceptions"
 
 LINK_FLAGS="-Wl,--relax"
