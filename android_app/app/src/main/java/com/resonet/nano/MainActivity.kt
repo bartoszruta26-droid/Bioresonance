@@ -12,7 +12,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Główna aktywność aplikacji ResoNet Nano
- * Interfejs użytkownika do obsługi efektorów Arduino Nano
+ * Interfejs klienta diagnostycznego ResoNet Protocol v1
  */
 class MainActivity : AppCompatActivity() {
     
