@@ -390,12 +390,29 @@ bool NetworkClient::requestStatus(ResoNetStatusV1& status) {
     }
 
     std::vector<std::uint8_t> payload;
-    if (!exchange_v1(active_socket, ResoNetV1::kStatusReq,
-                     ResoNetV1::kStatusResp, sequence, payload) || payload.size() != 14 ||
-        payload[0] > 5 || (((payload[1] << 8) | payload[2]) & ~0x0003) != 0 ||
-        payload[13] > 1) {
-        std::lock_guard<std::mutex> state_lock(socket_mutex);
-        if (socket_fd == active_socket) connected = false;
+    const bool exchange_ok = exchange_v1(active_socket, ResoNetV1::kStatusReq,
+                                         ResoNetV1::kStatusResp, sequence, payload);
+    const bool status_valid = exchange_ok && payload.size() == 14 &&
+        payload[0] <= 5 && (((payload[1] << 8) | payload[2]) & ~0x0003) == 0 &&
+        payload[13] <= 1;
+    if (!status_valid) {
+        {
+            std::lock_guard<std::mutex> state_lock(socket_mutex);
+            if (socket_fd == active_socket) {
+                connected = false;
+                CLOSE_SOCKET(socket_fd);
+                socket_fd = INVALID_SOCKET_VALUE;
+                ++connection_generation;
+            }
+        }
+        io_lock.unlock();
+        if (!exchange_ok) {
+            REPORT_ERROR(ErrorCode::ERR_NETWORK_RECV_FAILED, ErrorCategory::NETWORK,
+                         "Diagnostic status exchange failed; connection invalidated");
+        } else {
+            REPORT_ERROR(ErrorCode::ERR_PROTOCOL_INVALID_FORMAT, ErrorCategory::PROTOCOL,
+                         "Diagnostic status payload failed schema validation; connection invalidated");
+        }
         return false;
     }
     const auto u16 = [&payload](std::size_t i) {

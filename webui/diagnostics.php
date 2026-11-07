@@ -11,13 +11,30 @@ header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 header('Referrer-Policy: no-referrer');
 
+final class DiagnosticException extends RuntimeException {
+    public function __construct(
+        public readonly string $errorCode,
+        string $message,
+        public readonly bool $retryable = false
+    ) {
+        parent::__construct($message);
+    }
+}
+
 function respond(int $status, array $body): void {
-    if (($body['success'] ?? true) === false && is_string($body['error'] ?? null)) {
+    if (($body['success'] ?? true) === false && $body['error'] instanceof DiagnosticException) {
+        $error = $body['error'];
+        $body['error'] = [
+            'code' => $error->errorCode,
+            'message' => $error->getMessage(),
+            'retryable' => $error->retryable,
+        ];
+    } elseif (($body['success'] ?? true) === false && is_string($body['error'] ?? null)) {
         if ($status === 400) $code = 'INVALID_REQUEST';
         elseif ($status === 401) $code = 'AUTH_REQUIRED';
         elseif ($status === 405) $code = 'METHOD_NOT_ALLOWED';
-        else $code = 'DEVICE_COMMUNICATION_FAILED';
-        $body['error'] = ['code' => $code, 'message' => $body['error'], 'retryable' => $status >= 500];
+        else $code = 'INTERNAL_ERROR';
+        $body['error'] = ['code' => $code, 'message' => $body['error'], 'retryable' => false];
     }
     http_response_code($status);
     echo json_encode($body, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
@@ -50,7 +67,18 @@ function read_exact($socket, int $length): string {
         $received = @socket_recv($socket, $chunk, $length - strlen($data), 0);
         if ($received === false || $received === 0) {
             $error = socket_last_error($socket);
-            throw new RuntimeException('Niepełna odpowiedź TCP (kod ' . $error . ')');
+            $timeoutCodes = array_filter([
+                defined('SOCKET_EAGAIN') ? SOCKET_EAGAIN : null,
+                defined('SOCKET_EWOULDBLOCK') ? SOCKET_EWOULDBLOCK : null,
+                defined('SOCKET_ETIMEDOUT') ? SOCKET_ETIMEDOUT : null,
+            ], static function ($value) { return $value !== null; });
+            if ($received === false && in_array($error, $timeoutCodes, true)) {
+                throw new DiagnosticException('TRANSPORT_TIMEOUT', 'Przekroczono limit czasu odpowiedzi TCP.', true);
+            }
+            if ($received === 0) {
+                throw new DiagnosticException('CONNECTION_CLOSED', 'Urządzenie zamknęło połączenie przed końcem odpowiedzi.', true);
+            }
+            throw new DiagnosticException('TRANSPORT_UNAVAILABLE', 'Nie udało się odebrać odpowiedzi TCP.', true);
         }
         $data .= $chunk;
     }
@@ -63,31 +91,34 @@ function exchange(Socket $socket, int $type, int $expectedType, int $sequence): 
     while ($offset < strlen($frame)) {
         $sent = @socket_write($socket, substr($frame, $offset));
         if ($sent === false || $sent === 0) {
-            throw new RuntimeException('Nie udało się wysłać pełnej ramki');
+            throw new DiagnosticException('TRANSPORT_UNAVAILABLE', 'Nie udało się wysłać pełnej ramki.', true);
         }
         $offset += $sent;
     }
 
     $header = read_exact($socket, 9);
     if (substr($header, 0, 2) !== 'RN' || ord($header[2]) !== 1 || ord($header[4]) !== 0) {
-        throw new RuntimeException('Nieprawidłowy nagłówek odpowiedzi');
+        throw new DiagnosticException('PROTOCOL_INVALID_HEADER', 'Odpowiedź ma nieprawidłowy nagłówek protokołu v1.');
     }
     $responseType = ord($header[3]);
     $responseSequence = unpack('nvalue', substr($header, 5, 2))['value'];
     $length = unpack('nvalue', substr($header, 7, 2))['value'];
-    if ($length > 192 || $responseSequence !== $sequence) {
-        throw new RuntimeException('Nieprawidłowa długość lub sequence odpowiedzi');
+    if ($length > 192) {
+        throw new DiagnosticException('PROTOCOL_INVALID_LENGTH', 'Długość odpowiedzi przekracza limit protokołu.');
+    }
+    if ($responseSequence !== $sequence) {
+        throw new DiagnosticException('PROTOCOL_SEQUENCE_MISMATCH', 'Odpowiedź ma niezgodny numer sequence.');
     }
     $payload = read_exact($socket, $length);
     $receivedCrc = unpack('nvalue', read_exact($socket, 2))['value'];
     if ($receivedCrc !== crc16_ccitt_false($header . $payload)) {
-        throw new RuntimeException('Nieprawidłowe CRC-16/CCITT-FALSE');
+        throw new DiagnosticException('PROTOCOL_CRC_MISMATCH', 'Suma kontrolna odpowiedzi jest nieprawidłowa.');
     }
     if ($responseType === 0x7D || $responseType === 0x7E) {
-        throw new RuntimeException('Urządzenie odrzuciło żądanie protokołu');
+        throw new DiagnosticException('DEVICE_REJECTED', 'Urządzenie odrzuciło żądanie protokołu v1.');
     }
     if ($responseType !== $expectedType) {
-        throw new RuntimeException(sprintf('Nieoczekiwany typ odpowiedzi: 0x%02X', $responseType));
+        throw new DiagnosticException('PROTOCOL_UNEXPECTED_TYPE', sprintf('Nieoczekiwany typ odpowiedzi: 0x%02X', $responseType));
     }
     return $payload;
 }
@@ -158,7 +189,7 @@ try {
         $exceptSockets = [$socket];
         $ready = @socket_select($readSockets, $writeSockets, $exceptSockets, 2, 0);
         if ($ready === false || $ready === 0 || !empty($exceptSockets) || empty($writeSockets)) {
-            throw new RuntimeException('Przekroczono limit czasu połączenia TCP');
+            throw new DiagnosticException('TRANSPORT_TIMEOUT', 'Przekroczono limit czasu połączenia TCP.', true);
         }
         $socketError = socket_get_option($socket, SOL_SOCKET, SO_ERROR);
         if ($socketError !== 0) {
@@ -178,7 +209,7 @@ try {
     $deviceId = bin2hex(substr($hello, 0, 8));
     $firmware = [ord($hello[8]), ord($hello[9]), ord($hello[10])];
     $capabilities = unpack('nvalue', substr($hello, 11, 2))['value'];
-    if ($capabilities !== 0) throw new RuntimeException('Nieobsługiwane capability w protokole v1');
+    if ($capabilities !== 0) throw new DiagnosticException('PROTOCOL_UNSUPPORTED_CAPABILITY', 'Urządzenie zgłosiło nieobsługiwaną funkcję protokołu v1.');
 
     if ($action === 'ping') {
         $pong = exchange($socket, 0x03, 0x04, $sequence++);
@@ -200,7 +231,7 @@ try {
     $state = ord($data[0]);
     $outputFlag = ord($data[13]);
     if ($state > 5 || ($faultFlags & ~0x0003) !== 0 || !in_array($outputFlag, [0, 1], true)) {
-        throw new RuntimeException('STATUS_RESP zawiera nieobsługiwane wartości zarezerwowane');
+        throw new DiagnosticException('DEVICE_STATUS_INVALID', 'Odpowiedź STATUS zawiera nieobsługiwane wartości.');
     }
     $outputInhibited = $outputFlag === 1 ? true : null;
 
@@ -210,8 +241,12 @@ try {
             'uptime_seconds' => $uptime, 'free_memory_bytes' => $freeMemory,
             'temperature_c' => $temperatureValue, 'sensor_valid_flags' => $sensorFlags,
             'output_inhibited' => $outputInhibited]]);
+} catch (DiagnosticException $error) {
+    respond(502, ['success' => false, 'error' => $error]);
 } catch (Throwable $error) {
-    respond(502, ['success' => false, 'error' => $error->getMessage()]);
+    respond(502, ['success' => false, 'error' => new DiagnosticException(
+        'INTERNAL_ERROR', 'Wystąpił nieoczekiwany błąd serwera diagnostycznego.'
+    )]);
 } finally {
     socket_close($socket);
 }

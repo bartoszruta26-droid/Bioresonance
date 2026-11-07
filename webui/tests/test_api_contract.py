@@ -48,7 +48,11 @@ class WebApiContractTests(unittest.TestCase):
 
     def test_error_responses_use_structured_contract(self):
         self.assertIn("'code' => $code", BRIDGE)
-        self.assertIn("'retryable' => $status >= 500", BRIDGE)
+        self.assertIn("'retryable' => $error->retryable", BRIDGE)
+        self.assertIn("PROTOCOL_SEQUENCE_MISMATCH", BRIDGE)
+        self.assertIn("PROTOCOL_CRC_MISMATCH", BRIDGE)
+        self.assertIn("CONNECTION_CLOSED", BRIDGE)
+        self.assertIn("DEVICE_STATUS_INVALID", BRIDGE)
         self.assertIn("AUTH_REQUIRED", BRIDGE)
         self.assertIn("DEVICE_COMMUNICATION_FAILED", BRIDGE)
         self.assertIn("detail.code", HTML)
