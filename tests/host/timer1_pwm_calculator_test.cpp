@@ -8,7 +8,7 @@ int main() {
 
     assert(!timer1_pwm::calculate(16000000UL, 0, 50, &c));
     assert(!timer1_pwm::calculate(16000000UL, 100, 0, &c));
-    assert(!timer1_pwm::calculate(16000000UL, 100, 100, &c));
+    assert(timer1_pwm::calculate(16000000UL, 100, 100, &c));
     assert(!timer1_pwm::calculate(16000000UL, 10, 50, &c)); // below timer range
     assert(timer1_pwm::calculate(16000000UL, 50000001UL, 50, &c)); // calculator can represent above API ceiling
 

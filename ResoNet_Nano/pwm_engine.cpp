@@ -47,7 +47,7 @@ static bool timer1_configure_pwm(uint32_t frequency_hz_x100, uint8_t duty_cycle,
     OCR1A = config.compare;
 
     // Fast PWM mode 14, ICR1 as TOP, non-inverting OC1A (D9).
-    TCCR1A = _BV(WGM11) | _BV(COM1A1);
+    TCCR1A = _BV(WGM11) | (pwm_status.is_running ? _BV(COM1A1) : 0);
     TCCR1B = _BV(WGM12) | _BV(WGM13);
     switch (config.prescaler) {
         case 1:    TCCR1B |= _BV(CS10); break;
@@ -73,11 +73,24 @@ static bool timer1_configure_pwm(uint32_t frequency_hz_x100, uint8_t duty_cycle,
  * @brief Aktualizuje duty cycle
  */
 static void timer1_update_duty(uint8_t duty_cycle) {
+    const uint8_t saved_sreg = SREG;
+    cli();
+
+    if (duty_cycle == 0) {
+        // Disconnect OC1A and force D9 low: OCR=0 alone is not a hard output-off state.
+        TCCR1A &= ~(_BV(COM1A1) | _BV(COM1A0));
+        SREG = saved_sreg;
+        digitalWrite(PWM_OUTPUT_PIN, LOW);
+        return;
+    }
+
     const uint32_t counts = (uint32_t)ICR1 + 1UL;
     uint32_t duty_value = (counts * duty_cycle + 50UL) / 100UL;
     if (duty_value < 1UL) duty_value = 1UL;
     if (duty_value >= counts) duty_value = counts - 1UL;
     OCR1A = (uint16_t)duty_value;
+    TCCR1A = (TCCR1A & ~_BV(COM1A0)) | _BV(COM1A1);
+    SREG = saved_sreg;
 }
 
 // ============================================================================
