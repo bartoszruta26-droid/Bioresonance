@@ -25,6 +25,10 @@ Każda odpowiedź jest sprawdzana pod względem magic, wersji, flags, długości
 ## Granice bezpieczeństwa
 Klient nie implementuje konfiguracji kanałów, START/STOP, PWM ani żadnego polecenia sterującego wyjściami. Wartość `output_inhibited=0` jest prezentowana jako nieznana, a nie jako potwierdzenie bezpieczeństwa. CRC nie zapewnia uwierzytelniania ani szyfrowania — używaj wyłącznie w zaufanej sieci lokalnej.
 
+## Obsługa błędów
+
+Błędy są prezentowane jako `BŁĄD [KOD]` z polskim komunikatem. Kod klasyfikuje problem niezależnie od tekstu, a flaga ponowienia odróżnia przerwanie transportu od błędu ramki lub niezgodności protokołu. Szczegóły i słownik wspólny dla interfejsów opisano w [kontrakcie obsługi błędów](../docs/ERROR_HANDLING_CONTRACT.md).
+
 ## Testy hosta
 ```bash
 python3 -m unittest discover -s bash_tui -p 'test_*.py'

@@ -21,7 +21,7 @@ STATUS_REQ, STATUS_RESP = 0x05, 0x06
 NACK, ERROR = 0x7D, 0x7E
 
 
-class DiagnosticError(Exception):
+class DiagnosticError(ValueError):
     def __init__(self, code: str, message: str, retryable: bool = False):
         super().__init__(message)
         self.code, self.retryable = code, retryable
