@@ -27,7 +27,7 @@ public:
  }
  bool processOne(uint32_t now_ms){
   if(!count_)return false;
-  const uint8_t* r=queue_[head_];const uint8_t control=r[0],type=static_cast<uint8_t>(control>>2),id=static_cast<uint8_t>(control&3U);
+  const uint8_t* r=queue_[head_];const uint8_t control=r[0],type=static_cast<uint8_t>((control>>2)+1U),id=static_cast<uint8_t>(control&3U);
   const uint16_t hz=static_cast<uint16_t>(r[1])|(static_cast<uint16_t>(r[2])<<8);
   const uint16_t duration=static_cast<uint16_t>(r[4])|(static_cast<uint16_t>(r[5])<<8);
   head_=static_cast<uint8_t>((head_+1U)%EFFECTOR_QUEUE_CAPACITY);--count_;
