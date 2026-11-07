@@ -1,37 +1,45 @@
-# ResoNet Protocol (RNP) — propozycja kontraktu v1
+# ResoNet Protocol (RNP) — status implementacji v1
 
-> Status: projekt specyfikacji. Nie jest jeszcze wdrożony w firmware ani klientach.
+> Status: częściowo zaimplementowany kodek i diagnostyczny klient TCP. To nie jest kompletne wdrożenie protokołu end-to-end ani protokół sterowania terapią.
 
-## Transport
-- TCP dla niezawodnych komend i odpowiedzi.
-- TLS lub równoważne uwierzytelnione szyfrowanie na łączach poza zaufaną magistralą.
-- UART może przenosić te same ramki bez TCP.
-- UDP nie przenosi komend aktywujących wyjścia bez osobnego mechanizmu niezawodności i autoryzacji.
+## Implementowane elementy
 
-## Ramka
-Kodowanie binarne, pola wielobajtowe w kolejności network byte order:
-1. magic: 4 bajty ASCII "RNET";
-2. version: uint8;
-3. message_type: uint8;
-4. flags: uint16;
-5. request_id: uint32;
-6. device_id: 16 bajtów;
-7. payload_length: uint16;
-8. payload: payload_length bajtów;
-9. crc32: uint32 nad polami od version do końca payload.
+Plik referencyjny dla desktopowego kodeka: `gui/include/resonet_protocol_v1.h`.
 
-Maksymalny payload musi być ograniczony przez możliwości transportu i urządzenia. Odbiorca odrzuca nadmierną długość przed alokacją lub kopiowaniem.
+- Nagłówek: 9 bajtów: magic `RN` (2 bajty), wersja (1), typ (1), flags (1), sequence (2, big-endian), payload length (2, big-endian).
+- Payload: maksymalnie 192 bajty.
+- CRC: CRC-16/CCITT-FALSE (poly `0x1021`, init `0xFFFF`, bez refleksji, xorout `0x0000`), 2 bajty big-endian, liczone od początku ramki do końca payloadu.
+- Kodek waliduje magic, wersję, zarezerwowane flagi, znane typy, długości właściwe dla typu, limit ramki i CRC.
+- Desktopowy klient wykonuje HELLO i STATUS oraz sprawdza typ odpowiedzi, numer sekwencyjny i ograniczone limity czasu.
 
-## Zasady
-- Każde żądanie ma request_id; ACK/NACK odnosi się do tego identyfikatora.
-- Powtórzony request_id nie może wykonać operacji drugi raz.
-- ACK oznacza przyjęcie żądania, niekoniecznie zakończenie operacji.
-- Nieznana wersja, typ, flaga, długość lub CRC powodują odrzucenie ramki.
-- Niepełna lub błędna ramka nie może zmieniać stanu wyjść.
-- Po utracie zasilania lub łączności wyjścia przechodzą do sprzętowo wymuszonego stanu bezpiecznego. Wznowienie wymaga jawnego nowego polecenia.
+## Typy i długości payloadu klienta
 
-## Typy komunikatów
-HELLO, IDENTIFY, GET_STATUS, GET_CAPABILITIES, CONFIGURE_CHANNEL, START_SESSION, PAUSE_SESSION, RESUME_SESSION, STOP_SESSION, ACK, NACK, HEARTBEAT, FAULT, EMERGENCY_STOP.
+| Typ | Wartość | Długość payloadu |
+|---|---:|---:|
+| HELLO_REQ | 0x01 | 0 |
+| HELLO_RESP | 0x02 | 13 |
+| PING | 0x03 | 0 |
+| PONG | 0x04 | 0 |
+| STATUS_REQ | 0x05 | 0 |
+| STATUS_RESP | 0x06 | 14 |
+| NACK | 0x7D | 2 |
+| ERROR | 0x7E | 2 |
+| ACK | 0x7F | 1 |
 
-## Bezpieczeństwo
-CRC wykrywa przypadkowe uszkodzenia, ale nie zapewnia poufności ani autentyczności. Nie zastępuje TLS, MAC ani podpisu. Ta propozycja nie stanowi certyfikacji urządzenia medycznego.
+## Poza zakresem / niezaimplementowane
+
+- Firmware Nano nie implementuje obecnie zgodnego parsera RNP ani rzeczywistej obsługi ENC28J60.
+- Brak kompletnej identyfikacji urządzenia, autoryzacji, ochrony przed powtórzeniem żądań i uzgodnionego modelu capability.
+- Brak TLS lub równoważnego uwierzytelnionego zabezpieczenia łącza; ograniczenie adresów IPv4 do sieci prywatnej nie uwierzytelnia peer'a.
+- ACK/NACK/ERROR są rozpoznawane przez kodek, ale nie tworzą kompletnej transakcyjnej ścieżki komend.
+- Żadne polecenia nie mogą aktywować kanałów energii. Klient GUI nadal blokuje wysyłanie struktur terapii i poleceń tekstowych.
+
+## Wymagane następne kroki
+
+1. Uzgodnić wersjonowaną specyfikację wire-format i niezależne testy wektorów z implementacją firmware.
+2. Dodać parser strumienia odporny na fragmentację, sklejenie ramek, timeout i limit długości.
+3. Zaimplementować prawdziwy sterownik ENC28J60 i bezpieczny transport diagnostyczny — po zatwierdzeniu pinoutu SPI.
+4. Dodać symulator peer'a i testy integracyjne kodu desktopowego z firmware parserem.
+5. Przeprowadzić osobne przeglądy bezpieczeństwa i sprzętowe testy odcięcia energii. CRC nie zapewnia autentyczności ani poufności.
+
+Samo zaliczenie CI nie potwierdza bezpieczeństwa elektrycznego, termicznego, EMC ani zgodności z wymaganiami dla wyrobów medycznych.
