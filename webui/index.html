@@ -43,7 +43,7 @@ async function run(action){
   }
   output.textContent=JSON.stringify(data,null,2);
  }catch(error){
-  output.textContent='BŁĄD [HTTP_CLIENT_ERROR]: Nie udało się uzyskać prawidłowej odpowiedzi serwera. Sprawdź połączenie i spróbuj ponownie.';
+  output.textContent='BŁĄD [TRANSPORT_UNAVAILABLE]: Nie udało się uzyskać prawidłowej odpowiedzi serwera. Sprawdź połączenie i spróbuj ponownie.';
  }
 }
 document.getElementById('status').addEventListener('click',()=>run('status'));

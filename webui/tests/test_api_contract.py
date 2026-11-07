@@ -57,6 +57,20 @@ class WebApiContractTests(unittest.TestCase):
         self.assertIn("DEVICE_COMMUNICATION_FAILED", BRIDGE)
         self.assertIn("detail.code", HTML)
         self.assertIn("detail.retryable", HTML)
+        self.assertIn("TRANSPORT_UNAVAILABLE", HTML)
+        self.assertNotIn("HTTP_CLIENT_ERROR", HTML)
+
+    def test_common_error_codes_are_present_across_clients(self):
+        catalog = (ROOT / "gui" / "include" / "ui_error_catalog.h").read_text(encoding="utf-8")
+        tui = (ROOT / "bash_tui" / "resonet_tui.py").read_text(encoding="utf-8")
+        contract = (ROOT / "docs" / "ERROR_HANDLING_CONTRACT.md").read_text(encoding="utf-8")
+        for code in ("TRANSPORT_TIMEOUT", "PROTOCOL_SEQUENCE_MISMATCH",
+                     "PROTOCOL_CRC_MISMATCH", "DEVICE_STATUS_INVALID"):
+            with self.subTest(code=code):
+                self.assertIn(code, catalog)
+                self.assertIn(code, tui)
+                self.assertIn(code, BRIDGE)
+                self.assertIn(code, contract)
 
     def test_frontend_discloses_read_only_mode(self):
         self.assertIn("lang=\"pl\"", HTML)

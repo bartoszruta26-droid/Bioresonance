@@ -19,6 +19,12 @@ int main() {
     handler.reportError(ErrorInfo(ErrorCode::ERR_NETWORK_TIMEOUT,
         ErrorCategory::NETWORK, "outer report", __FILE__, __LINE__));
 
+    if (ErrorInfo::codeToString(ErrorCode::ERR_NETWORK_TIMEOUT) != "TRANSPORT_TIMEOUT") return 6;
+    if (ErrorInfo::codeToString(ErrorCode::ERR_NETWORK_DISCONNECTED) != "CONNECTION_CLOSED") return 7;
+    if (ErrorInfo::codeToString(ErrorCode::ERR_PROTOCOL_CHECKSUM) != "PROTOCOL_CRC_MISMATCH") return 8;
+    if (ErrorInfo::codeToString(ErrorCode::ERR_PROTOCOL_INVALID_FORMAT) != "PROTOCOL_INVALID_RESPONSE") return 9;
+    if (ErrorInfo::codeToString(ErrorCode::ERR_FILE_WRITE_FAILED) != "FILE_WRITE_FAILED") return 10;
+
     const auto history = handler.getErrorHistory();
     if (callback_count.load() != 2) return 1;
     if (history.size() != 2) return 2;

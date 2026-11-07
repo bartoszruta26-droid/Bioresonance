@@ -158,12 +158,26 @@ struct ErrorInfo {
     static std::string codeToString(ErrorCode code) {
         switch (code) {
             case ErrorCode::SUCCESS: return "SUCCESS";
-            case ErrorCode::ERR_NETWORK_TIMEOUT: return "NETWORK_TIMEOUT";
-            case ErrorCode::ERR_NETWORK_DISCONNECTED: return "NETWORK_DISCONNECTED";
-            case ErrorCode::ERR_FILE_NOT_FOUND: return "FILE_NOT_FOUND";
-            case ErrorCode::ERR_HARDWARE_NOT_FOUND: return "HARDWARE_NOT_FOUND";
-            case ErrorCode::ERR_UNKNOWN: return "UNKNOWN";
-            default: return "ERROR_" + std::to_string(static_cast<int>(code));
+            case ErrorCode::ERR_NETWORK_TIMEOUT:
+            case ErrorCode::ERR_PROTOCOL_TIMEOUT: return "TRANSPORT_TIMEOUT";
+            case ErrorCode::ERR_NETWORK_DISCONNECTED: return "CONNECTION_CLOSED";
+            case ErrorCode::ERR_NETWORK_UNREACHABLE:
+            case ErrorCode::ERR_NETWORK_DNS_FAILED: return "TRANSPORT_UNAVAILABLE";
+            case ErrorCode::ERR_NETWORK_SEND_FAILED:
+            case ErrorCode::ERR_NETWORK_RECV_FAILED: return "DEVICE_COMMUNICATION_FAILED";
+            case ErrorCode::ERR_NETWORK_SOCKET_FAILED: return "INTERNAL_ERROR";
+            case ErrorCode::ERR_FILE_NOT_FOUND:
+            case ErrorCode::ERR_FILE_PERMISSION_DENIED:
+            case ErrorCode::ERR_FILE_READ_FAILED: return "FILE_READ_FAILED";
+            case ErrorCode::ERR_FILE_WRITE_FAILED: return "FILE_WRITE_FAILED";
+            case ErrorCode::ERR_FILE_CORRUPTED: return "FILE_INVALID_FORMAT";
+            case ErrorCode::ERR_PROTOCOL_INVALID_FORMAT:
+            case ErrorCode::ERR_PROTOCOL_VERSION: return "PROTOCOL_INVALID_RESPONSE";
+            case ErrorCode::ERR_PROTOCOL_CHECKSUM: return "PROTOCOL_CRC_MISMATCH";
+            case ErrorCode::ERR_USER_INPUT_INVALID: return "INVALID_REQUEST";
+            case ErrorCode::ERR_HARDWARE_NOT_FOUND: return "DEVICE_UNAVAILABLE";
+            case ErrorCode::ERR_UNKNOWN: return "INTERNAL_ERROR";
+            default: return "INTERNAL_ERROR";
         }
     }
 };
