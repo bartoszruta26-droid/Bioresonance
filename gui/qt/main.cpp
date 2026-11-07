@@ -25,7 +25,6 @@
 #include <QtCharts/QChart>
 #include <QProgressBar>
 #include <QPainter>
-using namespace QtCharts;
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonObject>
@@ -82,7 +81,7 @@ class Window final : public QMainWindow {
  void refreshAll(){if(metric)metric->setText(samples.isEmpty()?"—":QString::number(samples.last().value,'f',1));if(countLabel)countLabel->setText(QString::number(samples.size()));if(sessionLabel)sessionLabel->setText(QString::number(sessions.size()));if(page==1)refreshChart();if(page==6)refreshHistory();}
  void refreshChart(){if(!series||!channelBox)return;series->clear();int ch=channelBox->currentData().toInt(),n=0;for(const auto&s:samples)if(s.channel==ch)series->append(n++,s.value);}
  void refreshHistory(){if(!history)return;history->setRowCount(0);for(int i=samples.size()-1;i>=qMax(0,samples.size()-250);--i){auto s=samples[i];int r=history->rowCount();history->insertRow(r);history->setItem(r,0,new QTableWidgetItem(s.time.toString(Qt::ISODateWithMs)));history->setItem(r,1,new QTableWidgetItem(QString::number(s.channel)));history->setItem(r,2,new QTableWidgetItem(QString::number(s.value,'f',2)));history->setItem(r,3,new QTableWidgetItem(s.source));}}
- void saveSession(QString name){sessions.append({name,QDateTime::currentDateTime().toString(Qt::ISODate),source,samples.size()});persist();refreshSessions();refreshAll();}
+ void saveSession(QString name){sessions.append({name,QDateTime::currentDateTime().toString(Qt::ISODate),source,static_cast<int>(samples.size())});persist();refreshSessions();refreshAll();}
  void refreshSessions(){if(!sessionTable)return;sessionTable->setRowCount(0);for(const auto&s:sessions){int r=sessionTable->rowCount();sessionTable->insertRow(r);sessionTable->setItem(r,0,new QTableWidgetItem(s.name));sessionTable->setItem(r,1,new QTableWidgetItem(s.date));sessionTable->setItem(r,2,new QTableWidgetItem(s.source));sessionTable->setItem(r,3,new QTableWidgetItem(QString::number(s.count)));}}
  void persist(){QJsonArray a;for(const auto&s:sessions){QJsonObject o;o["name"]=s.name;o["date"]=s.date;o["source"]=s.source;o["count"]=s.count;a.append(o);}QFile f(dataDir+"/sessions.json");if(f.open(QIODevice::WriteOnly|QIODevice::Truncate))f.write(QJsonDocument(a).toJson());}
  void load(){dataDir=QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);QDir().mkpath(dataDir);QFile f(dataDir+"/sessions.json");if(f.open(QIODevice::ReadOnly)){auto a=QJsonDocument::fromJson(f.readAll()).array();for(auto v:a){auto o=v.toObject();sessions.append({o["name"].toString(),o["date"].toString(),o["source"].toString(),o["count"].toInt()});}}}
