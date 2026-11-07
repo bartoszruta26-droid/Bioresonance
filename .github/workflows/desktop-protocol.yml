@@ -17,6 +17,8 @@ on:
       - "webui/diagnostics.html"
       - "webui/index.html"
       - "webui/api.php"
+      - "webui/tests/**"
+      - "docs/audit/**"
       - ".github/workflows/desktop-protocol.yml"
   pull_request:
     paths:
@@ -54,6 +56,8 @@ jobs:
         run: ./network_client_smoke
       - name: Run read-only TUI protocol tests
         run: python3 -m unittest discover -s bash_tui -p "test_*.py"
+      - name: Run WebUI API contract tests
+        run: python3 -m unittest discover -s webui/tests -p "test_*.py"
 
   desktop-build:
     runs-on: ubuntu-22.04
