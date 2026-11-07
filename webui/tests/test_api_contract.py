@@ -66,12 +66,17 @@ class WebApiContractTests(unittest.TestCase):
         contract = (ROOT / "docs" / "ERROR_HANDLING_CONTRACT.md").read_text(encoding="utf-8")
         for code in ("TRANSPORT_TIMEOUT", "PROTOCOL_SEQUENCE_MISMATCH",
                      "PROTOCOL_CRC_MISMATCH", "DEVICE_STATUS_INVALID",
-                     "DEVICE_REJECTED", "PROTOCOL_UNSUPPORTED_CAPABILITY",
-                     "OPERATION_UNSUPPORTED", "FILE_NO_VALID_RECORDS"):
+                     "DEVICE_REJECTED", "PROTOCOL_UNSUPPORTED_CAPABILITY"):
             with self.subTest(code=code):
                 self.assertIn(code, catalog)
                 self.assertIn(code, tui)
                 self.assertIn(code, BRIDGE)
+                self.assertIn(code, contract)
+
+        # Platform-specific codes belong only to clients that expose those features.
+        for code in ("OPERATION_UNSUPPORTED", "FILE_NO_VALID_RECORDS"):
+            with self.subTest(platform_specific_code=code):
+                self.assertIn(code, catalog)
                 self.assertIn(code, contract)
 
     def test_frontend_discloses_read_only_mode(self):
