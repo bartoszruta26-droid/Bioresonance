@@ -4,7 +4,7 @@
 
 Nagłówek + payload: `52 4E 01 05 00 00 01 00 00`
 
-CRC-16/CCITT-FALSE wyliczane jest z powyższych 9 bajtów. Pełna ramka jest weryfikowana przez wspólne testy hostowe (firmware i desktop), które porównują enkoder z dekoderem.
+CRC-16/CCITT-FALSE: `76 A3`. Pełna ramka: `52 4E 01 05 00 00 01 00 00 76 A3`.
 
 ## STATUS_RESP
 
