@@ -59,10 +59,8 @@ class MainActivity : AppCompatActivity() {
             viewModel.refreshStatus()
         }
         
-        // Odśwież logi
-        binding.btnRefreshLogs.setOnClickListener {
-            viewModel.refreshLogs()
-        }
+        // Zdalne logi nie są częścią diagnostycznego protokołu v1.
+        binding.btnRefreshLogs.isEnabled = false
     }
     
     /**
