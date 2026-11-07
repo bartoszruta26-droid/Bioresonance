@@ -451,21 +451,49 @@ std::string NetworkClient::receiveData(int timeout_ms) {
         active_socket = socket_fd;
     }
 
-    fd_set read_fds;
-    FD_ZERO(&read_fds);
-    FD_SET(active_socket, &read_fds);
-    struct timeval tv{};
-    tv.tv_sec = timeout_ms / 1000;
-    tv.tv_usec = (timeout_ms % 1000) * 1000;
+    // Poll in short slices so disconnect() can cancel the wait on platforms
+    // where shutdown() does not reliably wake select() in another thread.
+    const auto deadline = std::chrono::steady_clock::now() +
+                          std::chrono::milliseconds(timeout_ms);
+    int result = 0;
+    bool ready = false;
+    do {
+        if (!connected.load()) return "";
+
+        const auto now = std::chrono::steady_clock::now();
+        const auto remaining = std::chrono::duration_cast<std::chrono::microseconds>(
+            deadline - now);
+        if (timeout_ms != 0 && remaining.count() <= 0) return "";
+
+        const auto slice = timeout_ms == 0
+            ? std::chrono::microseconds(0)
+            : std::min(remaining, std::chrono::microseconds(50000));
+        fd_set read_fds;
+        FD_ZERO(&read_fds);
+        FD_SET(active_socket, &read_fds);
+        struct timeval tv{};
+        tv.tv_sec = static_cast<long>(slice.count() / 1000000);
+        tv.tv_usec = static_cast<long>(slice.count() % 1000000);
 
 #ifdef _WIN32
-    int result = select(0, &read_fds, nullptr, nullptr, &tv);
-    if (result < 0 && WSAGetLastError() == WSAEINTR) return "";
+        result = select(0, &read_fds, nullptr, nullptr, &tv);
+        if (result < 0 && WSAGetLastError() == WSAEINTR) continue;
 #else
-    int result = select(active_socket + 1, &read_fds, nullptr, nullptr, &tv);
-    if (result < 0 && errno == EINTR) return "";
+        result = select(active_socket + 1, &read_fds, nullptr, nullptr, &tv);
+        if (result < 0 && errno == EINTR) continue;
 #endif
-    if (result == 0) return "";
+        if (result > 0) {
+            ready = true;
+            break;
+        }
+        if (result < 0) break;
+        if (timeout_ms == 0) return "";
+    } while (connected.load());
+
+    if (!connected.load()) return "";
+    if (result == 0 || !ready) {
+        if (result == 0) return "";
+    }
 
     auto close_failed_connection = [&]() {
         std::lock_guard<std::mutex> state_lock(socket_mutex);
