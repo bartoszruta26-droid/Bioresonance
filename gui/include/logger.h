@@ -1,33 +1,25 @@
 /**
  * @file logger.h
- * @brief System logowania z poziomami: DEBUG, INFO, WARNING, ERROR, CRITICAL
- * 
- * Obsługuje:
- * - Różne poziomy logowania
- * - Znaczniki czasowe
- * - Wątki (thread-safe)
- * - Wyjścia: konsola, plik, callback
- * - Tryb verbose
+ * @brief Thread-safe logging with bounded history and reentrant callbacks.
  */
-
 #ifndef LOGGER_H
 #define LOGGER_H
 
-#include <string>
-#include <vector>
-#include <mutex>
+#include <atomic>
+#include <chrono>
+#include <cstddef>
+#include <ctime>
 #include <fstream>
 #include <functional>
-#include <chrono>
-#include <ctime>
 #include <iomanip>
-#include <sstream>
 #include <iostream>
-#include <atomic>
+#include <mutex>
+#include <sstream>
+#include <string>
 #include <thread>
+#include <vector>
 
-// Windows SDK headers may define ERROR/CRITICAL as macros. They collide with
-// the scoped LogLevel enumerators below when Winsock/Windows headers precede us.
+// Windows SDK headers may define ERROR/CRITICAL as macros.
 #ifdef ERROR
 #undef ERROR
 #endif
@@ -35,20 +27,8 @@
 #undef CRITICAL
 #endif
 
-/**
- * @brief Poziomy logowania
- */
-enum class LogLevel {
-    DEBUG = 0,      // Szczegółowe informacje debugowe
-    INFO = 1,       // Informacje ogólne
-    WARNING = 2,    // Ostrzeżenia
-    ERROR = 3,      // Błędy
-    CRITICAL = 4    // Błędy krytyczne
-};
+enum class LogLevel { DEBUG = 0, INFO = 1, WARNING = 2, ERROR = 3, CRITICAL = 4 };
 
-/**
- * @brief Struktura pojedynczego wpisu logu
- */
 struct LogEntry {
     LogLevel level;
     std::string message;
@@ -56,187 +36,139 @@ struct LogEntry {
     std::string source_file;
     int source_line;
     std::thread::id thread_id;
-    
+
     LogEntry(LogLevel lvl, const std::string& msg, const std::string& file, int line)
         : level(lvl), message(msg), source_file(file), source_line(line) {
-        // Generuj znacznik czasowy
-        auto now = std::chrono::system_clock::now();
-        auto time = std::chrono::system_clock::to_time_t(now);
-        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        const auto now = std::chrono::system_clock::now();
+        const auto time = std::chrono::system_clock::to_time_t(now);
+        const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
             now.time_since_epoch()) % 1000;
-        
-        std::ostringstream oss;
         std::tm time_info{};
 #ifdef _WIN32
         localtime_s(&time_info, &time);
 #else
         localtime_r(&time, &time_info);
 #endif
-        oss << std::put_time(&time_info, "%Y-%m-%d %H:%M:%S");
-        oss << '.' << std::setfill('0') << std::setw(3) << ms.count();
-        timestamp = oss.str();
-        
+        std::ostringstream out;
+        out << std::put_time(&time_info, "%Y-%m-%d %H:%M:%S")
+            << '.' << std::setfill('0') << std::setw(3) << ms.count();
+        timestamp = out.str();
         thread_id = std::this_thread::get_id();
     }
-    
+
     std::string toString() const {
-        const char* level_strs[] = {"DEBUG", "INFO", "WARN", "ERROR", "CRIT"};
-        std::ostringstream oss;
-        oss << "[" << timestamp << "] ";
-        oss << "[" << std::setw(5) << level_strs[static_cast<int>(level)] << "] ";
-        oss << "[Thread:" << thread_id << "] ";
-        oss << message;
-        
-        if (level >= LogLevel::WARNING) {
-            oss << " (" << source_file << ":" << source_line << ")";
-        }
-        
-        return oss.str();
+        static const char* levels[] = {"DEBUG", "INFO", "WARN", "ERROR", "CRIT"};
+        const auto index = static_cast<std::size_t>(level);
+        std::ostringstream out;
+        out << '[' << timestamp << "] ["
+            << ((index < sizeof(levels) / sizeof(levels[0])) ? levels[index] : "UNKNOWN")
+            << "] [Thread:" << thread_id << "] " << message;
+        if (level >= LogLevel::WARNING) out << " (" << source_file << ':' << source_line << ')';
+        return out.str();
     }
 };
 
-/**
- * @brief Klasa Logger - singleton do zarządzania logowaniem
- */
 class Logger {
 public:
     using LogCallback = std::function<void(const LogEntry&)>;
-    
+
     static Logger& getInstance() {
         static Logger instance;
         return instance;
     }
-    
-    /**
-     * @brief Ustaw minimalny poziom logowania
-     */
+
     void setLogLevel(LogLevel level) {
         std::lock_guard<std::mutex> lock(log_mutex);
         min_level = level;
     }
-    
-    /**
-     * @brief Włącz/wyłącz tryb verbose
-     */
+
     void setVerbose(bool enable) {
         std::lock_guard<std::mutex> lock(log_mutex);
         verbose_mode = enable;
-        if (enable) {
-            min_level = LogLevel::DEBUG;
-        }
+        if (enable) min_level = LogLevel::DEBUG;
     }
-    
+
     bool isVerbose() const { return verbose_mode.load(); }
-    
-    /**
-     * @brief Włącz/wyłącz logowanie do pliku
-     */
+
     void setLogFile(const std::string& filepath) {
         bool opened = false;
         {
             std::lock_guard<std::mutex> lock(log_mutex);
-            if (log_file.is_open()) {
-                log_file.close();
-            }
+            if (log_file.is_open()) log_file.close();
+            log_file.clear();
             log_file.open(filepath, std::ios::app);
             opened = log_file.is_open();
             logToFile = opened;
         }
+        // Logging after releasing log_mutex avoids recursive locking.
+        log(opened ? LogLevel::INFO : LogLevel::ERROR,
+            opened ? "Logger initialized" : "Failed to open log file: " + filepath,
+            __FILE__, __LINE__);
+    }
 
-        // Log only after releasing log_mutex: log() acquires the same mutex.
-        if (opened) {
-            log(LogLevel::INFO, "Logger initialized", __FILE__, __LINE__);
-        } else {
-            log(LogLevel::ERROR, "Failed to open log file: " + filepath, __FILE__, __LINE__);
-        }
-    }
-    
-    /**
-     * @brief Dodaj callback dla nowych wpisów logu
-     */
     void addCallback(LogCallback callback) {
+        if (!callback) return;
         std::lock_guard<std::mutex> lock(callback_mutex);
-        callbacks.push_back(callback);
+        callbacks.push_back(std::move(callback));
     }
-    
-    /**
-     * @brief Wyczyść wszystkie callbacki
-     */
+
     void clearCallbacks() {
         std::lock_guard<std::mutex> lock(callback_mutex);
         callbacks.clear();
     }
-    
-    /**
-     * @brief Zaloguj wiadomość
-     */
+
     void log(LogLevel level, const std::string& message, const std::string& file, int line) {
         LogEntry entry(level, message, file, line);
-        
         {
             std::lock_guard<std::mutex> lock(log_mutex);
             if (level < min_level) return;
-
-            // Log do konsoli
             if (console_output) {
-                std::ostream& out = (level >= LogLevel::ERROR) ? std::cerr : std::cout;
-                out << entry.toString() << std::endl;
+                std::ostream& output = level >= LogLevel::ERROR ? std::cerr : std::cout;
+                output << entry.toString() << std::endl;
             }
-
-            // Log do pliku
             if (logToFile && log_file.is_open()) {
                 log_file << entry.toString() << std::endl;
                 log_file.flush();
             }
-
-            // Zapisz do historii
             log_history.push_back(entry);
             if (log_history.size() > max_history_size) {
-                log_history.erase(log_history.begin());
+                log_history.erase(log_history.begin(),
+                    log_history.begin() + static_cast<std::ptrdiff_t>(log_history.size() - max_history_size));
             }
         }
 
-        // Never call user callbacks while holding log_mutex: callbacks may log recursively.
         std::vector<LogCallback> callbacks_snapshot;
         {
-            std::lock_guard<std::mutex> cb_lock(callback_mutex);
+            std::lock_guard<std::mutex> lock(callback_mutex);
             callbacks_snapshot = callbacks;
         }
-        for (const auto& cb : callbacks_snapshot) {
-            try {
-                cb(entry);
-            } catch (const std::exception& e) {
-                std::cerr << "[Logger] Callback exception: " << e.what() << std::endl;
+        for (const auto& callback : callbacks_snapshot) {
+            try { callback(entry); }
+            catch (const std::exception& error) {
+                std::cerr << "[Logger] Callback exception: " << error.what() << std::endl;
+            }
+            catch (...) {
+                std::cerr << "[Logger] Callback exception: unknown exception" << std::endl;
             }
         }
     }
-    
-    /**
-     * @brief Pobierz historię logów
-     */
-    const std::vector<LogEntry>& getHistory() const {
+
+    // Returns a snapshot; callers never access the mutable internal vector.
+    std::vector<LogEntry> getHistory() const {
+        std::lock_guard<std::mutex> lock(log_mutex);
         return log_history;
     }
-    
-    /**
-     * @brief Wyczyść historię logów
-     */
+
     void clearHistory() {
         std::lock_guard<std::mutex> lock(log_mutex);
         log_history.clear();
     }
-    
-    /**
-     * @brief Włącz/wyłącz wyjście na konsolę
-     */
+
     void setConsoleOutput(bool enable) {
         std::lock_guard<std::mutex> lock(log_mutex);
         console_output = enable;
     }
-    
-    /**
-     * @brief Get log level as string
-     */
+
     static std::string levelToString(LogLevel level) {
         switch (level) {
             case LogLevel::DEBUG: return "DEBUG";
@@ -247,46 +179,34 @@ public:
             default: return "UNKNOWN";
         }
     }
-    
+
 private:
-    Logger() : min_level(LogLevel::INFO), verbose_mode(false), 
-               logToFile(false), console_output(true), max_history_size(1000) {}
-    
+    Logger() : min_level(LogLevel::INFO), verbose_mode(false), logToFile(false),
+               console_output(true), max_history_size(1000) {}
     ~Logger() {
-        if (log_file.is_open()) {
-            log_file.close();
-        }
+        std::lock_guard<std::mutex> lock(log_mutex);
+        if (log_file.is_open()) log_file.close();
     }
-    
     Logger(const Logger&) = delete;
     Logger& operator=(const Logger&) = delete;
-    
+
     LogLevel min_level;
     std::atomic<bool> verbose_mode;
     bool logToFile;
     bool console_output;
-    size_t max_history_size;
-    
+    std::size_t max_history_size;
     std::ofstream log_file;
-    std::mutex log_mutex;
+    mutable std::mutex log_mutex;
     std::mutex callback_mutex;
     std::vector<LogCallback> callbacks;
     std::vector<LogEntry> log_history;
 };
 
-// Makra ułatwiające logowanie
 #define LOG_DEBUG(msg) Logger::getInstance().log(LogLevel::DEBUG, msg, __FILE__, __LINE__)
 #define LOG_INFO(msg) Logger::getInstance().log(LogLevel::INFO, msg, __FILE__, __LINE__)
 #define LOG_WARNING(msg) Logger::getInstance().log(LogLevel::WARNING, msg, __FILE__, __LINE__)
 #define LOG_ERROR(msg) Logger::getInstance().log(LogLevel::ERROR, msg, __FILE__, __LINE__)
 #define LOG_CRITICAL(msg) Logger::getInstance().log(LogLevel::CRITICAL, msg, __FILE__, __LINE__)
-
-// Log z warunkiem verbose
-#define LOG_VERBOSE(msg) \
-    do { \
-        if (Logger::getInstance().isVerbose()) { \
-            Logger::getInstance().log(LogLevel::DEBUG, msg, __FILE__, __LINE__); \
-        } \
-    } while(0)
+#define LOG_VERBOSE(msg) do { if (Logger::getInstance().isVerbose()) Logger::getInstance().log(LogLevel::DEBUG, msg, __FILE__, __LINE__); } while (0)
 
 #endif // LOGGER_H
