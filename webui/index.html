@@ -33,9 +33,18 @@ async function run(action){
  try{
   const response=await fetch('diagnostics.php',{method:'POST',headers:{'Content-Type':'application/json','X-Bioresonance-Token':token},body:JSON.stringify({ip,action})});
   const data=await response.json();
-  if(!response.ok||!data.success)throw new Error(data.error||'Błąd diagnostyki');
+  if(!response.ok||!data.success){
+   const detail=data.error;
+   const code=detail&&typeof detail==='object'?detail.code:'DEVICE_COMMUNICATION_FAILED';
+   const message=detail&&typeof detail==='object'?detail.message:String(detail||'Błąd diagnostyki');
+   const retryable=!!(detail&&typeof detail==='object'&&detail.retryable);
+   output.textContent=`BŁĄD [${code}]: ${message}${retryable?' Można ponowić próbę.':''}`;
+   return;
+  }
   output.textContent=JSON.stringify(data,null,2);
- }catch(error){output.textContent='Błąd: '+error.message;}
+ }catch(error){
+  output.textContent='BŁĄD [HTTP_CLIENT_ERROR]: Nie udało się uzyskać prawidłowej odpowiedzi serwera. Sprawdź połączenie i spróbuj ponownie.';
+ }
 }
 document.getElementById('status').addEventListener('click',()=>run('status'));
 document.getElementById('ping').addEventListener('click',()=>run('ping'));

@@ -46,6 +46,14 @@ class WebApiContractTests(unittest.TestCase):
         self.assertNotIn("START", HTML)
         self.assertNotIn("STOP", HTML)
 
+    def test_error_responses_use_structured_contract(self):
+        self.assertIn("'code' => $code", BRIDGE)
+        self.assertIn("'retryable' => $status >= 500", BRIDGE)
+        self.assertIn("AUTH_REQUIRED", BRIDGE)
+        self.assertIn("DEVICE_COMMUNICATION_FAILED", BRIDGE)
+        self.assertIn("detail.code", HTML)
+        self.assertIn("detail.retryable", HTML)
+
     def test_frontend_discloses_read_only_mode(self):
         self.assertIn("lang=\"pl\"", HTML)
         self.assertIn("Tryb wyłącznie do odczytu", HTML)

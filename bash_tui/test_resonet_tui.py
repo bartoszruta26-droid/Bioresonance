@@ -44,6 +44,30 @@ class ProtocolV1Tests(unittest.TestCase):
         client.close()
         server_sock.close()
 
+    def test_error_classification_is_stable(self):
+        timeout = client_module.classify_error(TimeoutError("timeout"))
+        self.assertEqual(timeout.code, "TRANSPORT_TIMEOUT")
+        self.assertTrue(timeout.retryable)
+        malformed = client_module.classify_error(ValueError("bad frame"))
+        self.assertEqual(malformed.code, "PROTOCOL_INVALID_RESPONSE")
+        self.assertFalse(malformed.retryable)
+
+    def test_sequence_mismatch_has_specific_error_code(self):
+        left, right = socket.socketpair()
+        client = client_module.DiagnosticClient("unused", 5001)
+        client.sock = left
+        def server():
+            _, sequence, _ = client_module.recv_frame(right)
+            right.sendall(client_module.encode_frame(client_module.PONG, sequence + 1))
+        thread = threading.Thread(target=server)
+        thread.start()
+        with self.assertRaises(client_module.DiagnosticError) as raised:
+            client._request(client_module.PING, client_module.PONG)
+        self.assertEqual(raised.exception.code, "PROTOCOL_SEQUENCE_MISMATCH")
+        thread.join(timeout=2)
+        client.close()
+        right.close()
+
     def test_crc_corruption_rejected(self):
         left, right = socket.socketpair()
         frame = bytearray(client_module.encode_frame(client_module.PONG, 7))

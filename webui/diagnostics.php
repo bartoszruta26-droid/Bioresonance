@@ -12,6 +12,13 @@ header('X-Frame-Options: DENY');
 header('Referrer-Policy: no-referrer');
 
 function respond(int $status, array $body): void {
+    if (($body['success'] ?? true) === false && is_string($body['error'] ?? null)) {
+        if ($status === 400) $code = 'INVALID_REQUEST';
+        elseif ($status === 401) $code = 'AUTH_REQUIRED';
+        elseif ($status === 405) $code = 'METHOD_NOT_ALLOWED';
+        else $code = 'DEVICE_COMMUNICATION_FAILED';
+        $body['error'] = ['code' => $code, 'message' => $body['error'], 'retryable' => $status >= 500];
+    }
     http_response_code($status);
     echo json_encode($body, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
     exit;
