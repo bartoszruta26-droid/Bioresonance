@@ -21,6 +21,24 @@ STATUS_REQ, STATUS_RESP = 0x05, 0x06
 NACK, ERROR = 0x7D, 0x7E
 
 
+class DiagnosticError(Exception):
+    def __init__(self, code: str, message: str, retryable: bool = False):
+        super().__init__(message)
+        self.code, self.retryable = code, retryable
+
+
+def classify_error(error: BaseException) -> DiagnosticError:
+    if isinstance(error, DiagnosticError):
+        return error
+    if isinstance(error, (TimeoutError, socket.timeout)):
+        return DiagnosticError("TRANSPORT_TIMEOUT", "Przekroczono limit czasu komunikacji.", True)
+    if isinstance(error, (ConnectionError, OSError)):
+        return DiagnosticError("TRANSPORT_UNAVAILABLE", "Urządzenie jest niedostępne lub połączenie zostało przerwane.", True)
+    if isinstance(error, ValueError):
+        return DiagnosticError("PROTOCOL_INVALID_RESPONSE", "Odpowiedź urządzenia jest niezgodna z protokołem v1.")
+    return DiagnosticError("INTERNAL_ERROR", "Wystąpił nieoczekiwany błąd diagnostyki.")
+
+
 def crc16(data: bytes) -> int:
     crc = 0xFFFF
     for value in data:
