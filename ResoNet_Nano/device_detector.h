@@ -145,7 +145,7 @@ static DetectionConfig_t g_detection_config = {
 #define GSR_SIGNAL_MIN        100
 #define GSR_SIGNAL_MAX        900
 #define PPG_SIGNAL_MIN        50000
-#define HRV_CONFIDENCE_MIN    0.7f
+#define HRV_CONFIDENCE_MIN    70
 
 // ============================================================================
 // TYPY I STRUKTURY - ROZSZERZONE O ERROR HANDLING
@@ -234,12 +234,12 @@ typedef struct {
     bool gsrConnected;
     bool ppgConnected;
     bool tempConnected;
-    float gsrValue;          // Przewodnictwo µS
-    float hrvValue;          // HRV score 0-100
-    float temperature;       // Temperatura °C
-    float gsrQuality;        // 0.0 - 1.0
-    float ppgQuality;        // 0.0 - 1.0
-    float confidence;        // Overall confidence 0.0 - 1.0
+    uint16_t gsrValue_x10;   // Przewodnictwo w dziesiątych µS; zero = brak pomiaru
+    uint8_t hrvValue;        // HRV score 0-100
+    int16_t temperature_c_x10; // Temperatura w dziesiątych °C
+    uint8_t gsrQuality;      // Jakość GSR 0-100%
+    uint8_t ppgQuality;      // Jakość PPG 0-100%
+    uint8_t confidence;      // Pewność 0-100%
 } BioSensorStatus_t;
 
 // Globalny stan systemu urządzeń
@@ -311,16 +311,10 @@ BioStatus_t detect_biofeedback_sensors(BioSensorStatus_t* status);
 DeviceSystemState_t* get_device_system_state();
 
 /**
- * @brief Oceń jakość sygnału GSR
- * @return float - jakość 0.0 - 1.0
- */
-float evaluate_gsr_quality();
-
-/**
  * @brief Oceń jakość sygnału PPG
- * @return float - jakość 0.0 - 1.0
+ * @return jakość 0-100%
  */
-float evaluate_ppg_quality();
+uint8_t evaluate_ppg_quality_percent();
 
 /**
  * @brief Odczytaj wartość GSR

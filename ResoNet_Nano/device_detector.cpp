@@ -521,25 +521,19 @@ int read_gsr() {
     return -1;
 }
 
-float evaluate_gsr_quality() {
-    // An I2C ACK at 0x48 proves presence only, not sensor identity or valid samples.
-    return 0.0f;
-}
+uint8_t evaluate_ppg_quality_percent() {
+    const uint32_t start_time = millis();
+    uint16_t pulse_count = 0;
 
-float evaluate_ppg_quality() {
-    uint32_t startTime = millis();
-    int pulseCount = 0;
-    
-    while (millis() - startTime < 3000) {
+    while (millis() - start_time < 3000UL) {
         if (digitalRead(PIN_PPG_INT) == LOW) {
-            pulseCount++;
+            ++pulse_count;
         }
         delay(1);
     }
-    
-    if (pulseCount < 3 || pulseCount > 200) return 0.0f;
-    
-    return constrain(pulseCount / 100.0f, 0.0f, 1.0f);
+
+    if (pulse_count < 3U || pulse_count > 200U) return 0;
+    return pulse_count > 100U ? 100U : (uint8_t)pulse_count;
 }
 
 BioStatus_t detect_biofeedback_sensors(BioSensorStatus_t* status) {
@@ -561,13 +555,13 @@ BioStatus_t detect_biofeedback_sensors(BioSensorStatus_t* status) {
     status->tempConnected = (Wire.endTransmission() == 0);
     
     // Quality check
-    status->gsrQuality = 0.0f;
-    status->gsrValue = 0.0f; // No validated measurement; never infer conductance from A0.
+    status->gsrQuality = 0;
+    status->gsrValue_x10 = 0; // No validated measurement; never infer conductance from A0.
     if (status->gsrConnected) {
         LOG_WARNING("GSR I2C device acknowledged; measurement unavailable until driver identification");
     }
     if (status->ppgConnected) {
-        status->ppgQuality = evaluate_ppg_quality();
+        status->ppgQuality = evaluate_ppg_quality_percent();
     }
     
     // Oblicz całkowite zaufanie
@@ -575,8 +569,9 @@ BioStatus_t detect_biofeedback_sensors(BioSensorStatus_t* status) {
                     (status->ppgConnected ? 1 : 0) +
                     (status->tempConnected ? 1 : 0);
     
-    status->confidence = (sensorsOk / 3.0f) * 
-                         ((status->gsrQuality + status->ppgQuality) / 2.0f);
+    // Integer percentage: sensor coverage × mean of the two quality scores.
+    status->confidence = (uint8_t)(
+        (sensorsOk * ((uint16_t)status->gsrQuality + status->ppgQuality)) / 6U);
     
     // Aktualizuj globalny stan
     g_device_state.biofeedback = *status;
@@ -607,41 +602,9 @@ BioStatus_t detect_biofeedback_sensors(BioSensorStatus_t* status) {
 // ============================================================================
 
 void adapt_therapy_based_on_biofeedback(TherapyParams_t* params) {
-    if (!g_device_state.biofeedbackEnabled) {
-        return;
-    }
-    
-    // Adaptacja na podstawie GSR
-    // GSR adaptation remains disabled until a real, calibrated measurement driver exists.
-    if (false && g_bio_status.gsrConnected && g_bio_status.gsrValue > 0) {
-        if (g_bio_status.gsrValue > 30.0f) {
-            // Wysoki stres - zwiększ relaksację
-            params->frequency = 10.0f;  // Hz (alfa)
-            params->amplitude = 0.6f;
-            LOG_INFO("High stress detected - relaxation adaptation");
-        } else if (g_bio_status.gsrValue < 5.0f) {
-            // Bardzo zrelaksowany - utrzymuj stan
-            params->frequency = 7.83f;  // Schumann
-            params->amplitude = 0.4f;
-            LOG_INFO("Deep relaxation - maintenance mode");
-        }
-    }
-    
-    // Adaptacja na podstawie HRV
-    if (g_bio_status.ppgConnected && g_bio_status.hrvValue > 0) {
-        if (g_bio_status.hrvValue < 30) {
-            // Niska HRV - stres
-            params->frequency = 6.0f;  // Theta
-            params->modType = MODULATION_AM;
-            params->modFrequency = 0.5f;
-            LOG_INFO("Low HRV - theta stimulation");
-        } else if (g_bio_status.hrvValue > 70) {
-            // Dobra HRV - relaks
-            params->frequency = 10.0f;  // Alfa
-            params->modType = MODULATION_NONE;
-            LOG_INFO("Good HRV - maintenance alpha");
-        }
-    }
+    // Disabled until validated physiological measurements and a reviewed
+    // stimulation policy are available. This function intentionally changes nothing.
+    (void)params;
 }
 
 // ============================================================================
