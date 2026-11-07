@@ -109,6 +109,7 @@ jobs:
           test "$flash" -le 28800
           test "$ram" -le 1536
       - name: Upload full firmware size map and build log
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: full-nano-ethernet-size-profile
