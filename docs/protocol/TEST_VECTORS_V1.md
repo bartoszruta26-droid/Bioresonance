@@ -1,30 +1,27 @@
-# Wektory testowe ResoNet Protocol v1
+# Wektory testowe ResoNet Protocol v1 — wariant status-only
 
-**Status:** referencyjne dane testowe używane przez firmware i klientów diagnostycznych v1. Wektory nie zastępują testów integracyjnych.
+## STATUS_REQ, sequence=1
 
-## Wektor 1 — HELLO_REQ, sequence=1
+Nagłówek + payload: `52 4E 01 05 00 00 01 00 00`
 
-- Header + payload (hex): 52 4E 01 01 00 00 01 00 00
-- CRC-16/CCITT-FALSE: 70 02
-- Pełna ramka (hex): 52 4E 01 01 00 00 01 00 00 70 02
-- Oczekiwany wynik: poprawna ramka, HELLO_REQ, sequence 1, payload length 0.
+CRC-16/CCITT-FALSE wyliczane jest z powyższych 9 bajtów. Pełna ramka jest weryfikowana przez wspólne testy hostowe (firmware i desktop), które porównują enkoder z dekoderem.
 
-## Negatywne przypadki parsera
+## STATUS_RESP
 
-1. Zmieniony magic: odrzucić.
-2. Version != 0x01: odrzucić bez dispatch.
-3. Flags != 0: odrzucić.
-4. Payload length = 193: odrzucić przed zapisem do bufora.
-5. Brak CRC lub ucięta ramka: timeout i odrzucenie.
-6. Błędne CRC: odrzucić bez wywołania handlera.
-7. Nieznany typ z poprawnym nagłówkiem i CRC: NACK/UNSUPPORTED_TYPE.
-8. Dwie ramki w jednym odczycie: przetworzyć obie.
-9. Jedna ramka podzielona na bajty: złożyć bez utraty danych.
-10. Sequence odpowiedzi niezgodny z oczekiwanym: odrzucić.
+- Typ: `0x06`
+- Payload: dokładnie 14 bajtów.
+- Sequence odpowiedzi musi być identyczne z sequence żądania.
+- Maksymalna długość ramki: 25 bajtów.
 
-## Wymagane testy własnościowe
+## Negatywne przypadki
 
-- Parser nigdy nie odczytuje poza statycznym buforem.
-- Parser nigdy nie wywołuje handlera przed walidacją CRC.
-- Pamięć parsera pozostaje ograniczona dla dowolnego strumienia wejściowego.
-- Błędne wejście nie może zmienić stanu urządzenia ani aktywować wyjścia.
+1. Nieprawidłowy magic, wersja lub flags — odrzucić.
+2. Typ inny niż STATUS_REQ w kierunku klient → Nano — odrzucić.
+3. Typ inny niż STATUS_RESP w kierunku Nano → klient — odrzucić.
+4. Payload STATUS_REQ różny od zera bajtów — odrzucić.
+5. Payload STATUS_RESP różny od 14 bajtów — odrzucić.
+6. Błędne CRC — odrzucić bez wywołania handlera.
+7. Niekompletna ramka — zresetować parser po timeout.
+8. Dwie ramki w jednym odczycie — obsłużyć niezależnie.
+9. Ramka podzielona pomiędzy odczyty TCP — poprawnie złożyć.
+10. Usunięte typy HELLO, PING, ACK, NACK i ERROR — odrzucić.

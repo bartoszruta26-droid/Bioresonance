@@ -16,17 +16,17 @@ Aby włączyć transport, ustaw `RESONET_ENABLE_ETHERNET 1` i zweryfikuj, że:
 
 Wartości w pliku są przykładową konfiguracją prywatnej podsieci, a nie uniwersalnym ustawieniem.
 
-Skrypt kompilacyjny ogranicza zasoby stosu: `UIP_CONF_UDP=0`, `UIP_CONF_MAX_CONNECTIONS=1`, `UIP_CONF_MAX_LISTENPORTS=1`, `UIP_CONF_BUFFER_SIZE=128`, `UIP_CONF_ARPTAB_SIZE=2`, `UIP_SOCKET_NUMPACKETS=1`, bufory UART RX/TX po 32 bajty. Bufor uIP 128 B jest dobrany do krótkich ramek diagnostycznych v1 (maksymalna odpowiedź 25 B), kosztem przepustowości; nie należy go traktować jako konfiguracji do dużych transferów. UDP jest wyłączone, więc DHCP i DNS są niedostępne; wymagany jest statyczny adres IP. Jeden klient TCP i pojedynczy bufor pakietu ograniczają przepustowość.
+Skrypt kompilacyjny ogranicza zasoby stosu: `UIP_CONF_UDP=0`, `UIP_CONF_MAX_CONNECTIONS=1`, `UIP_CONF_MAX_LISTENPORTS=1`, `UIP_CONF_BUFFER_SIZE=128`, `UIP_CONF_ARPTAB_SIZE=2`, `UIP_SOCKET_NUMPACKETS=1`, bufory UART RX/TX po 32 bajty. Bufor uIP 128 B jest dobrany do krótkich ramek diagnostycznych v1 (jedyna odpowiedź ma 25 B), kosztem przepustowości; nie należy go traktować jako konfiguracji do dużych transferów. UDP jest wyłączone, więc DHCP i DNS są niedostępne; wymagany jest statyczny adres IP. Jeden klient TCP i pojedynczy bufor pakietu ograniczają przepustowość.
 
 ## Zachowanie serwera
 
 - Jeden klient TCP jednocześnie.
 - Przyjęcie połączenia przez `EthernetServer.accept()`.
 - Limit 24 odebranych bajtów na jedno wywołanie `network_loop()`, aby ograniczyć czas obsługi.
-- Parser ResoNet Protocol v1; odpowiedzi HELLO_RESP, PONG, STATUS_RESP.
-- Nieznany dla roli klienta typ komunikatu otrzymuje NACK.
+- Parser status-only ResoNet Protocol v1; jedyna odpowiedź to STATUS_RESP.
+- Nieznany typ komunikatu jest odrzucany bez odpowiedzi.
 - Parser firmware przechowuje wyłącznie nagłówek i CRC dla żądań klienta o pustym payloadzie; znane typy odpowiedzi nie są akceptowane w kierunku klient → urządzenie.
-- Nieznane typy z pustym payloadem otrzymują NACK; błędne ramki nie są przekazywane do handlera.
+- Nieznane typy, nieprawidłowe długości i błędne CRC są odrzucane; handler otrzymuje wyłącznie poprawne STATUS_REQ.
 - Nieobsługiwane są stare, niewersjonowane pakiety terapii i konfiguracji.
 - Brak komend uruchamiania PWM, IR LED, piezo lub wibratora.
 - STATUS_RESP ustawia `output_inhibited=0`, ponieważ firmware nie ma niezależnego potwierdzenia fizycznego odcięcia wszystkich wyjść. Pole temperatury zewnętrznego efektora ma wartość sentinel `0x7FFF`. Nie należy interpretować tego statusu jako potwierdzenia bezpieczeństwa urządzenia.
