@@ -128,7 +128,7 @@ int main() {
             std::thread server([&]() {
                 test_socket_t peer = ::accept(listener, nullptr, nullptr);
                 if (peer != invalid_test_socket) {
-                    (void)serve_hello(peer);
+                    (void)serve_status(peer);
                     std::this_thread::sleep_for(std::chrono::seconds(2));
                     close_test_socket(peer);
                 }
@@ -151,7 +151,7 @@ int main() {
         }
     }
 
-    // HELLO and STATUS must be valid v1 frames; legacy command APIs fail closed.
+    // STATUS-only protocol must be valid; legacy command APIs fail closed.
     {
         sockaddr_in address{};
         test_socket_t listener = make_listener(address);
@@ -160,7 +160,7 @@ int main() {
             std::atomic<bool> server_ok{false};
             std::thread server([&]() {
                 test_socket_t peer = ::accept(listener, nullptr, nullptr);
-                if (peer != invalid_test_socket && serve_hello(peer)) {
+                if (peer != invalid_test_socket && serve_status(peer)) {
                     ResoNetV1::Frame request;
                     if (read_frame(peer, request) && request.type == ResoNetV1::kStatusReq &&
                         request.sequence == 2 && request.payload.empty()) {
@@ -203,7 +203,7 @@ int main() {
         else {
             std::thread server([&]() {
                 test_socket_t peer = ::accept(listener, nullptr, nullptr);
-                if (peer != invalid_test_socket && serve_hello(peer)) {
+                if (peer != invalid_test_socket && serve_status(peer)) {
                     ResoNetV1::Frame request;
                     if (read_frame(peer, request) && request.type == ResoNetV1::kStatusReq) {
                         std::vector<std::uint8_t> status(14, 0);
@@ -238,7 +238,7 @@ int main() {
         else {
             std::thread server([&]() {
                 test_socket_t peer = ::accept(listener, nullptr, nullptr);
-                if (peer != invalid_test_socket && serve_hello(peer)) {
+                if (peer != invalid_test_socket && serve_status(peer)) {
                     ResoNetV1::Frame request;
                     if (read_frame(peer, request) && request.type == ResoNetV1::kStatusReq) {
                         std::vector<std::uint8_t> status(14, 0);
