@@ -68,6 +68,26 @@ class ProtocolV1Tests(unittest.TestCase):
         client.close()
         right.close()
 
+    def test_ping_nonempty_payload_has_specific_error_code(self):
+        left, right = socket.socketpair()
+        client = client_module.DiagnosticClient("unused", 5001)
+        client.sock = left
+
+        def server():
+            _, sequence, _ = client_module.recv_frame(right)
+            right.sendall(client_module.encode_frame(client_module.PONG, sequence, b"unexpected"))
+
+        thread = threading.Thread(target=server)
+        thread.start()
+        with self.assertRaises(client_module.DiagnosticError) as raised:
+            client.ping()
+        self.assertEqual(raised.exception.code, "PROTOCOL_INVALID_LENGTH")
+        self.assertFalse(raised.exception.retryable)
+        thread.join(timeout=2)
+        self.assertFalse(thread.is_alive())
+        client.close()
+        right.close()
+
     def test_crc_corruption_rejected(self):
         left, right = socket.socketpair()
         frame = bytearray(client_module.encode_frame(client_module.PONG, 7))

@@ -121,7 +121,7 @@ class DiagnosticClient:
 
     def ping(self) -> None:
         if self._request(PING, PONG):
-            raise ValueError("PONG powinien mieć pusty payload")
+            raise DiagnosticError("PROTOCOL_INVALID_LENGTH", "Odpowiedź PONG powinna mieć pusty payload.")
 
     def status(self) -> dict[str, int | None]:
         data = self._request(STATUS_REQ, STATUS_RESP)

@@ -23,7 +23,10 @@ Kod HTTP opisuje odpowiedź HTTP; obiekt `error` opisuje przyczynę aplikacyjną
 | CONNECTION_CLOSED | Połączenie zamknięte przed końcem odpowiedzi | Tak |
 | DEVICE_COMMUNICATION_FAILED | Błąd wymiany z urządzeniem | Tak |
 | DEVICE_REJECTED | Urządzenie odrzuciło żądanie | Nie |
+| PROTOCOL_UNSUPPORTED_CAPABILITY | Urządzenie zgłosiło nieobsługiwaną funkcję | Nie |
 | DEVICE_STATUS_INVALID | Nieprawidłowy status urządzenia | Nie |
+| DEVICE_UNAVAILABLE | Urządzenie niedostępne lub niewykryte | Tak |
+| OPERATION_UNSUPPORTED | Operacja nieobsługiwana przez bieżący protokół | Nie |
 | PROTOCOL_INVALID_HEADER | Nieprawidłowy nagłówek | Nie |
 | PROTOCOL_INVALID_LENGTH | Nieprawidłowa długość ramki | Nie |
 | PROTOCOL_CRC_MISMATCH | Niezgodna suma kontrolna | Nie |

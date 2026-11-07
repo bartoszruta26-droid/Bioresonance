@@ -65,7 +65,9 @@ class WebApiContractTests(unittest.TestCase):
         tui = (ROOT / "bash_tui" / "resonet_tui.py").read_text(encoding="utf-8")
         contract = (ROOT / "docs" / "ERROR_HANDLING_CONTRACT.md").read_text(encoding="utf-8")
         for code in ("TRANSPORT_TIMEOUT", "PROTOCOL_SEQUENCE_MISMATCH",
-                     "PROTOCOL_CRC_MISMATCH", "DEVICE_STATUS_INVALID"):
+                     "PROTOCOL_CRC_MISMATCH", "DEVICE_STATUS_INVALID",
+                     "DEVICE_REJECTED", "PROTOCOL_UNSUPPORTED_CAPABILITY",
+                     "OPERATION_UNSUPPORTED", "FILE_NO_VALID_RECORDS"):
             with self.subTest(code=code):
                 self.assertIn(code, catalog)
                 self.assertIn(code, tui)
