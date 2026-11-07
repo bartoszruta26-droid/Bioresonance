@@ -33,28 +33,15 @@ jobs:
           name: bioresonance-qt6-linux
           path: build/gui/bioresonance_gui
           if-no-files-found: warn
-  windows-client-x64:
-    name: Windows 10/11 x64 Qt 6 GUI build and tests (self-hosted)
-    # GitHub-hosted x64 Windows images are Windows Server, not desktop Windows.
-    # Enable after registering a trusted Windows 10/11 x64 self-hosted runner
-    # with the custom label "windows-client-x64".
-    if: vars.WINDOWS_CLIENT_RUNNER_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: [self-hosted, Windows, X64, windows-client-x64]
+  windows-qt6:
+    name: Windows Server ${{ matrix.os }} Qt 6 GUI build and tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-2025]
     steps:
       - uses: actions/checkout@v4
-      - name: Verify desktop Windows 10/11 (reject Windows Server)
-        shell: pwsh
-        run: |
-          $os = Get-CimInstance Win32_OperatingSystem
-          Write-Host "OS: $($os.Caption)"
-          Write-Host "Version: $($os.Version)"
-          Write-Host "Build: $($os.BuildNumber)"
-          if ($os.ProductType -ne 1 -or $os.Caption -notmatch 'Windows 10|Windows 11') {
-            throw "This job requires desktop Windows 10 or Windows 11; detected: $($os.Caption)"
-          }
-          if ([Environment]::Is64BitOperatingSystem -ne $true) {
-            throw "This job requires x64 Windows"
-          }
       - uses: jurplel/install-qt-action@v4
         with:
           version: '6.7.3'
