@@ -20,7 +20,7 @@ public:
   else if(e.type!=EVENT_STOP)return false;
   if(count_>=EFFECTOR_QUEUE_CAPACITY){overflowed_=true;return false;}
   uint8_t* r=queue_[tail_];
-  r[0]=static_cast<uint8_t>((static_cast<uint8_t>(e.type)<<2)|static_cast<uint8_t>(e.effector));
+  r[0]=static_cast<uint8_t>(((static_cast<uint8_t>(e.type)-1U)<<2)|static_cast<uint8_t>(e.effector));
   r[1]=static_cast<uint8_t>(e.frequency_hz);r[2]=static_cast<uint8_t>(e.frequency_hz>>8);
   r[3]=e.duty_percent;r[4]=static_cast<uint8_t>(e.duration_ms);r[5]=static_cast<uint8_t>(e.duration_ms>>8);
   tail_=static_cast<uint8_t>((tail_+1U)%EFFECTOR_QUEUE_CAPACITY);++count_;return true;
