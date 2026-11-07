@@ -94,10 +94,7 @@ class ArduinoCommunication {
     suspend fun ping(): Result<Unit> = getStatus().map { Unit }
 
     suspend fun getStatus(): Result<SystemStatus> =
-        requestFrame(
-            ResoNetProtocolV1.TYPE_STATUS_REQ,
-            ResoNetProtocolV1.TYPE_STATUS_RESP
-        ).mapCatching { parseStatusFrame(it) }
+        requestStatusFrame().mapCatching { parseStatusFrame(it) }
 
     /**
      * Text commands are deliberately rejected: v1 is a binary framed protocol.
@@ -132,7 +129,7 @@ class ArduinoCommunication {
             "Zdalne pobieranie logów nie jest dostępne w protokole diagnostycznym v1"
         ))
 
-    private suspend fun requestFrame(requestType: Int, expectedType: Int)
+    private suspend fun requestStatusFrame()
         : Result<ResoNetProtocolV1.Frame> = withContext(Dispatchers.IO) {
         var notifyError = false
         val result = operationMutex.withLock {
@@ -148,25 +145,22 @@ class ArduinoCommunication {
             try {
                 val sequence = nextSequenceLocked()
                 writeFrame(active, ResoNetProtocolV1.Frame(
-                    type = requestType,
+                    type = ResoNetProtocolV1.TYPE_STATUS_REQ,
                     sequence = sequence
                 ))
                 val response = readFrame(active)
                 if (response.sequence != sequence) {
                     throw IOException("Niezgodny numer sequence odpowiedzi")
                 }
-                if (response.type != expectedType) {
+                if (response.type != ResoNetProtocolV1.TYPE_STATUS_RESP) {
                     throw IOException("Nieoczekiwany typ odpowiedzi: 0x${response.type.toString(16)}")
                 }
-                val expectedPayloadLength = 14
-                if (response.payload.size != expectedPayloadLength) {
+                if (response.payload.size != 14) {
                     throw IOException("Nieprawidłowa długość payloadu odpowiedzi")
                 }
                 // Validate the complete STATUS schema inside the transport
                 // failure boundary so invalid data also invalidates the session.
-                if (expectedType == ResoNetProtocolV1.TYPE_STATUS_RESP) {
-                    parseStatusFrame(response)
-                }
+                parseStatusFrame(response)
                 Result.success(response)
             } catch (error: Exception) {
                 closeSocketLocked()
