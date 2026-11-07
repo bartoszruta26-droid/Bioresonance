@@ -20,6 +20,18 @@ int main(){
  for(uint8_t i=0;i<EFFECTOR_QUEUE_CAPACITY;++i)assert(r.enqueue(event(EVENT_STOP,EFFECTOR_IR_LED)));
  assert(!r.enqueue(event(EVENT_STOP,EFFECTOR_IR_LED))&&r.overflowed());while(r.processOne(0)){}assert(r.queued()==0);
  r.resetOverflowFlag();assert(!r.overflowed());r.clearModel();assert(!r.state(EFFECTOR_IR_LED)->requested_on&&r.state(EFFECTOR_IR_LED)->frequency_hz==0);
+ // Full-range duration boundary and repeated ring-buffer wraparound.
+ assert(r.enqueue(event(EVENT_START,EFFECTOR_IR_LED,500,50,65535)));
+ assert(r.processOne(1000));
+ r.tick(66534UL);assert(r.state(EFFECTOR_IR_LED)->requested_on);
+ r.tick(66535UL);assert(!r.state(EFFECTOR_IR_LED)->requested_on);
+ for(uint8_t n=0;n<24;++n){
+  const EffectorId id=static_cast<EffectorId>(n%EFFECTOR_CHANNEL_COUNT);
+  assert(r.enqueue(event(EVENT_CONFIGURE_PWM,id,static_cast<uint16_t>(100+n),10,10)));
+  assert(r.processOne(static_cast<uint32_t>(n)));
+  assert(r.state(id)->frequency_hz==static_cast<uint16_t>(100+n));
+ }
+
  EffectorPinMap map;assert(!EffectorGpioDriver::validPinMap(map));map.pin[0]=2;map.pin[1]=3;map.pin[2]=4;assert(EffectorGpioDriver::validPinMap(map));map.pin[2]=3;assert(!EffectorGpioDriver::validPinMap(map));map.pin[2]=20;assert(!EffectorGpioDriver::validPinMap(map));
  Fake f={{EFFECTOR_PIN_UNASSIGNED,EFFECTOR_PIN_UNASSIGNED,EFFECTOR_PIN_UNASSIGNED},{true,true,true},0,0};EffectorGpioIo io={configure,writePin,&f};EffectorGpioDriver gpio;
  assert(!gpio.begin(map,io));map.pin[2]=4;assert(gpio.begin(map,io));assert(gpio.ready()&&f.configured==3);assert(!f.levels[0]&&!f.levels[1]&&!f.levels[2]);
