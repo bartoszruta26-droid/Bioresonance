@@ -149,6 +149,9 @@ class MainActivity : AppCompatActivity() {
                 binding.etPort.isEnabled = true
             }
         }
+        // ConnectionState changes even when capabilities remain DIAGNOSTIC_ONLY.
+        // Refresh the combined presentation so connect/disconnect cannot leave stale text.
+        updateCapabilitiesUI(viewModel.deviceCapabilities.value)
     }
     
     /**
