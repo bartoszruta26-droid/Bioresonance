@@ -298,29 +298,19 @@ class MainViewModel : ViewModel() {
     }
     
     /**
-     * Ładowanie bazy częstotliwości z pliku frequencies.md
+     * Baza częstotliwości pozostaje wyłączona do czasu dostarczenia
+     * wersjonowanego i merytorycznie zweryfikowanego zasobu.
+     *
+     * Wartości demonstracyjne ani niezweryfikowane zestawienia nie mogą
+     * być przedstawiane jako wskazania terapeutyczne lub dane kliniczne.
      */
     fun loadFrequencyDatabase() {
         viewModelScope.launch {
-            try {
-                // W produkcji: wczytaj z assets/frequencies.md
-                val mockContent = """
-                    727|INJURY_BONE|general|Podstawowa regeneracja kości / Basic bone regeneration|AM|0
-                    1530|INJURY_BONE|healing|Przyspieszenie zrostów kostnych / Bone union acceleration|AM|0
-                    666|INJURY_JOINT|cartilage|Regeneracja chrząstki stawowej / Articular cartilage regeneration|AM|0
-                    880|INJURY_JOINT|lubrication|Nawilżanie stawów / Joint lubrication|AM|0
-                    290|INJURY_MUSCLE|relax|Rozluźnienie mięśni napiętych / Muscle tension relief|AM|0
-                    528|INJURY_MUSCLE|fiber|Regeneracja włókien mięśniowych / Muscle fiber regeneration|FM|0
-                    174|INJURY_NERVE|pain|Łagodzenie bólu nerwowego / Nerve pain relief|PWM|0
-                    729|INJURY_NERVE|vagus|Stymulacja nerwu błędnego / Vagus nerve stimulation|PWM|0
-                """.trimIndent()
-                
-                val count = FrequencyDatabase.loadFromAssets(mockContent)
-                _frequenciesLoaded.value = true
-                showMessage("Załadowano $count częstotliwości")
-            } catch (e: Exception) {
-                showMessage("Błąd ładowania częstotliwości: ${e.message}")
-            }
+            _frequenciesLoaded.value = false
+            showMessage(
+                "Baza częstotliwości niedostępna: brak zweryfikowanego zasobu. " +
+                    "Nie załadowano danych demonstracyjnych."
+            )
         }
     }
     
