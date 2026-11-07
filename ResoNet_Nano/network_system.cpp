@@ -51,6 +51,7 @@ static bool sendStatusFrame(uint16_t sequence,const uint8_t* payload){
  size_t n=ResoNetProtocolV1::encodeStatusResponse(sequence,payload,tx_buffer,sizeof(tx_buffer));
  if(!n)return false;
  if(diagnostic_client.write(tx_buffer,n)!=n){diagnostic_client.stop();protocol_parser.reset();return false;}
+ diagnostic_client.flush();
  ++packets_sent;return true;
 }
 static void handleProtocolFrame(const ResoNetProtocolV1::FrameView& frame,void* context){
