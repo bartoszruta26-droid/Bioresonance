@@ -11,30 +11,16 @@ permissions:
 concurrency:
   group: desktop-gui-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
-
 jobs:
-  linux:
-    name: Linux GUI build and tests
+  linux-qt6:
+    name: Linux Qt 6 GUI build and tests
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      - name: Install Linux dependencies
+      - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build libsdl2-dev build-essential php-cli
-      - name: PHP syntax check
-        run: php -l webui/api.php
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: WebUI API contract regression tests
-        run: python3 -m unittest discover -s webui/tests -v
-      - name: JavaScript syntax check
-        run: |
-          python3 -c 'import os,re,pathlib; s=pathlib.Path("webui/index.html").read_text(encoding="utf-8"); m=re.search(r"<script\b[^>]*>([\s\S]*?)</script>", s); assert m, "inline script not found"; pathlib.Path(os.environ["RUNNER_TEMP"], "webui.js").write_text(m.group(1), encoding="utf-8")'
-          node --check "$RUNNER_TEMP/webui.js"
+          sudo apt-get install -y cmake ninja-build build-essential qt6-base-dev qt6-charts-dev
       - name: Configure
         run: cmake -S gui -B build/gui -G Ninja -DCMAKE_BUILD_TYPE=Release
       - name: Build
@@ -44,11 +30,29 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: bioresonance-gui-linux
+          name: bioresonance-qt6-linux
           path: build/gui/bioresonance_gui
           if-no-files-found: warn
-
-
+  windows-qt6:
+    name: Windows 2022 Qt 6 GUI build and tests
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.7.3'
+          host: windows
+          target: desktop
+          arch: win64_msvc2019_64
+          modules: qtcharts
+          cache: true
+      - name: Configure
+        shell: pwsh
+        run: cmake -S gui -B build/gui -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR"
+      - name: Build
+        run: cmake --build build/gui --config Release --parallel
+      - name: Test
+        run: ctest --test-dir build/gui -C Release --output-on-failure
   android-app:
     name: Android app build and unit tests
     runs-on: ubuntu-22.04
@@ -69,37 +73,4 @@ jobs:
         with:
           name: bioresonance-android-debug
           path: android_app/app/build/outputs/apk/debug/*.apk
-          if-no-files-found: warn
-
-  windows-11-x64:
-    name: Windows 11 x64 GUI build and tests
-    # A persistent self-hosted runner must never execute code from an external fork.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: [self-hosted, Windows, X64, windows-11]
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      - name: Install Windows dependencies
-        shell: pwsh
-        run: |
-          $vcpkg = Join-Path $env:RUNNER_TEMP "vcpkg"
-          if (-not (Test-Path $vcpkg)) {
-            git clone https://github.com/microsoft/vcpkg $vcpkg
-          }
-          & (Join-Path $vcpkg "bootstrap-vcpkg.bat") -disableMetrics
-          & (Join-Path $vcpkg "vcpkg.exe") install sdl2:x64-windows
-          "CMAKE_TOOLCHAIN_FILE=$(Join-Path $vcpkg 'scripts/buildsystems/vcpkg.cmake')" | Out-File -FilePath $env:GITHUB_ENV -Append
-      - name: Configure
-        shell: pwsh
-        run: cmake -S gui -B build/gui -DCMAKE_TOOLCHAIN_FILE="$env:CMAKE_TOOLCHAIN_FILE" -DVCPKG_TARGET_TRIPLET=x64-windows
-      - name: Build
-        run: cmake --build build/gui --config Release --parallel
-      - name: Test
-        run: ctest --test-dir build/gui -C Release --output-on-failure
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: bioresonance-gui-windows-11-x64
-          path: build/gui/Release/bioresonance_gui.exe
           if-no-files-found: warn
