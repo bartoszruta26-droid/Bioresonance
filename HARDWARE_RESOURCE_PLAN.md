@@ -106,3 +106,65 @@ Dopiero na tej podstawie można przypisać konkretne CS, adresy I²C, linie enab
 ## Kryterium zakończenia
 
 Nie uznajemy modułu za gotowy tylko dlatego, że się kompiluje. Każdy moduł wymaga testów granicznych, błędów komunikacji, resetu, utraty zasilania, wartości nieprawidłowych i przejścia do stanu bezpiecznego. Testy sprzętowe muszą mieć raport z rzeczywistych pomiarów i wskazanie użytego obciążenia zastępczego.
+
+
+## Zmiana założeń funkcjonalnych — decyzja użytkownika (2026-11-07)
+
+Poniższa decyzja zastępuje wcześniejsze założenie, że Nano ma przede wszystkim sterować zewnętrznymi generatorami:
+
+**Arduino Nano jest na tym etapie generatorem sygnałów i urządzeniem pomiarowym, a nie nadrzędnym sterownikiem efektorów.**
+
+Zakres odpowiedzialności Nano:
+- generowanie przebiegów w granicach rzeczywistych możliwości timerów i wyjść;
+- wykonywanie pomiarów analogowych i cyfrowych;
+- akwizycja próbek, podstawowa filtracja i diagnostyka jakości pomiaru;
+- przekazywanie konfiguracji, próbek i wyników do TUI, WebUI, Desktop GUI i Android;
+- bezpośrednie sterowanie wyjściami generatora tylko w zakresie zatwierdzonym dla danego toru.
+
+Nie implementować obecnie nadrzędnego modelu sterowania zewnętrznymi efektorami ani rozbudowanego protokołu poleceń START/STOP dla nich. Zachować jednak blokady, diagnostykę oraz możliwość bezpiecznego wyłączenia generowanych sygnałów.
+
+### GSR / EDA — wymaganie pomiarowe
+
+Dodać niezależny podsystem pomiaru aktywności elektrodermalnej (EDA/GSR), z dwoma odrębnymi trybami:
+
+1. **GSR-DC** — pomiar przewodności/rezystancji skóry przy kontrolowanym, ograniczonym sygnale stałym. Wyniki raportować jako surowe próbki, napięcie, prąd (jeśli mierzony), rezystancję i przewodność wraz z flagami jakości.
+2. **GSR-AC** — pomiar odpowiedzi na kontrolowany sygnał przemienny. Częstotliwość ma być parametrem konfiguracji eksperymentu, ale dopuszczalny zakres zostanie ustalony dopiero po określeniu analogowego toru pomiarowego, szybkości próbkowania i filtracji.
+
+Wyniki GSR-AC:
+- częstotliwość pobudzenia;
+- amplituda napięcia pobudzenia i odpowiedzi;
+- amplituda prądu, jeśli tor pomiarowy zapewnia wiarygodny pomiar;
+- impedancja pozorna lub admitancja wyłącznie wtedy, gdy znane są warunki kalibracji;
+- faza tylko wtedy, gdy układ akwizycji umożliwia synchroniczny pomiar napięcia i prądu;
+- surowe próbki, znaczniki czasu, zakres ADC, status kalibracji i jakość pomiaru.
+
+Nie utożsamiać samego pomiaru amplitudy z pełnym pomiarem impedancji zespolonej. Dla rozdzielenia składowej rezystancyjnej i pojemnościowej potrzebny jest odpowiedni analogowy tor pomiarowy i detekcja synchroniczna / pomiar fazy.
+
+### Ograniczenia ATmega328P
+
+Dla klasycznego Nano z ATmega328P przyjąć 10-bitowy ADC i ograniczoną szybkość akwizycji. Standardowe `analogRead()` jest zbyt wolne do precyzyjnej, szerokopasmowej analizy impedancji. Można rozpocząć od wolnego GSR-DC i eksperymentalnego, wąskopasmowego GSR-AC, ale projekt powinien przewidywać zewnętrzny przetwornik ADC lub dedykowany analogowy układ pomiarowy, jeżeli wymagane będą lepsza rozdzielczość, stabilność, synchronizacja lub szersze pasmo.
+
+### Podział modułów firmware
+
+- `signal_generator` — abstrakcja generowania przebiegów, bez deklarowania nierealnych zakresów;
+- `gsr_dc` — pomiar DC i obliczanie GSR;
+- `gsr_ac` — sekwencja pomiarowa AC, synchronizacja i ekstrakcja parametrów;
+- `measurement_engine` — akwizycja, znaczniki czasu, filtracja i buforowanie próbek;
+- `calibration` — kalibracja toru i identyfikacja nieaktualnych współczynników;
+- `diagnostics` — nasycenie ADC, odłączenie czujnika, przekroczenie zakresu, szum, timeout;
+- `protocol` — konfiguracja pomiaru, strumień próbek i wyniki dla interfejsów użytkownika.
+
+### Bezpieczeństwo pomiaru
+
+Ponieważ elektrody mogą mieć kontakt ze skórą człowieka, GSR musi być osobnym, ograniczonym energetycznie torem pomiarowym. Nie podłączać elektrod bezpośrednio do GPIO ani nie używać wyjścia generatora ogólnego jako źródła pobudzenia skóry. Wymagane są: ograniczenie prądu sprzętowe, zabezpieczenie przed pojedynczym uszkodzeniem, kontrola napięcia i prądu, odpowiednia izolacja oraz walidacja toru. Do czasu walidacji pomiary wykonywać na obciążeniu zastępczym. Parametrów pobudzenia nie ustalać arbitralnie w firmware.
+
+### Kolejność dalszych prac
+
+1. Utrzymać audyt zasobów i poprawić generator IR bez aktywowania konfliktowego pinu.
+2. Oddzielić generowanie sygnałów od sterowania efektorami.
+3. Zaprojektować i przetestować model danych GSR-DC oraz GSR-AC na danych syntetycznych.
+4. Zidentyfikować istniejący moduł GSR i jego interfejs; nie zakładać, że samo wykrywanie GSR oznacza gotowy tor pomiarowy.
+5. Dodać akwizycję i diagnostykę, a następnie kalibrację.
+6. Rozszerzyć protokół o konfigurację pomiaru i ramki próbek.
+7. Zintegrować wyniki z TUI, WebUI, Desktop GUI i Android.
+8. Testy sprzętowe prowadzić najpierw na obciążeniach zastępczych; osobno raportować testy hostowe, kompilację i testy fizyczne.
