@@ -324,7 +324,7 @@ float evaluate_ppg_quality();
 
 /**
  * @brief Odczytaj wartość GSR
- * @return int - wartość ADC
+ * @return int - próbka ADC; -1 oznacza brak zaimplementowanego/zweryfikowanego pomiaru
  */
 int read_gsr();
 

@@ -17,8 +17,8 @@
 // ============================================================================
 
 #define PWM_OUTPUT_PIN PIN_PWM_OUTPUT
-#define PWM_MIN_FREQUENCY_HZ_X100 ((uint32_t)(FREQ_MIN_HZ * 100))      // 0.1 Hz * 100 = 10
-#define PWM_MAX_FREQUENCY_HZ_X100 ((uint32_t)(FREQ_MAX_HZ * 100))      // 500 kHz * 100 = 50000000
+#define PWM_MIN_FREQUENCY_HZ_X100 24UL       // 0.24 Hz; 16 MHz, prescaler 1024, 16-bit TOP
+#define PWM_MAX_FREQUENCY_HZ_X100 50000000UL // 500 kHz; documented API ceiling
 
 // Typy modulacji (używamy z types.h)
 // MODULATION_NONE = 0

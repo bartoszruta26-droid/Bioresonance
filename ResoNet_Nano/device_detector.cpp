@@ -499,23 +499,14 @@ bool detect_ir_led_strip() {
 // ============================================================================
 
 int read_gsr() {
-    // Prosta implementacja - w rzeczywistości wymaga komunikacji I2C
-    return analogRead(A0);  // Tymczasowe
+    // No identified GSR front-end/ADC driver is implemented yet.
+    // -1 explicitly means "measurement unavailable"; A0 is the skin NTC input.
+    return -1;
 }
 
 float evaluate_gsr_quality() {
-    uint32_t sum = 0;
-    
-    for (int i = 0; i < 100; i++) {
-        sum += read_gsr();
-        delay(10);
-    }
-    
-    float mean = sum / 100.0f;
-    
-    if (mean < 100 || mean > 950) return 0.0f;
-    
-    return constrain((mean - 100) / 700.0f, 0.0f, 1.0f);
+    // An I2C ACK at 0x48 proves presence only, not sensor identity or valid samples.
+    return 0.0f;
 }
 
 float evaluate_ppg_quality() {
@@ -553,8 +544,10 @@ BioStatus_t detect_biofeedback_sensors(BioSensorStatus_t* status) {
     status->tempConnected = (Wire.endTransmission() == 0);
     
     // Quality check
+    status->gsrQuality = 0.0f;
+    status->gsrValue = 0.0f; // No validated measurement; never infer conductance from A0.
     if (status->gsrConnected) {
-        status->gsrQuality = evaluate_gsr_quality();
+        LOG_WARNING("GSR I2C device acknowledged; measurement unavailable until driver identification");
     }
     if (status->ppgConnected) {
         status->ppgQuality = evaluate_ppg_quality();
@@ -602,7 +595,8 @@ void adapt_therapy_based_on_biofeedback(TherapyParams_t* params) {
     }
     
     // Adaptacja na podstawie GSR
-    if (g_bio_status.gsrConnected && g_bio_status.gsrValue > 0) {
+    // GSR adaptation remains disabled until a real, calibrated measurement driver exists.
+    if (false && g_bio_status.gsrConnected && g_bio_status.gsrValue > 0) {
         if (g_bio_status.gsrValue > 30.0f) {
             // Wysoki stres - zwiększ relaksację
             params->frequency = 10.0f;  // Hz (alfa)

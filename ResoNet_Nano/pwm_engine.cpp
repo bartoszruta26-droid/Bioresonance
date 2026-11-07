@@ -7,6 +7,7 @@
 #include "pwm_engine.h"
 #include "logging_system.h"
 #include "event_system.h"
+#include "timer1_pwm_calculator.h"
 
 // ============================================================================
 // ZMIENNE PRYWATNE
@@ -28,74 +29,55 @@ static uint16_t base_duty_cycle = 50;
  * @param frequency_hz_x100 Częstotliwość * 100
  * @param duty_cycle Duty cycle 0-100%
  */
-static void timer1_configure_pwm(uint32_t frequency_hz_x100, uint8_t duty_cycle) {
-    // Oblicz prescaler i ICR1
-    uint16_t prescaler = 1;
-    uint16_t icr_value;
-    
-    // F_CPU = 16MHz
-    // frequency = F_CPU / (prescaler * ICR1)
-    
-    if (frequency_hz_x100 >= 500000) {  // >= 5 kHz
-        prescaler = 1;
-        icr_value = F_CPU / (frequency_hz_x100 / 100);
-    } else if (frequency_hz_x100 >= 62500) {  // >= 625 Hz
-        prescaler = 8;
-        icr_value = F_CPU / (8UL * (frequency_hz_x100 / 100));
-    } else if (frequency_hz_x100 >= 7812) {  // >= 78.12 Hz
-        prescaler = 64;
-        icr_value = F_CPU / (64UL * (frequency_hz_x100 / 100));
-    } else if (frequency_hz_x100 >= 1953) {  // >= 19.53 Hz
-        prescaler = 256;
-        icr_value = F_CPU / (256UL * (frequency_hz_x100 / 100));
-    } else {  // < 19.53 Hz
-        prescaler = 1024;
-        icr_value = F_CPU / (1024UL * (frequency_hz_x100 / 100));
+static bool timer1_configure_pwm(uint32_t frequency_hz_x100, uint8_t duty_cycle,
+                                    uint32_t* actual_frequency_hz_x100) {
+    timer1_pwm::Config config;
+    if (!timer1_pwm::calculate(F_CPU, frequency_hz_x100, duty_cycle, &config)) {
+        return false;
     }
-    
-    // Ogranicz ICR1 do rozsądnych wartości
-    if (icr_value < 100) icr_value = 100;
-    if (icr_value > 65535) icr_value = 65535;
-    
-    // Oblicz OCR1A z duty cycle
-    uint16_t ocr_value = (uint32_t)icr_value * duty_cycle / 100;
-    
-    // Konfiguruj Timer1
+
+    // Preserve the caller's interrupt state rather than unconditionally enabling IRQs.
+    const uint8_t saved_sreg = SREG;
     cli();
-    
-    // Wyłącz Timer1 podczas konfiguracji
+
     TCCR1A = 0;
     TCCR1B = 0;
-    
-    // Ustaw tryb Fast PWM z ICR1 jako TOP (tryb 14)
-    TCCR1A = _BV(WGM11);
+    TCNT1 = 0;
+    ICR1 = config.top;
+    OCR1A = config.compare;
+
+    // Fast PWM mode 14, ICR1 as TOP, non-inverting OC1A (D9).
+    TCCR1A = _BV(WGM11) | _BV(COM1A1);
     TCCR1B = _BV(WGM12) | _BV(WGM13);
-    
-    // Ustaw prescaler
-    switch (prescaler) {
-        case 1:   TCCR1B |= _BV(CS10); break;
-        case 8:   TCCR1B |= _BV(CS11); break;
-        case 64:  TCCR1B |= _BV(CS11) | _BV(CS10); break;
-        case 256: TCCR1B |= _BV(CS12); break;
+    switch (config.prescaler) {
+        case 1:    TCCR1B |= _BV(CS10); break;
+        case 8:    TCCR1B |= _BV(CS11); break;
+        case 64:   TCCR1B |= _BV(CS11) | _BV(CS10); break;
+        case 256:  TCCR1B |= _BV(CS12); break;
         case 1024: TCCR1B |= _BV(CS12) | _BV(CS10); break;
+        default:
+            TCCR1A = 0;
+            TCCR1B = 0;
+            SREG = saved_sreg;
+            return false;
     }
-    
-    // Ustaw ICR1 i OCR1A
-    ICR1 = icr_value;
-    OCR1A = ocr_value;
-    
-    // Włącz wyjście OC1A w trybie non-inverting
-    TCCR1A |= _BV(COM1A1);
-    
-    sei();
+
+    SREG = saved_sreg;
+    if (actual_frequency_hz_x100 != NULL) {
+        *actual_frequency_hz_x100 = config.actual_frequency_hz_x100;
+    }
+    return true;
 }
 
 /**
  * @brief Aktualizuje duty cycle
  */
 static void timer1_update_duty(uint8_t duty_cycle) {
-    uint16_t duty_value = (uint32_t)ICR1 * duty_cycle / 100;
-    OCR1A = duty_value;
+    const uint32_t counts = (uint32_t)ICR1 + 1UL;
+    uint32_t duty_value = (counts * duty_cycle + 50UL) / 100UL;
+    if (duty_value < 1UL) duty_value = 1UL;
+    if (duty_value >= counts) duty_value = counts - 1UL;
+    OCR1A = (uint16_t)duty_value;
 }
 
 // ============================================================================
@@ -180,8 +162,13 @@ void pwm_loop() {
                     float freq_factor = 1.0 + 0.1 * sin(phase);  // ±10%
                     
                     uint32_t new_freq = (uint32_t)(pwm_config.frequency_hz_x100 * freq_factor);
-                    timer1_configure_pwm(new_freq, pwm_status.current_duty);
-                    pwm_status.current_freq_x100 = new_freq;
+                    uint32_t actual_frequency = 0;
+                    if (timer1_configure_pwm(new_freq, pwm_status.current_duty,
+                                             &actual_frequency)) {
+                        pwm_status.current_freq_x100 = actual_frequency;
+                    } else {
+                        pwm_stop();
+                    }
                 }
             }
             break;
@@ -247,10 +234,19 @@ bool pwm_set_config(const PWMConfig* config) {
     base_duty_cycle = config->duty_cycle;
     
     // Skonfiguruj timer
-    timer1_configure_pwm(config->frequency_hz_x100, config->duty_cycle);
-    
-    // Aktualizuj status
-    pwm_status.current_freq_x100 = config->frequency_hz_x100;
+    uint32_t actual_frequency = 0;
+    if (!timer1_configure_pwm(config->frequency_hz_x100, config->duty_cycle,
+                              &actual_frequency)) {
+        LOG_ERROR("Timer1 cannot represent requested frequency");
+        memset(&pwm_config, 0, sizeof(PWMConfig));
+        pwm_status.current_freq_x100 = 0;
+        pwm_status.is_running = false;
+        digitalWrite(PWM_OUTPUT_PIN, LOW);
+        return false;
+    }
+
+    // Aktualizuj status wartościami rzeczywiście skonfigurowanymi.
+    pwm_status.current_freq_x100 = actual_frequency;
     pwm_status.current_duty = config->duty_cycle;
     pwm_status.current_modulation = config->modulation_type;
     
