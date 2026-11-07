@@ -20,6 +20,12 @@ class MainViewModel : ViewModel() {
         MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
     val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
 
+    // Protocol v1 never proves authentication, hardware interlocks or output feedback.
+    private val _deviceCapabilities =
+        MutableStateFlow(DeviceCapabilities.DIAGNOSTIC_ONLY)
+    val deviceCapabilities: StateFlow<DeviceCapabilities> =
+        _deviceCapabilities.asStateFlow()
+
     private val _systemStatus = MutableStateFlow(SystemStatus())
     val systemStatus: StateFlow<SystemStatus> = _systemStatus.asStateFlow()
 
@@ -48,6 +54,8 @@ class MainViewModel : ViewModel() {
             object : ArduinoCommunication.ConnectionStateListener {
                 override fun onConnectionStateChanged(state: ConnectionState) {
                     _connectionState.value = state
+                    // A v1 HELLO/capability bitfield is not a verified control contract.
+                    _deviceCapabilities.value = DeviceCapabilities.DIAGNOSTIC_ONLY
                     viewModelScope.launch {
                         when (state) {
                             is ConnectionState.Connected -> {
