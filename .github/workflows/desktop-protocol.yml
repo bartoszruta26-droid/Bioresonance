@@ -59,8 +59,8 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - name: Install SDL2 build dependencies
-        run: sudo apt-get update && sudo apt-get install -y cmake build-essential libsdl2-dev
+      - name: Install Qt 6 build dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake build-essential qt6-base-dev qt6-charts-dev
       - name: Configure desktop application and tests
         run: cmake -S gui -B build/gui -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
       - name: Build desktop application and host tests
