@@ -3,7 +3,8 @@ namespace ResoNetProtocolV1 {
 static uint16_t read16(const uint8_t*p){return (uint16_t)(((uint16_t)p[0]<<8)|p[1]);}
 static void write16(uint8_t*p,uint16_t v){p[0]=(uint8_t)(v>>8);p[1]=(uint8_t)v;}
 uint16_t crc16(const uint8_t*d,size_t n){
- if(!d&&n)return 0; uint16_t c=0xFFFF;
+ if (!d && n) return 0;
+ uint16_t c = 0xFFFF;
  for(size_t i=0;i<n;++i){c^=(uint16_t)d[i]<<8;for(uint8_t b=0;b<8;++b)c=(c&0x8000)?(uint16_t)((c<<1)^0x1021):(uint16_t)(c<<1);}
  return c;
 }
