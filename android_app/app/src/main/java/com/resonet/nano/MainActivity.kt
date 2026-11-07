@@ -186,15 +186,35 @@ class MainActivity : AppCompatActivity() {
      * W pełnej implementacji użyj RecyclerView z adapterem
      */
     private fun updateChannelsUI(channels: List<ChannelConfig>) {
-        // Przykład: aktualizacja pierwszego kanału
-        if (channels.isNotEmpty()) {
-            val ch = channels[0]
-            binding.tvChannel1Name.text = ch.name
-            binding.tvChannel1Freq.text = "${ch.frequency} Hz"
-            binding.switchChannel1.isChecked = ch.enabled
+        val nameViews = listOf(
+            binding.tvChannel1Name, binding.tvChannel2Name,
+            binding.tvChannel3Name, binding.tvChannel4Name,
+            binding.tvChannel5Name, binding.tvChannel6Name,
+            binding.tvChannel7Name, binding.tvChannel8Name
+        )
+        val frequencyViews = listOf(
+            binding.tvChannel1Freq, binding.tvChannel2Freq,
+            binding.tvChannel3Freq, binding.tvChannel4Freq,
+            binding.tvChannel5Freq, binding.tvChannel6Freq,
+            binding.tvChannel7Freq, binding.tvChannel8Freq
+        )
+        val stateViews = listOf(
+            binding.tvChannel1State, binding.tvChannel2State,
+            binding.tvChannel3State, binding.tvChannel4State,
+            binding.tvChannel5State, binding.tvChannel6State,
+            binding.tvChannel7State, binding.tvChannel8State
+        )
+
+        nameViews.forEachIndexed { index, view ->
+            val channel = channels.firstOrNull { it.id == index + 1 }
+            view.text = channel?.name ?: "Kanał ${index + 1} — brak danych"
+            frequencyViews[index].text = channel?.let { "${it.frequency} Hz" } ?: "— Hz"
+            stateViews[index].text = if (channel == null) {
+                "Brak danych"
+            } else {
+                "Preset lokalny"
+            }
         }
-        
-        // W produkcji: zaimplementuj pełną listę 8 kanałów z RecyclerView
     }
     
     /**
