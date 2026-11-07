@@ -39,7 +39,23 @@ if start < 0 or stop_signature < 0:
 end = source.rfind("void", signature, stop_signature)
 if end < signature or end <= start:
     raise SystemExit("EthernetENC stop boundary not found; refusing unsafe patch")
-path.write_text(source[:start] + source[end:])
+replacement = """int
+UIPClient::connect(IPAddress ip, uint16_t port)
+{
+  (void)ip;
+  (void)port;
+  return 0;
+}
+
+int
+UIPClient::connect(const char *host, uint16_t port)
+{
+  (void)host;
+  (void)port;
+}
+
+"""
+path.write_text(source[:start] + replacement + source[end:])
 PY
 fi
 
