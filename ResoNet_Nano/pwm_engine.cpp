@@ -254,6 +254,11 @@ bool pwm_set_config(const PWMConfig* config) {
         memset(&pwm_config, 0, sizeof(PWMConfig));
         pwm_status.current_freq_x100 = 0;
         pwm_status.is_running = false;
+        const uint8_t saved_sreg = SREG;
+        cli();
+        TCCR1A &= ~(_BV(COM1A1) | _BV(COM1A0));
+        TCCR1B = 0;
+        SREG = saved_sreg;
         digitalWrite(PWM_OUTPUT_PIN, LOW);
         return false;
     }
@@ -275,7 +280,11 @@ void pwm_start() {
     if (pwm_status.is_running) {
         return;
     }
-    
+    if (pwm_status.current_freq_x100 == 0) {
+        LOG_WARNING("PWM start rejected: no valid Timer1 configuration");
+        return;
+    }
+
     modulation_start_time = millis();
     pwm_status.elapsed_ms = 0;
     pwm_status.modulation_counter = 0;
