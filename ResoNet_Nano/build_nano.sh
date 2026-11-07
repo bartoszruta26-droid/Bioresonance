@@ -52,6 +52,7 @@ UIPClient::connect(const char *host, uint16_t port)
 {
   (void)host;
   (void)port;
+  return 0;
 }
 
 """
