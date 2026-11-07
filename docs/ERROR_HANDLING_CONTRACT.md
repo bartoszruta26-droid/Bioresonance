@@ -32,9 +32,13 @@ Kod HTTP opisuje odpowiedź HTTP; obiekt `error` opisuje przyczynę aplikacyjną
 | PROTOCOL_UNSUPPORTED_CAPABILITY | Nieobsługiwana funkcja protokołu | Nie |
 | PROTOCOL_INVALID_RESPONSE | Inna niezgodność odpowiedzi | Nie |
 | INTERNAL_ERROR | Nieoczekiwany błąd aplikacji | Nie |
+| FILE_READ_FAILED | Nie udało się odczytać pliku | Nie |
+| FILE_WRITE_FAILED | Nie udało się zapisać pliku | Nie |
+| FILE_INVALID_FORMAT | Nieprawidłowy format pliku | Nie |
+| FILE_NO_VALID_RECORDS | Brak poprawnych rekordów danych | Nie |
 
 ## Wymagania platform
-- **Desktop GUI:** centralny adapter mapuje kod na komunikat, ważność i działanie UI; surowe wyjątki pozostają w logu.
+- **Desktop GUI:** centralny katalog `ui_error_catalog.h` mapuje kod na komunikat i możliwość ponowienia; szczegóły techniczne są dostępne osobno.
 - **WebUI:** backend zwraca obiekt `error`; frontend nie zakłada typu tekstowego i nie renderuje treści błędu jako HTML.
 - **TUI:** wyjątek przenosi `code` i `retryable`; terminal używa prefiksu `BŁĄD [KOD]`.
 - **Retry:** wyłącznie dla odczytowych operacji diagnostycznych; bez automatycznych pętli ponawiania.

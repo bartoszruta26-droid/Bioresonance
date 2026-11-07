@@ -30,6 +30,7 @@
 #include <QJsonObject>
 #include <QRandomGenerator>
 #include <QtMath>
+#include "ui_error_catalog.h"
 
 struct Sample { QDateTime time; int channel=1; double value=0; QString source="SIMULATOR"; };
 class Window final : public QMainWindow {
@@ -44,6 +45,13 @@ class Window final : public QMainWindow {
  QWidget *pageWidget(QString title,QString sub){auto*w=new QWidget;auto*l=new QVBoxLayout(w);l->setContentsMargins(28,24,28,24);auto*t=new QLabel(title);t->setObjectName("title");auto*s=new QLabel(sub);s->setObjectName("muted");s->setWordWrap(true);l->addWidget(t);l->addWidget(s);return w;}
  QFrame *panel(){auto*w=new QFrame;w->setObjectName("panel");return w;}
  void addPage(QWidget*w){stack->addWidget(w);}
+ void reportError(const std::string& code,const QString& technicalDetails=QString()){
+  const UiErrorPresentation error=uiErrorPresentation(code);
+  QMessageBox box(QMessageBox::Warning,QString("Błąd [%1]").arg(QString::fromUtf8(code.c_str())),
+                  QString::fromUtf8(error.user_message),QMessageBox::Ok,this);
+  if(!technicalDetails.isEmpty())box.setDetailedText(technicalDetails);
+  box.exec();
+ }
  void build(){
   auto*root=new QWidget;auto*outer=new QHBoxLayout(root);outer->setContentsMargins(0,0,0,0);outer->setSpacing(0);
   auto*side=new QFrame;side->setObjectName("side");side->setFixedWidth(220);auto*sl=new QVBoxLayout(side);
@@ -85,8 +93,8 @@ class Window final : public QMainWindow {
  void refreshSessions(){if(!sessionTable)return;sessionTable->setRowCount(0);for(const auto&s:sessions){int r=sessionTable->rowCount();sessionTable->insertRow(r);sessionTable->setItem(r,0,new QTableWidgetItem(s.name));sessionTable->setItem(r,1,new QTableWidgetItem(s.date));sessionTable->setItem(r,2,new QTableWidgetItem(s.source));sessionTable->setItem(r,3,new QTableWidgetItem(QString::number(s.count)));}}
  void persist(){QJsonArray a;for(const auto&s:sessions){QJsonObject o;o["name"]=s.name;o["date"]=s.date;o["source"]=s.source;o["count"]=s.count;a.append(o);}QFile f(dataDir+"/sessions.json");if(f.open(QIODevice::WriteOnly|QIODevice::Truncate))f.write(QJsonDocument(a).toJson());}
  void load(){dataDir=QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);QDir().mkpath(dataDir);QFile f(dataDir+"/sessions.json");if(f.open(QIODevice::ReadOnly)){auto a=QJsonDocument::fromJson(f.readAll()).array();for(auto v:a){auto o=v.toObject();sessions.append({o["name"].toString(),o["date"].toString(),o["source"].toString(),o["count"].toInt()});}}}
- void exportCsv(){QString path=QFileDialog::getSaveFileName(this,"Eksport CSV",QDir::homePath()+"/resonet.csv","CSV (*.csv)");if(path.isEmpty())return;QFile f(path);if(!f.open(QIODevice::WriteOnly|QIODevice::Text)){QMessageBox::warning(this,"Eksport","Nie można zapisać pliku.");return;}QTextStream o(&f);o<<"timestamp,channel,value,unit,source\n";for(const auto&s:samples)o<<s.time.toString(Qt::ISODateWithMs)<<","<<s.channel<<","<<QString::number(s.value,'f',4)<<",j.u.,"<<s.source<<"\n";QMessageBox::information(this,"Eksport","Zapisano "+QString::number(samples.size())+" próbek.");}
- void importCsv(){QString p=QFileDialog::getOpenFileName(this,"Import CSV",QDir::homePath(),"CSV (*.csv)");if(p.isEmpty())return;QFile f(p);if(!f.open(QIODevice::ReadOnly|QIODevice::Text))return;QTextStream in(&f);if(in.readLine().trimmed()!="timestamp,channel,value,unit,source"){QMessageBox::warning(this,"Import","Nieprawidłowy nagłówek CSV.");return;}QVector<Sample> loaded;while(!in.atEnd()){auto x=in.readLine().split(',');if(x.size()!=5)continue;bool a=false,b=false;int ch=x[1].toInt(&a);double val=x[2].toDouble(&b);auto dt=QDateTime::fromString(x[0],Qt::ISODateWithMs);if(a&&b&&ch>=1&&ch<=8&&dt.isValid())loaded.append({dt,ch,val,"RECORDING"});}if(loaded.isEmpty()){QMessageBox::warning(this,"Import","Brak poprawnych próbek.");return;}samples=loaded;source="RECORDING";sourceBox->setCurrentIndex(1);badge->setText("NAGRANIE");refreshAll();}
+ void exportCsv(){QString path=QFileDialog::getSaveFileName(this,"Eksport CSV",QDir::homePath()+"/resonet.csv","CSV (*.csv)");if(path.isEmpty())return;QFile f(path);if(!f.open(QIODevice::WriteOnly|QIODevice::Text)){reportError("FILE_WRITE_FAILED",f.errorString());return;}QTextStream o(&f);o<<"timestamp,channel,value,unit,source\n";for(const auto&s:samples)o<<s.time.toString(Qt::ISODateWithMs)<<","<<s.channel<<","<<QString::number(s.value,'f',4)<<",j.u.,"<<s.source<<"\n";QMessageBox::information(this,"Eksport","Zapisano "+QString::number(samples.size())+" próbek.");}
+ void importCsv(){QString p=QFileDialog::getOpenFileName(this,"Import CSV",QDir::homePath(),"CSV (*.csv)");if(p.isEmpty())return;QFile f(p);if(!f.open(QIODevice::ReadOnly|QIODevice::Text)){reportError("FILE_READ_FAILED",f.errorString());return;}QTextStream in(&f);if(in.readLine().trimmed()!="timestamp,channel,value,unit,source"){reportError("FILE_INVALID_FORMAT","Oczekiwany nagłówek: timestamp,channel,value,unit,source");return;}QVector<Sample> loaded;while(!in.atEnd()){auto x=in.readLine().split(',');if(x.size()!=5)continue;bool a=false,b=false;int ch=x[1].toInt(&a);double val=x[2].toDouble(&b);auto dt=QDateTime::fromString(x[0],Qt::ISODateWithMs);if(a&&b&&ch>=1&&ch<=8&&dt.isValid())loaded.append({dt,ch,val,"RECORDING"});}if(loaded.isEmpty()){reportError("FILE_NO_VALID_RECORDS","Plik nie zawiera poprawnych rekordów próbek.");return;}samples=loaded;source="RECORDING";sourceBox->setCurrentIndex(1);badge->setText("NAGRANIE");refreshAll();}
 public:
  Window(){setWindowTitle("ResoNet | Biofeedback Studio");resize(1440,900);setMinimumSize(1100,700);build();load();refreshSessions();}
 };
