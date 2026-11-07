@@ -168,3 +168,36 @@ Ponieważ elektrody mogą mieć kontakt ze skórą człowieka, GSR musi być oso
 6. Rozszerzyć protokół o konfigurację pomiaru i ramki próbek.
 7. Zintegrować wyniki z TUI, WebUI, Desktop GUI i Android.
 8. Testy sprzętowe prowadzić najpierw na obciążeniach zastępczych; osobno raportować testy hostowe, kompilację i testy fizyczne.
+
+
+## Doprecyzowanie wymogu wyjść fizycznych — decyzja użytkownika (2026-11-07)
+
+Mikrokontrolery mają **wytwarzać rzeczywiste sygnały na fizycznych wyprowadzeniach**, a nie wyłącznie symulować generację lub przekazywać polecenia do komputera. Komputer jest interfejsem konfiguracji i odbioru danych; źródłem przebiegu pozostaje mikrokontroler.
+
+Rozróżnić trzy poziomy:
+1. **Generacja cyfrowa na pinie MCU** — rzeczywisty przebieg logiczny/PWM na wyjściu mikrokontrolera.
+2. **Tor analogowy / stopień mocy** — zewnętrzny układ przekształcający sygnał logiczny w wymagany przebieg elektryczny, prądowy lub napięciowy na obciążeniu.
+3. **Pomiar** — odczyt rzeczywistej odpowiedzi obciążenia/czujnika przez wejście analogowe lub przetwornik pomiarowy.
+
+Nano ma wykonywać poziom 1 oraz akwizycję poziomu 3. Poziom 2 zależy od konkretnego toru i jego zabezpieczeń. Nie traktować wyjścia GPIO/PWM jako gotowego wyjścia elektrodowego ani wyjścia zdolnego bezpośrednio zasilać obciążenie.
+
+### Aktualny stan wyjść w kodzie
+
+- Generator PWM na D9/OC1A konfiguruje sprzętowy Timer1 i może wystawiać rzeczywisty przebieg logiczny. Nie jest to samo w sobie wyjście analogowe ani bezpieczny stopień elektrodowy.
+- Generator IR wskazuje D3/OC2B, ale D3 jest równocześnie PIN_EMERGENCY_STOP i PIN_IR_DETECT. Nie wolno aktywować fizycznego wyjścia IR na tym pinie do czasu zatwierdzenia rozdzielnej mapy pinów i sprzętowego E-Stop.
+- piezo_set_tone() bezpośrednio nadpisuje Timer2 i nie generuje poprawnej, konfigurowalnej częstotliwości audio. Ta funkcja nie może współdzielić Timer2 z generatorem IR.
+- ir_led_init() nie jest wywoływane w setup(), więc sam moduł IR nie jest obecnie inicjalizowany przez główny firmware.
+- Aktualny read_gsr() zwraca analogRead(A0), mimo że A0 jest również opisane jako wejście czujnika temperatury. Nie jest to potwierdzony pomiar GSR. evaluate_gsr_quality() wykonuje jedynie statystykę tego surowego odczytu. Nie wolno przedstawiać tej wartości jako przewodności skóry ani rezystancji.
+- Detekcja adresu I2C 0x48 nie identyfikuje sama w sobie układu ani nie implementuje odczytu pomiarowego. Konieczna jest identyfikacja konkretnego modułu/układu przed napisaniem sterownika.
+
+### Kryteria fizycznego generatora
+
+Każdy generator musi udostępniać:
+- parametry żądane i rzeczywiście wyliczone (częstotliwość, wypełnienie, rozdzielczość);
+- stan wyjścia: wyłączone / skonfigurowane / aktywne / błąd;
+- jednoznacznego właściciela timera i pinu;
+- wyłączenie sprzętowego wyjścia przy inicjalizacji, błędzie, resecie i nieprawidłowej konfiguracji;
+- testy obliczeń częstotliwości i granic zakresu;
+- pomiar oscyloskopem lub analizatorem logicznym dla testu fizycznego.
+
+Nie deklarować testu fizycznego na podstawie samej kompilacji lub testu hostowego. Dla torów elektrodowych wymagane są dodatkowo pomiar prądu/napięcia na obciążeniu zastępczym i walidacja zabezpieczeń przed kontaktem z człowiekiem.
