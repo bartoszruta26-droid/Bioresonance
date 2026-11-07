@@ -3,7 +3,6 @@
  * @brief ResoNet Protocol v1 frame codec and bounded streaming parser.
  */
 #include "protocol_v1.h"
-#include <string.h>
 
 namespace ResoNetProtocolV1 {
 
@@ -84,13 +83,11 @@ size_t encode(uint8_t type,
     output[1] = MAGIC_1;
     output[2] = VERSION;
     output[3] = type;
-    output[4] = 0; // All flags are reserved and must remain zero.
+    output[4] = 0;
     writeU16BE(&output[5], sequence);
     writeU16BE(&output[7], payload_length);
-
-    for (uint16_t i = 0; i < payload_length; ++i) {
+    for (uint16_t i = 0; i < payload_length; ++i)
         output[HEADER_SIZE + i] = payload[i];
-    }
 
     writeU16BE(&output[HEADER_SIZE + payload_length],
                crc16(output, HEADER_SIZE + payload_length));
@@ -118,25 +115,21 @@ void Parser::restartWithByte(uint8_t byte) {
     }
 }
 
-/**
- * Recover the earliest possible magic sequence already buffered. This matters
- * when a corrupt frame ends with the first byte of the next frame's magic:
- * that byte must survive until the next TCP read supplies MAGIC_1.
- */
+/* Keep a possible magic suffix when rejecting a malformed frame. */
 void Parser::resyncFromBuffer() {
-    for (uint16_t start = 1; start < used_; ++start) {
+    for (uint8_t start = 1; start < used_; ++start) {
         if (buffer_[start] != MAGIC_0) continue;
+        if ((uint8_t)(start + 1) < used_ && buffer_[start + 1] != MAGIC_1)
+            continue;
 
-        const uint16_t remaining = (uint16_t)(used_ - start);
-        if (remaining == 1 || buffer_[start + 1] == MAGIC_1) {
-            memmove(buffer_, buffer_ + start, remaining);
-            used_ = remaining;
-            expected_size_ = 0;
-            state_ = remaining == 1 ? SEEK_MAGIC_1 : READ_HEADER;
-            return;
-        }
+        const uint8_t remaining = (uint8_t)(used_ - start);
+        for (uint8_t i = 0; i < remaining; ++i)
+            buffer_[i] = buffer_[start + i];
+        used_ = remaining;
+        expected_size_ = 0;
+        state_ = remaining == 1 ? SEEK_MAGIC_1 : READ_HEADER;
+        return;
     }
-
     reset();
 }
 
@@ -168,18 +161,18 @@ ParseResult Parser::feed(uint8_t byte, FrameHandler handler, void* context) {
             buffer_[used_++] = byte;
             if (used_ == HEADER_SIZE) {
                 const uint16_t payload_length = readU16BE(&buffer_[7]);
-                const bool request_type = buffer_[3] == HELLO_REQ ||
-                    buffer_[3] == PING || buffer_[3] == STATUS_REQ;
-                const bool known_type = isKnownType(buffer_[3]);
+                const uint8_t type = buffer_[3];
+                const bool request_type = type == HELLO_REQ ||
+                    type == PING || type == STATUS_REQ;
                 if (buffer_[2] != VERSION || buffer_[4] != 0 ||
-                    !known_type || !request_type ||
-                    !validatePayloadLength(buffer_[3], payload_length) ||
+                    !isKnownType(type) || !request_type ||
+                    !validatePayloadLength(type, payload_length) ||
                     payload_length != 0) {
                     ++rejected_frames_;
                     resyncFromBuffer();
                     return PARSE_REJECTED;
                 }
-                expected_size_ = HEADER_SIZE + payload_length + CRC_SIZE;
+                expected_size_ = HEADER_SIZE + CRC_SIZE;
                 state_ = READ_BODY;
             }
             return PARSE_NEED_MORE;
@@ -192,12 +185,8 @@ ParseResult Parser::feed(uint8_t byte, FrameHandler handler, void* context) {
             }
             buffer_[used_++] = byte;
             if (used_ == expected_size_) {
-                const uint16_t payload_length = readU16BE(&buffer_[7]);
-                const uint16_t received_crc =
-                    readU16BE(&buffer_[HEADER_SIZE + payload_length]);
-                const uint16_t calculated_crc =
-                    crc16(buffer_, HEADER_SIZE + payload_length);
-
+                const uint16_t received_crc = readU16BE(&buffer_[HEADER_SIZE]);
+                const uint16_t calculated_crc = crc16(buffer_, HEADER_SIZE);
                 if (received_crc != calculated_crc) {
                     ++rejected_frames_;
                     resyncFromBuffer();
@@ -208,7 +197,7 @@ ParseResult Parser::feed(uint8_t byte, FrameHandler handler, void* context) {
                     FrameView frame;
                     frame.type = buffer_[3];
                     frame.sequence = readU16BE(&buffer_[5]);
-                    frame.payload_length = payload_length;
+                    frame.payload_length = 0;
                     frame.payload = &buffer_[HEADER_SIZE];
                     handler(frame, context);
                 }
