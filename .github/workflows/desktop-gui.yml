@@ -33,11 +33,33 @@ jobs:
           name: bioresonance-qt6-linux
           path: build/gui/bioresonance_gui
           if-no-files-found: warn
-  windows-qt6:
-    name: Windows 11 x64 Qt 6 GUI build and tests
+  windows-hosted:
+    name: Windows hosted Qt 6 GUI build and tests
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.7.3'
+          host: windows
+          target: desktop
+          arch: win64_msvc2019_64
+          modules: qtcharts
+          cache: true
+      - name: Configure
+        shell: pwsh
+        run: cmake -S gui -B build/gui -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR"
+      - name: Build
+        shell: pwsh
+        run: cmake --build build/gui --config Release --parallel
+      - name: Test
+        shell: pwsh
+        run: ctest --test-dir build/gui -C Release --output-on-failure
+  windows-11-x64:
+    name: Windows 11 x64 Qt 6 GUI build and tests (dedicated runner)
+    # Enable only after a trusted, maintained Windows 11 x64 runner is registered.
+    if: vars.WINDOWS_11_RUNNER_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: [self-hosted, Windows, X64, windows-11]
-    # Never execute code from an untrusted fork on a persistent self-hosted runner.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
       - uses: jurplel/install-qt-action@v4
