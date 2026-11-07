@@ -56,7 +56,11 @@ inline std::uint16_t crc16(const std::uint8_t* data, std::size_t size) {
 }
 
 inline bool encode(const Frame& frame, std::vector<std::uint8_t>& out) {
-    if (frame.payload.size() > kMaxPayload || !isKnownType(frame.type) ||\n        !isValidPayloadLength(frame.type, frame.payload.size())) {\n        out.clear();\n        return false;\n    }
+    if (frame.payload.size() > kMaxPayload || !isKnownType(frame.type) ||
+        !isValidPayloadLength(frame.type, frame.payload.size())) {
+        out.clear();
+        return false;
+    }
     out.assign(kHeaderSize + frame.payload.size() + 2, 0);
     out[0] = 0x52; out[1] = 0x4E; out[2] = kVersion; out[3] = frame.type;
     out[4] = 0;
@@ -75,7 +79,8 @@ inline bool decode(const std::vector<std::uint8_t>& bytes, Frame& frame) {
     if (bytes.size() < kHeaderSize + 2 || bytes.size() > kMaxFrame) return false;
     if (bytes[0] != 0x52 || bytes[1] != 0x4E || bytes[2] != kVersion || bytes[4] != 0) return false;
     const std::size_t length = (static_cast<std::size_t>(bytes[7]) << 8) | bytes[8];
-    if (length > kMaxPayload || bytes.size() != kHeaderSize + length + 2) return false;\n    if (!isKnownType(bytes[3]) || !isValidPayloadLength(bytes[3], length)) return false;
+    if (length > kMaxPayload || bytes.size() != kHeaderSize + length + 2) return false;
+    if (!isKnownType(bytes[3]) || !isValidPayloadLength(bytes[3], length)) return false;
     const auto crc = crc16(bytes.data(), bytes.size() - 2);
     if (bytes[bytes.size() - 2] != static_cast<std::uint8_t>(crc >> 8) ||
         bytes.back() != static_cast<std::uint8_t>(crc)) return false;
