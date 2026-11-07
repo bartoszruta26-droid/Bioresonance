@@ -46,25 +46,73 @@ static uint16_t freeMemoryBytes() {
     return (uint16_t)available;
 }
 
-static bool sendStatusFrame(uint16_t sequence,const uint8_t* payload){
- if(!diagnostic_client||!diagnostic_client.connected())return false;
- size_t n=ResoNetProtocolV1::encodeStatusResponse(sequence,payload,tx_buffer,sizeof(tx_buffer));
- if(!n)return false;
- if(diagnostic_client.write(tx_buffer,n)!=n){diagnostic_client.stop();protocol_parser.reset();return false;}
- diagnostic_client.flush();
- ++packets_sent;return true;
+static bool sendStatusFrame(uint16_t sequence, const uint8_t* payload) {
+    if (!diagnostic_client || !diagnostic_client.connected()) {
+        return false;
+    }
+
+    const size_t frame_length = ResoNetProtocolV1::encodeStatusResponse(
+        sequence, payload, tx_buffer, sizeof(tx_buffer));
+    if (frame_length == 0) {
+        return false;
+    }
+
+    if (diagnostic_client.write(tx_buffer, frame_length) != frame_length) {
+        diagnostic_client.stop();
+        protocol_parser.reset();
+        return false;
+    }
+
+    diagnostic_client.flush();
+    ++packets_sent;
+    return true;
 }
-static void handleProtocolFrame(const ResoNetProtocolV1::FrameView& frame,void* context){
- (void)context;++packets_received;last_activity_ms=millis();
- uint8_t p[ResoNetProtocolV1::STATUS_PAYLOAD_SIZE];SafetyStatus*s=safety_get_status();
- bool locked=s&&s->safe_state==SAFE_STATE_LOCKOUT;
- bool faulted=!s||s->safe_state==SAFE_STATE_ERROR||s->safe_state==SAFE_STATE_CRITICAL;
- uint16_t flags=faulted?1:(s->safe_state==SAFE_STATE_WARNING?2:0);
- p[0]=locked?5:(!faulted?1:4);p[1]=(uint8_t)(flags>>8);p[2]=(uint8_t)flags;
- uint32_t uptime=millis()/1000UL;p[3]=(uint8_t)(uptime>>24);p[4]=(uint8_t)(uptime>>16);p[5]=(uint8_t)(uptime>>8);p[6]=(uint8_t)uptime;
- uint16_t free_mem=freeMemoryBytes();p[7]=(uint8_t)(free_mem>>8);p[8]=(uint8_t)free_mem;
- p[9]=0x7F;p[10]=0xFF;p[11]=0;p[12]=0;p[13]=0;
- sendStatusFrame(frame.sequence,p);
+
+static void handleProtocolFrame(const ResoNetProtocolV1::FrameView& frame,
+                                void* context) {
+    (void)context;
+    ++packets_received;
+    last_activity_ms = millis();
+
+    uint8_t payload[ResoNetProtocolV1::STATUS_PAYLOAD_SIZE];
+    SafetyStatus* safety = safety_get_status();
+
+    const bool locked = safety != NULL &&
+        safety->safe_state == SAFE_STATE_LOCKOUT;
+    const bool faulted = safety == NULL ||
+        safety->safe_state == SAFE_STATE_ERROR ||
+        safety->safe_state == SAFE_STATE_CRITICAL;
+
+    uint16_t fault_flags = 0;
+    if (faulted) {
+        fault_flags = 0x0001;
+    } else if (safety->safe_state == SAFE_STATE_WARNING) {
+        fault_flags = 0x0002;
+    }
+
+    payload[0] = locked ? 0x05 : (faulted ? 0x04 : 0x01);
+    payload[1] = (uint8_t)(fault_flags >> 8);
+    payload[2] = (uint8_t)fault_flags;
+
+    const uint32_t uptime_seconds = millis() / 1000UL;
+    payload[3] = (uint8_t)(uptime_seconds >> 24);
+    payload[4] = (uint8_t)(uptime_seconds >> 16);
+    payload[5] = (uint8_t)(uptime_seconds >> 8);
+    payload[6] = (uint8_t)uptime_seconds;
+
+    const uint16_t free_memory = freeMemoryBytes();
+    payload[7] = (uint8_t)(free_memory >> 8);
+    payload[8] = (uint8_t)free_memory;
+
+    // 0x7FFF = no verified external temperature measurement.
+    payload[9] = 0x7F;
+    payload[10] = 0xFF;
+    payload[11] = 0;
+    payload[12] = 0;
+    // Zero means physical output inhibition is not independently verified.
+    payload[13] = 0;
+
+    sendStatusFrame(frame.sequence, payload);
 }
 #endif
 
