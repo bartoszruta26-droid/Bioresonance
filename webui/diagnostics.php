@@ -12,11 +12,12 @@ header('X-Frame-Options: DENY');
 header('Referrer-Policy: no-referrer');
 
 final class DiagnosticException extends RuntimeException {
-    public function __construct(
-        public readonly string $errorCode,
-        string $message,
-        public readonly bool $retryable = false
-    ) {
+    public string $errorCode;
+    public bool $retryable;
+
+    public function __construct(string $errorCode, string $message, bool $retryable = false) {
+        $this->errorCode = $errorCode;
+        $this->retryable = $retryable;
         parent::__construct($message);
     }
 }
