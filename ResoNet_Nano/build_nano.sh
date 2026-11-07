@@ -56,7 +56,66 @@ UIPClient::connect(const char *host, uint16_t port)
 }
 
 """
+# The server uses buffer I/O only. Keep virtual symbols for the Client vtable,
+# but make unused byte I/O, peek and client comparison fail closed.
+unused_methods = [
+    ("""bool
+UIPClient::operator==(const UIPClient& rhs)
+{
+  return data && rhs.data && (data == rhs.data);
+}""", """bool
+UIPClient::operator==(const UIPClient& rhs)
+{
+  (void)rhs;
+  return false;
+}"""),
+    ("""size_t
+UIPClient::write(uint8_t c)
+{
+  return write(&c, 1);
+}""", """size_t
+UIPClient::write(uint8_t c)
+{
+  (void)c;
+  return 0;
+}"""),
+    ("""int
+UIPClient::read()
+{
+  uint8_t c;
+  if (read(&c,1) <= 0)
+    return -1;
+  return c;
+}""", """int
+UIPClient::read()
+{
+  return -1;
+}"""),
+    ("""int
+UIPClient::peek()
+{
+  if (*this)
+    {
+      if (data->packets_in[0] != NOBLOCK)
+        {
+          uint8_t c;
+          Enc28J60Network::readPacket(data->packets_in[0],0,&c,1);
+          return c;
+        }
+    }
+  return -1;
+}""", """int
+UIPClient::peek()
+{
+  return -1;
+}""")
+]
+for old_method, new_method in unused_methods:
+    if old_method not in source:
+        raise SystemExit("EthernetENC unused virtual method changed; refusing unsafe patch")
+    source = source.replace(old_method, new_method, 1)
 path.write_text(source[:start] + replacement + source[end:])
+
 PY
 fi
 
