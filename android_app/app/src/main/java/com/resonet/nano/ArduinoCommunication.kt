@@ -13,7 +13,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 /**
  * TCP client for ResoNet Protocol v1.
  *
- * Connection is accepted only after a valid HELLO_RESP. This client exposes
+ * Connection is accepted only after a valid STATUS_RESP. This client exposes
  * diagnostics only; all actuator/configuration operations remain disabled.
  */
 class ArduinoCommunication {
@@ -66,26 +66,17 @@ class ArduinoCommunication {
 
                     val sequence = nextSequenceLocked()
                     writeFrame(candidate, ResoNetProtocolV1.Frame(
-                        type = ResoNetProtocolV1.TYPE_HELLO_REQ,
+                        type = ResoNetProtocolV1.TYPE_STATUS_REQ,
                         sequence = sequence
                     ))
                     val response = readFrame(candidate)
-                    if (response.type != ResoNetProtocolV1.TYPE_HELLO_RESP ||
-                        response.sequence != sequence || response.payload.size != 13
-                    ) {
-                        throw IOException("Nieprawidłowa odpowiedź HELLO urządzenia")
-                    }
-
-                    val payload = response.payload
-                    val deviceId = payload.copyOfRange(0, 8)
-                        .joinToString("") { "%02X".format(it.toInt() and 0xFF) }
-                    val firmware = "${payload[8].toInt() and 0xFF}." +
-                        "${payload[9].toInt() and 0xFF}." +
-                        "${payload[10].toInt() and 0xFF}"
-                    val capabilities = readU16(payload, 11)
+                    if (response.type != ResoNetProtocolV1.TYPE_STATUS_RESP ||
+                        response.sequence != sequence || response.payload.size != 14
+                    ) throw IOException("Nieprawidłowa odpowiedź STATUS urządzenia")
+                    parseStatusFrame(response)
 
                     socket = candidate
-                    deviceIdentity = DeviceIdentity(deviceId, firmware, capabilities)
+                    deviceIdentity = null
                     connectionState = ConnectionState.Connected(ipAddress, port)
                     Result.success(Unit)
                 } catch (error: Exception) {
@@ -110,9 +101,7 @@ class ArduinoCommunication {
         notifyListeners(connectionState)
     }
 
-    suspend fun ping(): Result<Unit> =
-        requestFrame(ResoNetProtocolV1.TYPE_PING, ResoNetProtocolV1.TYPE_PONG)
-            .map { Unit }
+    suspend fun ping(): Result<Unit> = getStatus().map { Unit }
 
     suspend fun getStatus(): Result<SystemStatus> =
         requestFrame(
@@ -176,21 +165,10 @@ class ArduinoCommunication {
                 if (response.sequence != sequence) {
                     throw IOException("Niezgodny numer sequence odpowiedzi")
                 }
-                if (response.type == ResoNetProtocolV1.TYPE_NACK ||
-                    response.type == ResoNetProtocolV1.TYPE_ERROR
-                ) {
-                    val code = if (response.payload.size >= 2)
-                        response.payload[1].toInt() and 0xFF else -1
-                    throw IOException("Urządzenie odrzuciło żądanie (kod $code)")
-                }
                 if (response.type != expectedType) {
                     throw IOException("Nieoczekiwany typ odpowiedzi: 0x${response.type.toString(16)}")
                 }
-                val expectedPayloadLength = when (expectedType) {
-                    ResoNetProtocolV1.TYPE_PONG -> 0
-                    ResoNetProtocolV1.TYPE_STATUS_RESP -> 14
-                    else -> throw IOException("Nieobsługiwany typ odpowiedzi diagnostycznej")
-                }
+                val expectedPayloadLength = 14
                 if (response.payload.size != expectedPayloadLength) {
                     throw IOException("Nieprawidłowa długość payloadu odpowiedzi")
                 }
