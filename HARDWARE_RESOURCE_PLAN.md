@@ -201,3 +201,27 @@ Każdy generator musi udostępniać:
 - pomiar oscyloskopem lub analizatorem logicznym dla testu fizycznego.
 
 Nie deklarować testu fizycznego na podstawie samej kompilacji lub testu hostowego. Dla torów elektrodowych wymagane są dodatkowo pomiar prądu/napięcia na obciążeniu zastępczym i walidacja zabezpieczeń przed kontaktem z człowiekiem.
+
+
+## Doprecyzowanie topologii wyjść — decyzja użytkownika (2026-11-07)
+
+Przyjęta topologia logiczna:
+
+- **IR PWM:** wyjście GPIO/PWM mikrokontrolera jest bezpośrednim źródłem sygnału sterującego wejściem toru IR. Fizyczny sygnał PWM ma być generowany przez mikrokontroler, a nie przez komputer.
+- **Tor elektrodowy:** wyjście GPIO mikrokontrolera jest bezpośrednim źródłem sygnału sterującego wejściem izolatora galwanicznego. Za izolatorem znajduje się odrębny tor wyjściowy połączony z elektrodami.
+- **GSR:** pozostaje osobnym torem pomiarowym; nie wolno utożsamiać GPIO generatora z wejściem pomiarowym GSR.
+
+Sformułowanie „GPIO jako bezpośrednie wyjście elektrodowe” oznacza w tej architekturze bezpośrednie źródło przebiegu logicznego dla toru izolowanego, a nie podłączenie skóry/elektrod do pinu ATmega328P. Izolator zapewnia separację galwaniczną, ale sam nie stanowi ogranicznika prądu, napięcia ani energii i nie zastępuje zabezpieczeń wyjścia.
+
+### Warunki implementacji
+
+1. Firmware ma generować rzeczywisty przebieg na wskazanym GPIO/PWM i raportować parametry wyliczone dla sprzętu.
+2. Wejście izolatora ma być sterowane z dedykowanego pinu, którego nie współdzieli się z E-Stop, SPI, I²C ani inną funkcją krytyczną.
+3. Po stronie elektrod wymagany jest niezależny, sprzętowy stopień wyjściowy z ograniczeniem prądu i energii, ograniczeniem napięcia odpowiednim do zatwierdzonego zastosowania oraz sprzętowym stanem domyślnie wyłączonym.
+4. E-Stop i odcięcie energii muszą działać niezależnie od programu i stanu GPIO; reset, zawieszenie MCU, utrata komunikacji lub zasilania nie mogą aktywować toru.
+5. Testy firmware i toru wykonuje się najpierw na obciążeniu zastępczym. Bez identyfikacji izolatora i stopnia wyjściowego nie przypisujemy pinów ani parametrów elektrycznych.
+6. Nie wolno włączać wyjścia elektrodowego na człowieku na podstawie samej poprawnej kompilacji, przebiegu logicznego na GPIO lub obecności izolatora.
+
+### Konsekwencja dla aktualnej mapy pinów
+
+Obecny D3 nie może być jednocześnie wyjściem IR PWM i wejściem E-Stop/detekcji IR. Zanim IR zostanie aktywowany, należy rozdzielić te funkcje. Wyjście sterujące izolatora elektrodowego również wymaga osobnego, wolnego pinu i jawnego właściciela w centralnej mapie zasobów. Nie należy wybierać pinu na podstawie samej nazwy w kodzie — trzeba uwzględnić rzeczywiste użycie peryferiów i konfliktów.
