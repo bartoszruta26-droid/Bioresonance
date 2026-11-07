@@ -20,7 +20,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build build-essential qt6-base-dev libqt6charts6-dev
+          sudo apt-get install -y cmake ninja-build build-essential libgl1-mesa-dev qt6-base-dev libqt6charts6-dev
       - name: Configure
         run: cmake -S gui -B build/gui -G Ninja -DCMAKE_BUILD_TYPE=Release
       - name: Build
