@@ -10,6 +10,8 @@ inline UiErrorPresentation uiErrorPresentation(std::string_view code) {
  if(code=="FILE_WRITE_FAILED") return {"Nie udało się zapisać pliku. Sprawdź uprawnienia i wolne miejsce.",false};
  if(code=="FILE_INVALID_FORMAT") return {"Plik ma nieprawidłowy format lub nagłówek.",false};
  if(code=="FILE_NO_VALID_RECORDS") return {"Plik nie zawiera poprawnych rekordów danych.",false};
+ if(code=="OPERATION_UNSUPPORTED") return {"Ta operacja nie jest dostępna w diagnostycznym protokole v1.",false};
+ if(code=="DEVICE_UNAVAILABLE") return {"Urządzenie jest niedostępne.",true};
  if(code=="INVALID_REQUEST"||code=="INVALID_DEVICE_ADDRESS") return {"Podane dane są nieprawidłowe.",false};
  return {"Wystąpił nieoczekiwany błąd aplikacji. Szczegóły techniczne są dostępne poniżej.",false};
 }

@@ -87,6 +87,7 @@ enum class ErrorCode {
     // User errors (700-799)
     ERR_USER_INPUT_INVALID = 700,
     ERR_USER_CANCELLED = 701,
+    ERR_OPERATION_UNSUPPORTED = 702,
     
     // System errors (800-899)
     ERR_SYSTEM_CALL_FAILED = 800,
@@ -175,6 +176,7 @@ struct ErrorInfo {
             case ErrorCode::ERR_PROTOCOL_VERSION: return "PROTOCOL_INVALID_RESPONSE";
             case ErrorCode::ERR_PROTOCOL_CHECKSUM: return "PROTOCOL_CRC_MISMATCH";
             case ErrorCode::ERR_USER_INPUT_INVALID: return "INVALID_REQUEST";
+            case ErrorCode::ERR_OPERATION_UNSUPPORTED: return "OPERATION_UNSUPPORTED";
             case ErrorCode::ERR_HARDWARE_NOT_FOUND: return "DEVICE_UNAVAILABLE";
             case ErrorCode::ERR_UNKNOWN: return "INTERNAL_ERROR";
             default: return "INTERNAL_ERROR";

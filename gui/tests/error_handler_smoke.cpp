@@ -24,6 +24,7 @@ int main() {
     if (ErrorInfo::codeToString(ErrorCode::ERR_PROTOCOL_CHECKSUM) != "PROTOCOL_CRC_MISMATCH") return 8;
     if (ErrorInfo::codeToString(ErrorCode::ERR_PROTOCOL_INVALID_FORMAT) != "PROTOCOL_INVALID_RESPONSE") return 9;
     if (ErrorInfo::codeToString(ErrorCode::ERR_FILE_WRITE_FAILED) != "FILE_WRITE_FAILED") return 10;
+    if (ErrorInfo::codeToString(ErrorCode::ERR_OPERATION_UNSUPPORTED) != "OPERATION_UNSUPPORTED") return 11;
 
     const auto history = handler.getErrorHistory();
     if (callback_count.load() != 2) return 1;

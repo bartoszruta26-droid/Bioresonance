@@ -440,14 +440,16 @@ bool NetworkClient::sendTherapyPacket(const TherapyPacket& packet) {
     (void)packet;
     // The packed host structure is not a wire protocol. Firmware currently
     // exposes no matching packet receiver, framing, versioning, or ACK path.
-    REPORT_ERROR(ErrorCode::ERR_NETWORK_SEND_FAILED, ErrorCategory::NETWORK,
-                 "Therapy packet transmission is disabled until RNP is implemented");
+    REPORT_ERROR(ErrorCode::ERR_OPERATION_UNSUPPORTED, ErrorCategory::USER,
+                 "Therapy packet transmission is not supported by diagnostic protocol v1");
     return false;
 }
 
 bool NetworkClient::sendCommand(const std::string& cmd) {
     (void)cmd;
     // Protocol v1 is diagnostic-only; raw text commands are never transmitted.
+    REPORT_ERROR(ErrorCode::ERR_OPERATION_UNSUPPORTED, ErrorCategory::USER,
+                 "Text commands are not supported by diagnostic protocol v1");
     return false;
 }
 
