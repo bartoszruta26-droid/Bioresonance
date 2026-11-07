@@ -227,6 +227,43 @@ int main() {
         }
     }
 
+
+    // Sensor validity flags are reserved in diagnostic v1 and must be zero,
+    // matching the Android parser's strict STATUS_RESP validation.
+    {
+        sockaddr_in address{};
+        test_socket_t listener = make_listener(address);
+        if (listener == invalid_test_socket) exit_code = 14;
+        else {
+            std::thread server([&]() {
+                test_socket_t peer = ::accept(listener, nullptr, nullptr);
+                if (peer != invalid_test_socket && serve_hello(peer)) {
+                    ResoNetV1::Frame request;
+                    if (read_frame(peer, request) && request.type == ResoNetV1::kStatusReq) {
+                        std::vector<std::uint8_t> status(14, 0);
+                        status[0] = 1; // IDLE
+                        status[12] = 1; // Reserved sensor_valid_flags bit
+                        (void)write_frame(peer, ResoNetV1::kStatusResp, request.sequence, status);
+                    }
+                    close_test_socket(peer);
+                }
+            });
+            {
+                NetworkClient client;
+                if (!client.connect("127.0.0.1", static_cast<int>(ntohs(address.sin_port)))) exit_code = 15;
+                else {
+                    ResoNetStatusV1 status;
+                    if (client.requestStatus(status)) exit_code = 16;
+                    if (client.isConnected()) exit_code = 17;
+                }
+                client.disconnect();
+            }
+            server.join();
+            close_test_socket(listener);
+        }
+    }
+
+
 #ifdef _WIN32
     WSACleanup();
 #endif
