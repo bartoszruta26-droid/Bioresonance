@@ -394,7 +394,7 @@ bool NetworkClient::requestStatus(ResoNetStatusV1& status) {
                                          ResoNetV1::kStatusResp, sequence, payload);
     const bool status_valid = exchange_ok && payload.size() == 14 &&
         payload[0] <= 5 && (((payload[1] << 8) | payload[2]) & ~0x0003) == 0 &&
-        payload[13] <= 1;
+        payload[11] == 0 && payload[12] == 0 && payload[13] <= 1;
     if (!status_valid) {
         {
             std::lock_guard<std::mutex> state_lock(socket_mutex);
