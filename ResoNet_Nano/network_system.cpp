@@ -181,18 +181,17 @@ void network_loop() {
 
     if (!diagnostic_client || !diagnostic_client.connected()) return;
 
-    uint8_t processed = 0;
-    while (diagnostic_client.available() > 0 &&
-           processed < MAX_RX_BYTES_PER_LOOP) {
-        const int incoming = diagnostic_client.read();
-        if (incoming < 0) break;
-        ++processed;
-        last_rx_ms = millis();
-
-        const ResoNetProtocolV1::ParseResult result =
-            protocol_parser.feed((uint8_t)incoming, handleProtocolFrame, NULL);
-        if (result == ResoNetProtocolV1::PARSE_REJECTED) {
-            // Invalid data is discarded; no state transition or output action.
+    uint8_t rx_buffer[MAX_RX_BYTES_PER_LOOP];
+    const int available_bytes = diagnostic_client.available();
+    if (available_bytes > 0) {
+        const size_t requested = available_bytes > MAX_RX_BYTES_PER_LOOP
+            ? MAX_RX_BYTES_PER_LOOP : (size_t)available_bytes;
+        const int received = diagnostic_client.read(rx_buffer, requested);
+        if (received > 0) {
+            last_rx_ms = millis();
+            for (int i = 0; i < received; ++i) {
+                protocol_parser.feed(rx_buffer[i], handleProtocolFrame, NULL);
+            }
         }
     }
 
