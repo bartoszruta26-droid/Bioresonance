@@ -39,7 +39,7 @@ int main() {
     std::vector<std::thread> writers;
     writers.reserve(thread_count);
     for (int thread = 0; thread < thread_count; ++thread) {
-        writers.emplace_back([thread]() {
+        writers.emplace_back([thread, logs_per_thread]() {
             for (int item = 0; item < logs_per_thread; ++item) {
                 Logger::getInstance().log(
                     LogLevel::DEBUG,
