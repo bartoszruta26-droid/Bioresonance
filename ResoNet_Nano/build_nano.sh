@@ -29,10 +29,16 @@ if [[ -n "$ETHERNET_ENABLED" ]]; then
 import pathlib, sys
 path = pathlib.Path(sys.argv[1])
 source = path.read_text()
-start = source.find(chr(10) + "int" + chr(10) + "UIPClient::connect(IPAddress ip, uint16_t port)" + chr(10))
-end = source.find(chr(10) + "void" + chr(10) + "UIPClient::stop()" + chr(10), start)
-if start < 0 or end < 0 or end <= start:
-    raise SystemExit("EthernetENC outbound connect implementation markers changed; refusing unsafe patch")
+signature = source.find("UIPClient::connect(IPAddress ip, uint16_t port)")
+if signature < 0:
+    raise SystemExit("EthernetENC outbound connect signature not found; refusing unsafe patch")
+start = source.rfind("int", 0, signature)
+stop_signature = source.find("UIPClient::stop()", signature)
+if start < 0 or stop_signature < 0:
+    raise SystemExit("EthernetENC connect/stop boundaries changed; refusing unsafe patch")
+end = source.rfind("void", signature, stop_signature)
+if end < signature or end <= start:
+    raise SystemExit("EthernetENC stop boundary not found; refusing unsafe patch")
 path.write_text(source[:start] + source[end:])
 PY
 fi
