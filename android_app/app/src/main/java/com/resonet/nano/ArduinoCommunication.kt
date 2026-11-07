@@ -286,7 +286,6 @@ class ArduinoCommunication {
     private fun closeSocketLocked() {
         val old = socket
         socket = null
-        deviceIdentity = null
         try { old?.close() } catch (_: IOException) {}
     }
 
