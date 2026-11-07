@@ -28,7 +28,7 @@ class WebApiContractTests(unittest.TestCase):
         self.assertIn("$length > 192", BRIDGE)
         self.assertIn("$responseSequence !== $sequence", BRIDGE)
         self.assertIn("crc16_ccitt_false($header . $payload)", BRIDGE)
-        self.assertIn("Nieprawidłowe CRC-16/CCITT-FALSE", BRIDGE)
+        self.assertIn("Suma kontrolna odpowiedzi jest nieprawidłowa.", BRIDGE)
 
     def test_bridge_restricts_targets_to_private_ipv4(self):
         self.assertIn("FILTER_VALIDATE_IP", BRIDGE)

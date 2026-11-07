@@ -168,7 +168,9 @@ if (!in_array($action, ['status', 'ping'], true)) {
 }
 
 $socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
-if ($socket === false) respond(502, ['success' => false, 'error' => 'Nie można utworzyć gniazda TCP']);
+if ($socket === false) respond(502, ['success' => false, 'error' => new DiagnosticException(
+    'TRANSPORT_UNAVAILABLE', 'Nie można utworzyć gniazda TCP.', true
+)]);
 try {
     if (!socket_set_nonblock($socket)) {
         throw new RuntimeException('Nie można ustawić nieblokującego trybu połączenia');
@@ -206,7 +208,7 @@ try {
     }
     $sequence = 1;
     $hello = exchange($socket, 0x01, 0x02, $sequence++);
-    if (strlen($hello) !== 13) throw new RuntimeException('Nieprawidłowy HELLO_RESP');
+    if (strlen($hello) !== 13) throw new DiagnosticException('PROTOCOL_INVALID_LENGTH', 'Odpowiedź HELLO ma nieprawidłową długość.');
     $deviceId = bin2hex(substr($hello, 0, 8));
     $firmware = [ord($hello[8]), ord($hello[9]), ord($hello[10])];
     $capabilities = unpack('nvalue', substr($hello, 11, 2))['value'];
@@ -214,14 +216,14 @@ try {
 
     if ($action === 'ping') {
         $pong = exchange($socket, 0x03, 0x04, $sequence++);
-        if ($pong !== '') throw new RuntimeException('Nieprawidłowy PONG');
+        if ($pong !== '') throw new DiagnosticException('PROTOCOL_INVALID_LENGTH', 'Odpowiedź PONG ma nieprawidłowe dane.');
         respond(200, ['success' => true, 'device_id' => $deviceId,
             'firmware' => implode('.', $firmware), 'capabilities' => $capabilities,
             'diagnostic' => 'PONG']);
     }
 
     $data = exchange($socket, 0x05, 0x06, $sequence++);
-    if (strlen($data) !== 14) throw new RuntimeException('Nieprawidłowy STATUS_RESP');
+    if (strlen($data) !== 14) throw new DiagnosticException('DEVICE_STATUS_INVALID', 'Odpowiedź STATUS ma nieprawidłową długość.');
     $temperature = unpack('nvalue', substr($data, 9, 2))['value'];
     if ($temperature >= 0x8000) $temperature -= 0x10000;
     $temperatureValue = $temperature === 0x7FFF ? null : $temperature / 100;
@@ -244,6 +246,10 @@ try {
             'output_inhibited' => $outputInhibited]]);
 } catch (DiagnosticException $error) {
     respond(502, ['success' => false, 'error' => $error]);
+} catch (RuntimeException $error) {
+    respond(502, ['success' => false, 'error' => new DiagnosticException(
+        'DEVICE_COMMUNICATION_FAILED', 'Nie udało się przeprowadzić wymiany z urządzeniem.', true
+    )]);
 } catch (Throwable $error) {
     respond(502, ['success' => false, 'error' => new DiagnosticException(
         'INTERNAL_ERROR', 'Wystąpił nieoczekiwany błąd serwera diagnostycznego.'
