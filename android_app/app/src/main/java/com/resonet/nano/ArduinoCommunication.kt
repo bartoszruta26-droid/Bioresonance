@@ -23,17 +23,9 @@ class ArduinoCommunication {
         const val COMMAND_TIMEOUT_MS = 2000
     }
 
-    data class DeviceIdentity(
-        val deviceIdHex: String,
-        val firmwareVersion: String,
-        val capabilities: Int
-    )
-
     private val operationMutex = Mutex()
     @Volatile private var socket: Socket? = null
     @Volatile var connectionState: ConnectionState = ConnectionState.Disconnected
-        private set
-    @Volatile var deviceIdentity: DeviceIdentity? = null
         private set
     private var nextSequence = 0
     private val listeners = CopyOnWriteArrayList<ConnectionStateListener>()
@@ -76,14 +68,12 @@ class ArduinoCommunication {
                     parseStatusFrame(response)
 
                     socket = candidate
-                    deviceIdentity = null
                     connectionState = ConnectionState.Connected(ipAddress, port)
                     Result.success(Unit)
                 } catch (error: Exception) {
                     try { candidate.close() } catch (_: IOException) {}
                     socket = null
-                    deviceIdentity = null
-                    connectionState = ConnectionState.Error(
+                                connectionState = ConnectionState.Error(
                         "Błąd połączenia/protokołu: ${error.message ?: error.javaClass.simpleName}"
                     )
                     Result.failure(error)
