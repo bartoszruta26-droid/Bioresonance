@@ -8,6 +8,7 @@
 #include "logging_system.h"
 #include "event_system.h"
 #include "timer1_pwm_calculator.h"
+#include "modulation_math.h"
 
 // ============================================================================
 // ZMIENNE PRYWATNE
@@ -154,10 +155,9 @@ void pwm_loop() {
                     // Oblicz chwilową wartość modulacji (0-100%)
                     // Prosta aproksymacja sinusa
                     pwm_status.modulation_counter++;
-                    float phase = (pwm_status.modulation_counter % 1000) / 1000.0 * 2.0 * PI;
-                    float mod_factor = 0.5 + 0.5 * sin(phase);  // 0.0 do 1.0
-                    
-                    uint8_t new_duty = (uint8_t)(base_duty_cycle * mod_factor);
+                    const uint8_t new_duty = modulation_math::amplitude_duty(
+                        base_duty_cycle,
+                        (uint16_t)(pwm_status.modulation_counter % 1000U), 1000U);
                     timer1_update_duty(new_duty);
                 }
             }
@@ -171,10 +171,9 @@ void pwm_loop() {
                     last_fm_update = now;
                     
                     pwm_status.modulation_counter++;
-                    float phase = (pwm_status.modulation_counter % 2000) / 2000.0 * 2.0 * PI;
-                    float freq_factor = 1.0 + 0.1 * sin(phase);  // ±10%
-                    
-                    uint32_t new_freq = (uint32_t)(pwm_config.frequency_hz_x100 * freq_factor);
+                    const uint32_t new_freq = modulation_math::frequency_hz_x100(
+                        pwm_config.frequency_hz_x100,
+                        (uint16_t)(pwm_status.modulation_counter % 2000U), 2000U);
                     uint32_t actual_frequency = 0;
                     if (timer1_configure_pwm(new_freq, pwm_status.current_duty,
                                              &actual_frequency)) {

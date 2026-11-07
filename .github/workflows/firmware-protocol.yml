@@ -43,6 +43,10 @@ jobs:
         run: g++ -std=c++11 -Wall -Wextra -Werror -pedantic -I ResoNet_Nano tests/host/timer1_pwm_calculator_test.cpp -o timer1_pwm_calculator_test
       - name: Run Timer1 PWM calculator host tests
         run: ./timer1_pwm_calculator_test
+      - name: Compile integer PWM modulation tests
+        run: g++ -std=c++11 -Wall -Wextra -Werror -pedantic -I ResoNet_Nano tests/host/modulation_math_test.cpp -o modulation_math_test
+      - name: Run integer PWM modulation tests
+        run: ./modulation_math_test
       - name: Compile compact diagnostic protocol tests
         run: g++ -std=c++11 -Wall -Wextra -Werror -pedantic tests/host/diagnostic_protocol_test.cpp -o diagnostic_protocol_test
       - name: Run compact diagnostic protocol tests

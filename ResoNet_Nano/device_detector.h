@@ -117,7 +117,7 @@ static DetectionConfig_t g_detection_config = {
 #define WRAP_CONNECTED_MIN    50
 #define WRAP_CONNECTED_MAX    400
 #define WRAP_OPEN_CIRCUIT     900
-#define WRAP_TEMP_MAX         45.0f
+#define WRAP_TEMP_MAX_C_X10   450
 
 // IR LED Strip
 #define IR_CONNECTED_MIN      100
@@ -224,7 +224,7 @@ typedef struct {
     EffectorType_t type;
     bool connected;
     uint16_t impedance;      // Wartość ADC impedancji
-    float temperature;       // Temperatura jeśli dostępna
+    int16_t temperature_c_x10; // Temperatura aplikatora w dziesiątych °C
     uint32_t last_check;     // Timestamp ostatniego sprawdzenia
     uint8_t quality;         // 0-100% jakości połączenia
 } EffectorStatus_t;

@@ -5,6 +5,7 @@
  */
 
 #include "device_detector.h"
+#include <avr/pgmspace.h>
 #include "logging_system.h"
 #include "pwm_engine.h"
 #include "event_system.h"
@@ -81,12 +82,28 @@ void detection_handle_event(EventType_t event_type, EffectorType_t effector) {
 /**
  * @brief Oblicz temperaturę z odczytu NTC
  */
-static float read_ntc_temperature(int pin) {
-    int raw = analogRead(pin);
-    // Steinhart-Hart approximation dla NTC 10k
-    float resistance = 10000.0f * (float)raw / (1024.0f - (float)raw);
-    float temperature = 1.0f / (0.003354f + 0.0003354f * log(resistance / 10000.0f));
-    return temperature - 273.15f;  // Konwersja na °C
+// NTC 10k table derived from the existing Steinhart-Hart coefficients.
+// Values are tenths of °C for ADC codes 32, 64, ... 992.
+static const int16_t NTC_TEMP_C_X10[] PROGMEM = {
+    1809, 1357, 1125, 970, 855, 762, 685, 618,
+    559, 505, 456, 411, 368, 327, 288, 250,
+    213, 177, 141, 105, 69, 32, -6, -45,
+    -87, -131, -180, -236, -301, -385, -512
+};
+
+static int16_t read_ntc_temperature_c_x10(uint8_t pin) {
+    const uint16_t raw = (uint16_t)analogRead(pin);
+    if (raw <= 32U) return (int16_t)pgm_read_word(&NTC_TEMP_C_X10[0]);
+    if (raw >= 992U) return (int16_t)pgm_read_word(&NTC_TEMP_C_X10[30]);
+
+    const uint16_t offset = (uint16_t)(raw - 32U);
+    const uint8_t index = (uint8_t)(offset / 32U);
+    const uint8_t remainder = (uint8_t)(offset % 32U);
+    const int16_t low = (int16_t)pgm_read_word(&NTC_TEMP_C_X10[index]);
+    const int16_t high = (int16_t)pgm_read_word(&NTC_TEMP_C_X10[index + 1U]);
+    const int32_t interpolated = (int32_t)low +
+        ((int32_t)(high - low) * remainder) / 32L;
+    return (int16_t)interpolated;
 }
 
 /**
@@ -357,11 +374,11 @@ WrapStatus_t detect_wrap_applicator() {
     digitalWrite(PIN_WRAP_ENABLE, LOW);
     
     // Pomiar temperatury
-    float temperature = read_ntc_temperature(PIN_WRAP_TEMP);
-    g_device_state.effector.temperature = temperature;
+    const int16_t temperature_c_x10 = read_ntc_temperature_c_x10(PIN_WRAP_TEMP);
+    g_device_state.effector.temperature_c_x10 = temperature_c_x10;
     
     // Decyzja
-    if (temperature > WRAP_TEMP_MAX) {
+    if (temperature_c_x10 > WRAP_TEMP_MAX_C_X10) {
         LOG_ERROR("Wrap overheating");
         return WRAP_OVERTEMP;
     }
