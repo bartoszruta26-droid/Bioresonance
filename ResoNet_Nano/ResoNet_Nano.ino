@@ -522,11 +522,13 @@ void loop() {
                     
                     if (bio_status.gsrConnected) {
                         Serial.print(F("  GSR Quality: "));
-                        Serial.println(bio_status.gsrQuality, 2);
+                        Serial.print(bio_status.gsrQuality);
+                        Serial.println(F("%"));
                     }
                     if (bio_status.ppgConnected) {
                         Serial.print(F("  PPG Quality: "));
-                        Serial.println(bio_status.ppgQuality, 2);
+                        Serial.print(bio_status.ppgQuality);
+                        Serial.println(F("%"));
                     }
                     
                     DeviceSystemState_t* dev = get_device_system_state();
