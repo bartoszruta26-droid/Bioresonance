@@ -14,9 +14,17 @@ class ArduinoCommunicationTest {
     }
 
     @Test
-    fun actuatorOperationsRemainDisabled() = runBlocking {
+    fun actuatorAndConfigurationOperationsRemainDisabled() = runBlocking {
         val client = ArduinoCommunication()
-        assertTrue(client.startTherapy().isFailure)
-        assertTrue(client.stopTherapy().isFailure)
+        assertUnsupported(client.configureChannel(ChannelConfig(id = 1)))
+        assertUnsupported(client.startTherapy())
+        assertUnsupported(client.stopTherapy())
+        assertUnsupported(client.scanDevices())
+        assertUnsupported(client.getLogs())
+    }
+
+    private fun assertUnsupported(result: Result<*>) {
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is UnsupportedOperationException)
     }
 }

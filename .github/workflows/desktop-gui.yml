@@ -4,7 +4,7 @@ on:
     branches: [main]
     paths: ["gui/**", "webui/**", "bash_tui/**", "android_app/**", "frequencies.md", ".github/workflows/desktop-gui.yml"]
   pull_request:
-    paths: ["gui/**", "webui/**", "android_app/**", "frequencies.md", ".github/workflows/desktop-gui.yml"]
+    paths: ["gui/**", "webui/**", "bash_tui/**", "android_app/**", "frequencies.md", ".github/workflows/desktop-gui.yml"]
   workflow_dispatch:
 permissions:
   contents: read
@@ -34,8 +34,12 @@ jobs:
           path: build/gui/bioresonance_gui
           if-no-files-found: warn
   windows-qt6:
-    name: Windows 2022 Qt 6 GUI build and tests
-    runs-on: windows-2022
+    name: Windows Server ${{ matrix.os }} Qt 6 GUI build and tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-2025]
     steps:
       - uses: actions/checkout@v4
       - uses: jurplel/install-qt-action@v4
@@ -50,8 +54,10 @@ jobs:
         shell: pwsh
         run: cmake -S gui -B build/gui -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR"
       - name: Build
+        shell: pwsh
         run: cmake --build build/gui --config Release --parallel
       - name: Test
+        shell: pwsh
         run: ctest --test-dir build/gui -C Release --output-on-failure
   android-app:
     name: Android app build and unit tests
