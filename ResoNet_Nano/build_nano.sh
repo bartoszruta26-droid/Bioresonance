@@ -29,8 +29,8 @@ if [[ -n "$ETHERNET_ENABLED" ]]; then
 import pathlib, sys
 path = pathlib.Path(sys.argv[1])
 source = path.read_text()
-start = source.find("\\nint\\nUIPClient::connect(IPAddress ip, uint16_t port)\\n")
-end = source.find("\\nvoid\\nUIPClient::stop()\\n", start)
+start = source.find(chr(10) + "int" + chr(10) + "UIPClient::connect(IPAddress ip, uint16_t port)" + chr(10))
+end = source.find(chr(10) + "void" + chr(10) + "UIPClient::stop()" + chr(10), start)
 if start < 0 or end < 0 or end <= start:
     raise SystemExit("EthernetENC outbound connect implementation markers changed; refusing unsafe patch")
 path.write_text(source[:start] + source[end:])
