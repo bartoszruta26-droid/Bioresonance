@@ -24,6 +24,20 @@ object ResoNetProtocolV1 {
     const val TYPE_ERROR = 0x7E
     const val TYPE_ACK = 0x7F
 
+    private fun isKnownType(type: Int): Boolean = type in setOf(
+        TYPE_HELLO_REQ, TYPE_HELLO_RESP, TYPE_PING, TYPE_PONG,
+        TYPE_STATUS_REQ, TYPE_STATUS_RESP, TYPE_NACK, TYPE_ERROR, TYPE_ACK
+    )
+
+    private fun isValidPayloadLength(type: Int, length: Int): Boolean = when (type) {
+        TYPE_HELLO_REQ, TYPE_PING, TYPE_PONG, TYPE_STATUS_REQ -> length == 0
+        TYPE_HELLO_RESP -> length == 13
+        TYPE_STATUS_RESP -> length == 14
+        TYPE_NACK, TYPE_ERROR -> length == 2
+        TYPE_ACK -> length == 1
+        else -> false
+    }
+
     data class Frame(
         val type: Int,
         val sequence: Int,
@@ -36,6 +50,10 @@ object ResoNetProtocolV1 {
         require(frame.sequence in 0..65535) { "sequence poza zakresem uint16" }
         require(frame.flags == 0) { "flags muszą być równe zero w protokole v1" }
         require(frame.payload.size <= MAX_PAYLOAD_BYTES) { "payload przekracza limit" }
+        require(isKnownType(frame.type)) { "nieznany typ komunikatu v1" }
+        require(isValidPayloadLength(frame.type, frame.payload.size)) {
+            "nieprawidłowa długość payloadu dla typu komunikatu"
+        }
 
         val output = ByteArray(HEADER_BYTES + frame.payload.size + CRC_BYTES)
         output[0] = 0x52
@@ -60,6 +78,11 @@ object ResoNetProtocolV1 {
 
         val payloadLength = readU16(bytes, 7)
         require(payloadLength <= MAX_PAYLOAD_BYTES) { "payload przekracza limit" }
+        val messageType = u8(bytes[3])
+        require(isKnownType(messageType)) { "nieznany typ komunikatu v1" }
+        require(isValidPayloadLength(messageType, payloadLength)) {
+            "nieprawidłowa długość payloadu dla typu komunikatu"
+        }
         require(bytes.size == HEADER_BYTES + payloadLength + CRC_BYTES) {
             "długość ramki nie zgadza się z payload_length"
         }
