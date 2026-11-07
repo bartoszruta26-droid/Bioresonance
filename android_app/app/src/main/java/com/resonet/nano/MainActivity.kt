@@ -158,14 +158,10 @@ class MainActivity : AppCompatActivity() {
      * Pokazuje odrębny status możliwości sterowania; połączenie v1 pozostaje diagnostyczne.
      */
     private fun updateCapabilitiesUI(capabilities: DeviceCapabilities) {
-        val connected = viewModel.connectionState.value is ConnectionState.Connected
-        binding.tvCapabilityStatus.text = when {
-            capabilities.remoteControlReady -> "Sterowanie zdalne: gotowość potwierdzona kontraktem urządzenia"
-            connected -> "Tryb: DIAGNOSTYKA — sterowanie zdalne niedostępne"
-            else -> "Sterowanie zdalne: niedostępne (brak zweryfikowanego kontraktu)"
-        }
+        val presentation = capabilityPresentation(viewModel.connectionState.value, capabilities)
+        binding.tvCapabilityStatus.text = presentation.statusText
         binding.tvCapabilityStatus.setTextColor(
-            getColor(if (capabilities.remoteControlReady) android.R.color.holo_green_dark
+            getColor(if (presentation.controlReady) android.R.color.holo_green_dark
                 else android.R.color.holo_orange_dark)
         )
     }
