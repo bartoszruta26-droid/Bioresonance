@@ -72,20 +72,28 @@ int main() {
     assert(encode(0x55, 1, NULL, 0, encoded, sizeof(encoded)) == 0);
     assert(encode(HELLO_REQ, 1, expected, 1, encoded, sizeof(encoded)) == 0);
 
-    // An unknown, otherwise well-formed type is rejected before CRC handling.
-    uint8_t unknown_type[sizeof(expected)];
-    memcpy(unknown_type, expected, sizeof(expected));
-    unknown_type[3] = 0x55;
-    writeCrc(unknown_type, 0);
+    // Unknown types and response-only types must never enter the request handler.
+    uint8_t invalid_type[sizeof(expected)];
+    memcpy(invalid_type, expected, sizeof(expected));
+    invalid_type[3] = 0x55;
+    writeCrc(invalid_type, 0);
     handled = 0;
     parser.reset();
-    feedAll(parser, unknown_type, sizeof(unknown_type));
+    feedAll(parser, invalid_type, sizeof(invalid_type));
     assert(handled == 0 && parser.rejectedFrames() == 3);
 
+    uint8_t response_as_request[sizeof(expected)];
+    memcpy(response_as_request, expected, sizeof(expected));
+    response_as_request[3] = HELLO_RESP;
+    writeCrc(response_as_request, 0);
+    parser.reset();
+    feedAll(parser, response_as_request, sizeof(response_as_request));
+    assert(handled == 0 && parser.rejectedFrames() == 4);
+
     // A valid request immediately after a rejected header is still recognized.
-    uint8_t header_then_valid[sizeof(unknown_type) + sizeof(expected)];
-    memcpy(header_then_valid, unknown_type, sizeof(unknown_type));
-    memcpy(header_then_valid + sizeof(unknown_type), expected, sizeof(expected));
+    uint8_t header_then_valid[sizeof(invalid_type) + sizeof(expected)];
+    memcpy(header_then_valid, invalid_type, sizeof(invalid_type));
+    memcpy(header_then_valid + sizeof(invalid_type), expected, sizeof(expected));
     handled = 0;
     parser.reset();
     feedAll(parser, header_then_valid, sizeof(header_then_valid));
