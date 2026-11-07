@@ -9,12 +9,9 @@
 namespace ResoNetV1 {
 constexpr std::uint8_t kVersion = 1;
 constexpr std::size_t kHeaderSize = 9;
-constexpr std::size_t kMaxPayload = 192;
+constexpr std::size_t kMaxPayload = 14;
 constexpr std::size_t kMaxFrame = kHeaderSize + kMaxPayload + 2;
-constexpr std::uint8_t kHelloReq = 0x01, kHelloResp = 0x02;
-constexpr std::uint8_t kPing = 0x03, kPong = 0x04;
 constexpr std::uint8_t kStatusReq = 0x05, kStatusResp = 0x06;
-constexpr std::uint8_t kNack = 0x7D, kError = 0x7E, kAck = 0x7F;
 
 struct Frame {
     std::uint8_t type = 0;
@@ -24,9 +21,7 @@ struct Frame {
 
 inline bool isKnownType(std::uint8_t type) {
     switch (type) {
-        case kHelloReq: case kHelloResp: case kPing: case kPong:
-        case kStatusReq: case kStatusResp: case kNack: case kError: case kAck:
-            return true;
+        case kStatusReq: case kStatusResp: return true;
         default:
             return false;
     }
@@ -34,12 +29,8 @@ inline bool isKnownType(std::uint8_t type) {
 
 inline bool isValidPayloadLength(std::uint8_t type, std::size_t length) {
     switch (type) {
-        case kHelloReq: case kPing: case kPong: case kStatusReq:
-            return length == 0;
-        case kHelloResp: return length == 13;
+        case kStatusReq: return length == 0;
         case kStatusResp: return length == 14;
-        case kNack: case kError: return length == 2;
-        case kAck: return length == 1;
         default: return false;
     }
 }

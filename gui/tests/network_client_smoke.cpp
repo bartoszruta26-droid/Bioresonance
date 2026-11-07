@@ -103,12 +103,13 @@ static test_socket_t make_listener(sockaddr_in& address) {
     return listener;
 }
 
-static bool serve_hello(test_socket_t peer) {
+static bool serve_status(test_socket_t peer) {
     ResoNetV1::Frame request;
-    if (!read_frame(peer, request) || request.type != ResoNetV1::kHelloReq ||
+    if (!read_frame(peer, request) || request.type != ResoNetV1::kStatusReq ||
         !request.payload.empty()) return false;
-    return write_frame(peer, ResoNetV1::kHelloResp, request.sequence,
-                       std::vector<std::uint8_t>{'R','N',1,2,3,4,5,6,1,0,0,0,0});
+    std::vector<std::uint8_t> status(14, 0);
+    status[0] = 1; status[9] = 0x7F; status[10] = 0xFF;
+    return write_frame(peer, ResoNetV1::kStatusResp, request.sequence, status);
 }
 
 int main() {

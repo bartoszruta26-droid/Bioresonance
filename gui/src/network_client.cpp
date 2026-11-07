@@ -317,14 +317,17 @@ bool NetworkClient::connect(const std::string& ip, int port_num) {
         return false;
     }
 
-    // TCP alone is not a verified device connection: require a valid v1 HELLO.
-    std::vector<std::uint8_t> hello_payload;
-    if (!exchange_v1(candidate, ResoNetV1::kHelloReq, ResoNetV1::kHelloResp,
-                     1, hello_payload) || hello_payload.size() != 13 ||
-        hello_payload[11] != 0 || hello_payload[12] != 0) {
+    // A read-only STATUS exchange verifies framing and device responsiveness.
+    std::vector<std::uint8_t> status_payload;
+    if (!exchange_v1(candidate, ResoNetV1::kStatusReq, ResoNetV1::kStatusResp,
+                     1, status_payload) || status_payload.size() != 14 ||
+        status_payload[0] > 5 ||
+        (((status_payload[1] << 8) | status_payload[2]) & ~0x0003) != 0 ||
+        status_payload[11] != 0 || status_payload[12] != 0 ||
+        status_payload[13] > 1) {
         close_candidate();
         REPORT_ERROR(ErrorCode::ERR_NETWORK_UNREACHABLE, ErrorCategory::NETWORK,
-                     "ResoNet v1 HELLO handshake failed");
+                     "ResoNet v1 STATUS handshake failed");
         return false;
     }
 
