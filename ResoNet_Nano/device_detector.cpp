@@ -237,17 +237,9 @@ static bool detector_passive_monitoring() {
 
 bool detect_helmholtz_coil() {
     LOG_DEBUG("Detecting Helmholtz coil...");
-    const bool passive = detector_passive_monitoring();
-    int senseValue;
-    if (passive) {
-        // Read-only monitoring: do not touch D9/Timer1 while therapy PWM or IR runs.
-        senseValue = analogRead(PIN_HELMHOLTZ_SENSE);
-    } else {
-        analogWrite(PIN_PWM_OUTPUT, 128);
-        delay_us(1000);
-        senseValue = analogRead(PIN_HELMHOLTZ_SENSE);
-        analogWrite(PIN_PWM_OUTPUT, 0);
-    }
+    // Passive-only sampling: D9/Timer1 belongs exclusively to the main PWM
+    // generator. Detector code must never borrow or reconfigure that resource.
+    const int senseValue = analogRead(PIN_HELMHOLTZ_SENSE);
     
     if (senseValue < HELMHOLTZ_CONNECTED_THRESHOLD) {
         LOG_INFO("Helmholtz coil detected");
@@ -264,23 +256,13 @@ bool detect_helmholtz_coil() {
 
 bool detect_otic_applicator() {
     LOG_DEBUG("Detecting Otic applicator...");
-    const bool passive = detector_passive_monitoring();
+    // Passive-only sampling. The current firmware has no independent,
+    // validated OTIC diagnostic excitation channel.
     uint32_t sum = 0;
-    if (!passive) {
-        digitalWrite(PIN_OTIC_ENABLE, HIGH);
-        analogWrite(PIN_PWM_OUTPUT, 64);
-        delay_us(5000);
-    }
-    // While any generator is active, sample the sense input only.
-    for (int i = 0; i < 10; i++) {
+    for (uint8_t i = 0; i < 10; ++i) {
         sum += analogRead(PIN_OTIC_IMPEDANCE);
-        if (!passive) delay_us(100);
     }
-    int impedanceValue = sum / 10;
-    if (!passive) {
-        analogWrite(PIN_PWM_OUTPUT, 0);
-        digitalWrite(PIN_OTIC_ENABLE, LOW);
-    }
+    const int impedanceValue = static_cast<int>(sum / 10U);
     
     if (impedanceValue >= OTIC_CONNECTED_MIN && impedanceValue <= OTIC_CONNECTED_MAX) {
         LOG_INFO("Otic applicator detected");
@@ -343,23 +325,9 @@ ContactQuality_t detect_electrodes() {
 
 WrapStatus_t detect_wrap_applicator() {
     LOG_DEBUG("Detecting Wrap applicator...");
-    const bool passive = detector_passive_monitoring();
-    // Read the current-sense channel continuously; only apply a test stimulus
-    // when no generator is active.
-    if (!passive) {
-        digitalWrite(PIN_WRAP_ENABLE, LOW);
-        delay_us(100);
-    }
-    int resistanceValue = analogRead(PIN_WRAP_CURRENT);
-    int impedanceValue = resistanceValue;
-    if (!passive) {
-        digitalWrite(PIN_WRAP_ENABLE, HIGH);
-        analogWrite(PIN_PWM_OUTPUT, 64);
-        delay_us(500);
-        impedanceValue = analogRead(PIN_WRAP_CURRENT);
-        analogWrite(PIN_PWM_OUTPUT, 0);
-        digitalWrite(PIN_WRAP_ENABLE, LOW);
-    }
+    // Passive-only monitoring. Do not borrow D9/Timer1 or toggle the
+    // Wrap enable line from the detector; that line is shared in current map.
+    const int resistanceValue = analogRead(PIN_WRAP_CURRENT);
     
     // Pomiar temperatury
     const int16_t temperature_c_x10 = read_ntc_temperature_c_x10(PIN_WRAP_TEMP);
@@ -479,18 +447,10 @@ int read_gsr() {
 }
 
 uint8_t evaluate_ppg_quality_percent() {
-    const uint32_t start_time = millis();
-    uint16_t pulse_count = 0;
-
-    while (millis() - start_time < 3000UL) {
-        if (digitalRead(PIN_PPG_INT) == LOW) {
-            ++pulse_count;
-        }
-        delay(1);
-    }
-
-    if (pulse_count < 3U || pulse_count > 200U) return 0;
-    return pulse_count > 100U ? 100U : (uint8_t)pulse_count;
+    // A level sampled in a blocking 3-second polling loop is not a pulse count
+    // and stalls PWM, IR servicing, Ethernet and sample acquisition. Until a
+    // real PPG driver supplies timestamped samples, quality is unavailable.
+    return 0;
 }
 
 BioStatus_t detect_biofeedback_sensors(BioSensorStatus_t* status) {
@@ -631,60 +591,24 @@ bool detect_piezo_speaker() {
 }
 
 bool detect_vibrator() {
-    LOG_DEBUG("Detecting Vibrator...");
-    
-    // Sprawdź ciągłość obwodu wibratora przez pomiar impedancji
-    pinMode(PIN_VIBRATOR_ENABLE, OUTPUT);
-    digitalWrite(PIN_VIBRATOR_ENABLE, HIGH);
-    delay(10);
-    
-    // Pomiar prądu/impedancji przez PIN_VIBRATOR_PWM (jako wejście analogowe)
-    // Uwaga: wymaga dodatkowego układu pomiarowego
-    int impedance = 500;  // Wartość domyślna - symulacja
-    
-    digitalWrite(PIN_VIBRATOR_ENABLE, LOW);
-    
-    if (impedance >= VIBRATOR_CONNECTED_MIN && impedance <= VIBRATOR_CONNECTED_MAX) {
-        LOG_INFO("Vibrator detected");
-        return true;
-    }
-    
-    if (impedance > VIBRATOR_OPEN_CIRCUIT) {
-        LOG_DEBUG("Vibrator not connected (open circuit)");
-        return false;
-    }
-    
+    LOG_DEBUG("Monitoring Vibrator...");
+    // No independent current/continuity feedback input is defined. Do not
+    // assert that a vibrator is connected from a fabricated constant.
     return false;
 }
 
 bool piezo_set_tone(uint16_t freq_hz, uint8_t volume) {
-    // Walidacja parametrów
     if (freq_hz < PIEZO_FREQ_MIN || freq_hz > PIEZO_FREQ_MAX) {
         LOG_ERROR("Invalid piezo frequency");
         return false;
     }
-    
-    if (volume > PIEZO_VOLUME_MAX) {
-        volume = PIEZO_VOLUME_MAX;
-    }
-    
-    // Włącz driver piezo
-    pinMode(PIN_PIEZO_ENABLE, OUTPUT);
-    digitalWrite(PIN_PIEZO_ENABLE, HIGH);
-    
-    // Ustaw częstotliwość na pinie PWM
-    // Uwaga: Arduino Nano ma ograniczenia częstotliwości PWM
-    // Dla dokładnej kontroli użyj Timer2
-    #if defined(TCCR2A)
-    TCCR2A = _BV(COM2A1) | _BV(WGM21) | _BV(WGM20);  // Fast PWM
-    TCCR2B = _BV(CS20);  // No prescaler
-    OCR2A = volume;  // Duty cycle
-    // Częstotliwość: f = 31374 Hz dla prescaler=1
-    // Dla niższych częstotliwości audio potrzebny jest inny timer lub DDS
-    #endif
-    
-    LOG_INFO("Piezo tone configured");
-    return true;
+    (void)volume;
+    // Timer2 is owned by the IR carrier generator (OC2B / D3, OCR2A TOP).
+    // The previous piezo implementation rewrote TCCR2A/B and OCR2A, silently
+    // destroying IR timing. A dedicated timer or external audio driver is
+    // required before this API can safely enable piezo output.
+    LOG_WARNING("Piezo unavailable: Timer2 is reserved for IR carrier");
+    return false;
 }
 
 bool vibrator_set_intensity(uint8_t intensity) {
