@@ -21,6 +21,18 @@ static IRLedStatus ir_status;
 static uint32_t modulation_start_time = 0;
 static uint8_t base_duty_cycle = 50;
 
+/* 32-sample sine approximation in flash; avoids AVR libm float/sin cost. */
+static const uint8_t modulation_sine[32] PROGMEM = {
+    128, 153, 177, 199, 218, 234, 245, 253,
+    255, 253, 245, 234, 218, 199, 177, 153,
+    128, 103, 79, 57, 38, 22, 11, 3,
+    0, 3, 11, 22, 38, 57, 79, 103
+};
+
+static uint8_t modulation_sine_value(uint8_t phase) {
+    return pgm_read_byte(&modulation_sine[phase & 0x1F]);
+}
+
 // ============================================================================
 // FUNKCJE POMOCNICZE
 // ============================================================================
@@ -174,10 +186,10 @@ void ir_led_loop() {
                     
                     // Oblicz chwilową wartość modulacji (0-100%)
                     ir_status.modulation_counter++;
-                    float phase = (ir_status.modulation_counter % 1000) / 1000.0 * 2.0 * PI;
-                    float mod_factor = 0.5 + 0.5 * sin(phase);  // 0.0 do 1.0
-                    
-                    uint8_t new_duty = (uint8_t)(base_duty_cycle * mod_factor);
+                    const uint8_t mod_factor = modulation_sine_value(
+                        (uint8_t)ir_status.modulation_counter);
+                    const uint8_t new_duty =
+                        (uint16_t)base_duty_cycle * mod_factor / 255U;
                     timer2_update_duty(new_duty);
                 }
             }
@@ -191,10 +203,12 @@ void ir_led_loop() {
                     last_fm_update = now;
                     
                     ir_status.modulation_counter++;
-                    float phase = (ir_status.modulation_counter % 2000) / 2000.0 * 2.0 * PI;
-                    float freq_factor = 1.0 + 0.1 * sin(phase);  // ±10%
-                    
-                    uint16_t new_freq = (uint16_t)(ir_config.therapy_freq_hz_x100 * freq_factor);
+                    const uint8_t wave = modulation_sine_value(
+                        (uint8_t)ir_status.modulation_counter);
+                    // Integer scale 900..1100 represents the original ±10% sine.
+                    const uint16_t scale = 900U + ((uint16_t)wave * 200U) / 255U;
+                    const uint16_t new_freq =
+                        ((uint32_t)ir_config.therapy_freq_hz_x100 * scale) / 1000U;
                     ir_status.current_therapy_freq_x100 = new_freq;
                     // FM nie zmienia carrier frequency, tylko tempo modulacji
                 }
