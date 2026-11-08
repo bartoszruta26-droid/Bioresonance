@@ -12,6 +12,7 @@
 #include <string.h>   // Dla strcmp, strncmp, memcpy, strncpy
 #include <avr/pgmspace.h>  // Dla PROGMEM, pgm_read_word
 #include "ir_led_engine.h"
+#include "effector_resource_guard.h"
 
 // ============================================================================
 // ZMIENNE GLOBALNE
@@ -231,6 +232,10 @@ bool detection_parse_cli_args(int argc, char** argv) {
 
 bool detect_helmholtz_coil() {
     LOG_DEBUG("Detecting Helmholtz coil...");
+    if (!effector_resources::diagnostic_allowed(pwm_is_running(), ir_led_is_running())) {
+        LOG_WARNING("Helmholtz detection deferred while a generator is active");
+        return false;
+    }
     
     // Testowy impuls PWM
     analogWrite(PIN_PWM_OUTPUT, 128);  // 50% duty cycle
@@ -257,13 +262,15 @@ bool detect_helmholtz_coil() {
 
 bool detect_otic_applicator() {
     LOG_DEBUG("Detecting Otic applicator...");
+    if (!effector_resources::diagnostic_allowed(pwm_is_running(), ir_led_is_running())) {
+        LOG_WARNING("Otic detection deferred while a generator is active");
+        return false;
+    }
     
     // Włącz driver
     digitalWrite(PIN_OTIC_ENABLE, HIGH);
     
-    // Generuj testowy sygnał 10 kHz
-    uint32_t old_freq = pwm_get_frequency();
-    // Tymczasowa zmiana częstotliwości (wymaga implementacji w pwm_engine)
+    // The detector pulse uses the shared D9/Timer1 output; never run it during therapy.
     analogWrite(PIN_PWM_OUTPUT, 64);  // 25% duty cycle
     delay_us(5000);
     
@@ -298,6 +305,10 @@ bool detect_otic_applicator() {
 
 ContactQuality_t detect_electrodes() {
     LOG_DEBUG("Detecting Contact electrodes...");
+    if (!effector_resources::diagnostic_allowed(pwm_is_running(), ir_led_is_running())) {
+        LOG_WARNING("Electrode detection deferred while a generator is active");
+        return CONTACT_OPEN;
+    }
     
     // Włącz driver
     digitalWrite(PIN_ELECTRODE_ENABLE, HIGH);
@@ -355,6 +366,10 @@ ContactQuality_t detect_electrodes() {
 
 WrapStatus_t detect_wrap_applicator() {
     LOG_DEBUG("Detecting Wrap applicator...");
+    if (!effector_resources::diagnostic_allowed(pwm_is_running(), ir_led_is_running())) {
+        LOG_WARNING("Wrap detection deferred while a generator is active");
+        return WRAP_OPEN;
+    }
     
     // Pomiar rezystancji DC
     digitalWrite(PIN_WRAP_ENABLE, LOW);
@@ -454,6 +469,10 @@ EffectorType_t detect_effector() {
 
 bool detect_ir_led_strip() {
     LOG_DEBUG("Detecting IR LED Strip...");
+    if (!effector_resources::diagnostic_allowed(pwm_is_running(), ir_led_is_running())) {
+        LOG_WARNING("IR strip detection deferred while a generator is active");
+        return false;
+    }
     
     // Sprawdź czy pin detekcji jest podłączony (pull-up)
     int detectValue = analogRead(PIN_IR_DETECT);

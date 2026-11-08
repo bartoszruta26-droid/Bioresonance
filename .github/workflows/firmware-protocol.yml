@@ -51,6 +51,10 @@ jobs:
         run: g++ -std=c++11 -Wall -Wextra -Werror -pedantic tests/host/diagnostic_protocol_test.cpp -o diagnostic_protocol_test
       - name: Run compact diagnostic protocol tests
         run: ./diagnostic_protocol_test
+      - name: Compile effector resource guard tests
+        run: g++ -std=c++11 -Wall -Wextra -Werror -pedantic -I ResoNet_Nano tests/host/effector_resource_guard_test.cpp -o effector_resource_guard_test
+      - name: Run effector resource guard tests
+        run: ./effector_resource_guard_test
       - name: Compile RAM-only effector runtime tests
         run: g++ -std=c++11 -Wall -Wextra -Werror -pedantic tests/host/effector_runtime_test.cpp -o effector_runtime_test
       - name: Run RAM-only effector runtime tests
