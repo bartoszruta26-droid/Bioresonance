@@ -44,41 +44,35 @@ static uint8_t modulation_sine_value(uint16_t counter, uint16_t period) {
  * @brief Konfiguruje Timer2 dla carrier frequency 38kHz na pinie 3 (OC2B)
  * @param carrier_freq_hz Częstotliwość nośna (domyślnie 38000 Hz)
  */
-static void timer2_configure_carrier(uint16_t carrier_freq_hz) {
-    // Pin 3 (Arduino) jest podłączony do OC2B (Timer2)
-    // Dla 38kHz używamy Timer2 w trybie Fast PWM z TOP=OCR2A (tryb 7)
-    
+static bool timer2_configure_carrier(uint16_t carrier_freq_hz) {
+    // Timer2 is 8-bit. Prescaler 8 provides a representable 38 kHz carrier:
+    // 16 MHz / (8 * 53) = 37.736 kHz (about -0.7%).
+    if (carrier_freq_hz < 7800U || carrier_freq_hz > 1000000U) {
+        return false;
+    }
+
+    const uint8_t saved_sreg = SREG;
     cli();
-    
-    // Wyłącz Timer2 podczas konfiguracji
+
     TCCR2A = 0;
     TCCR2B = 0;
     TCNT2 = 0;
-    
-    // Tryb Fast PWM, TOP = OCR2A (tryb 7)
-    // f_pwm = f_clk / (N * (1 + OCR2A))
-    // Dla 38kHz: OCR2A = (16000000 / 38000) - 1 ≈ 420
-    
-    uint16_t ocr2a_value = (F_CPU / carrier_freq_hz) - 1;
-    if (ocr2a_value > 255) ocr2a_value = 255;
-    if (ocr2a_value < 1) ocr2a_value = 1;
-    
-    // Ustaw tryb Fast PWM z OCR2A jako TOP (tryb 7 wymaga WGM22=1)
-    TCCR2A = _BV(WGM20) | _BV(WGM21);  // WGM2[1:0] = 11
-    TCCR2B = _BV(CS20) | _BV(WGM22);   // Prescaler = 1, WGM22 = 1 dla trybu 7
-    
-    // Ustaw TOP
-    OCR2A = ocr2a_value;
-    
-    // Duty cycle 50% dla carrier (modulowane przez AM)
-    OCR2B = ocr2a_value / 2;
-    
-    // Włącz wyjście OC2B na pinie 3 (Arduino Nano)
-    TCCR2A |= _BV(COM2B1);  // Non-inverting mode on OC2B
-    
-    sei();
-    
+
+    uint32_t counts = (F_CPU + (4UL * carrier_freq_hz)) /
+                      (8UL * carrier_freq_hz);
+    if (counts < 2UL) counts = 2UL;
+    if (counts > 256UL) counts = 256UL;
+    const uint8_t top = (uint8_t)(counts - 1UL);
+
+    // Fast PWM mode 7, OCR2A as TOP, prescaler 8.
+    OCR2A = top;
+    OCR2B = top / 2U;
+    TCCR2A = _BV(WGM20) | _BV(WGM21) | _BV(COM2B1);
+    TCCR2B = _BV(WGM22) | _BV(CS21);
+
+    SREG = saved_sreg;
     LOG_INFO("Timer2 carrier configured");
+    return true;
 }
 
 /**
@@ -103,8 +97,10 @@ static void timer0_configure_carrier_5pin(uint16_t carrier_freq_hz) {
  * @param duty_cycle Duty cycle 0-100%
  */
 static void timer2_update_duty(uint8_t duty_cycle) {
-    uint8_t ocr_value = (uint16_t)OCR2A * duty_cycle / 100;
-    OCR2B = ocr_value;
+    const uint8_t top = OCR2A;
+    uint16_t compare = ((uint16_t)top * duty_cycle) / 100U;
+    if (compare >= top) compare = top > 0U ? top - 1U : 0U;
+    OCR2B = (uint8_t)compare;
 }
 
 /**
@@ -272,9 +268,15 @@ bool ir_led_set_config(const IRLedConfig* config) {
     // Zapisz bazowy duty cycle
     base_duty_cycle = config->duty_cycle;
     
-    // Skonfiguruj carrier frequency
-    timer2_configure_carrier(config->carrier_freq_hz);
-    
+    // Skonfiguruj carrier frequency; reject values Timer2 cannot represent.
+    if (!timer2_configure_carrier(config->carrier_freq_hz)) {
+        ir_status.is_running = false;
+        ir_status.carrier_enabled = false;
+        digitalWrite(IR_LED_PIN, LOW);
+        LOG_ERROR("IR carrier frequency out of Timer2 range");
+        return false;
+    }
+
     // Aktualizuj status
     ir_status.current_therapy_freq_x100 = config->therapy_freq_hz_x100;
     ir_status.current_duty = config->duty_cycle;

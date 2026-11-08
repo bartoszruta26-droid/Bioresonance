@@ -297,8 +297,9 @@ void setup() {
         }
     }
     
-    // 4. Silnik PWM
+    // 4. Silniki PWM i IR
     pwm_init();
+    ir_led_init();
     
     // 5. System sieciowy
     network_init();
