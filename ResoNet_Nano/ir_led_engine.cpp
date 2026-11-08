@@ -29,8 +29,11 @@ static const uint8_t modulation_sine[32] PROGMEM = {
     0, 3, 11, 22, 38, 57, 79, 103
 };
 
-static uint8_t modulation_sine_value(uint8_t phase) {
-    return pgm_read_byte(&modulation_sine[phase & 0x1F]);
+static uint8_t modulation_sine_value(uint16_t counter, uint16_t period) {
+    if (period == 0U) return 128U;
+    const uint8_t index = (uint8_t)(
+        ((uint32_t)(counter % period) * 32UL) / period);
+    return pgm_read_byte(&modulation_sine[index]);
 }
 
 // ============================================================================
@@ -187,7 +190,7 @@ void ir_led_loop() {
                     // Oblicz chwilową wartość modulacji (0-100%)
                     ir_status.modulation_counter++;
                     const uint8_t mod_factor = modulation_sine_value(
-                        (uint8_t)ir_status.modulation_counter);
+                        ir_status.modulation_counter, 1000U);
                     const uint8_t new_duty =
                         (uint16_t)base_duty_cycle * mod_factor / 255U;
                     timer2_update_duty(new_duty);
@@ -204,7 +207,7 @@ void ir_led_loop() {
                     
                     ir_status.modulation_counter++;
                     const uint8_t wave = modulation_sine_value(
-                        (uint8_t)ir_status.modulation_counter);
+                        ir_status.modulation_counter, 2000U);
                     // Integer scale 900..1100 represents the original ±10% sine.
                     const uint16_t scale = 900U + ((uint16_t)wave * 200U) / 255U;
                     const uint16_t new_freq =
