@@ -120,7 +120,13 @@ PY
 fi
 
 MEMORY_FLAGS="-mcall-prologues -maccumulate-args -DUIP_CONF_ACTIVE_OPEN=0 -DUIP_CONF_UDP=0 -DUIP_CONF_MAX_CONNECTIONS=1 -DUIP_CONF_MAX_LISTENPORTS=1 -DUIP_CONF_BUFFER_SIZE=128 -DUIP_CONF_ARPTAB_SIZE=2 -DUIP_SOCKET_NUMPACKETS=1 -DSERIAL_RX_BUFFER_SIZE=32 -DSERIAL_TX_BUFFER_SIZE=32"
-# Keep warning/error diagnostics in the compact production image. Set RESONET_LOG_LEVEL=0 for full logs.\nLOG_LEVEL="${RESONET_LOG_LEVEL:-3}"\nif [[ ! "$LOG_LEVEL" =~ ^[0-5]$ ]]; then\n  echo "RESONET_LOG_LEVEL must be an integer from 0 (verbose) to 5 (fatal)" >&2\n  exit 2\nfi\nCPP_FLAGS="$MEMORY_FLAGS -fno-rtti -fno-exceptions -DRESONET_LOG_LEVEL=$LOG_LEVEL"
+# Keep warning/error diagnostics in the compact production image. Set RESONET_LOG_LEVEL=0 for full logs.
+LOG_LEVEL="${RESONET_LOG_LEVEL:-3}"
+if [[ ! "$LOG_LEVEL" =~ ^[0-5]$ ]]; then
+  echo "RESONET_LOG_LEVEL must be an integer from 0 (verbose) to 5 (fatal)" >&2
+  exit 2
+fi
+CPP_FLAGS="$MEMORY_FLAGS -fno-rtti -fno-exceptions -DRESONET_LOG_LEVEL=$LOG_LEVEL"
 
 LINK_FLAGS="-Wl,--relax"
 if [[ -n "${RESONET_MAP_FILE:-}" ]]; then
