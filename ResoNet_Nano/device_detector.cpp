@@ -140,14 +140,14 @@ void device_detector_init(DetectionConfig_t* config) {
     pinMode(PIN_BIO_DETECT, INPUT_PULLUP);
     pinMode(PIN_PPG_INT, INPUT);
     pinMode(PPG_SPI_CS, OUTPUT);
-    pinMode(PIN_IR_DETECT, INPUT_PULLUP);
+    // D3 is also IR_LED_PIN / Timer2 OC2B. Never reconfigure it as a detector input.
     
     // Ustawienie stanów początkowych - wszystkie wyłączone dla bezpieczeństwa
     digitalWrite(PIN_OTIC_ENABLE, LOW);
     digitalWrite(PIN_ELECTRODE_ENABLE, LOW);
     digitalWrite(PIN_WRAP_ENABLE, LOW);
     digitalWrite(PPG_SPI_CS, HIGH);
-    digitalWrite(PIN_IR_DETECT, HIGH);
+    // Do not write PIN_IR_DETECT: it aliases the live IR carrier output on D3.
     
     // Inicjalizacja I2C dla biofeedback
     Wire.begin();
@@ -300,26 +300,16 @@ bool detect_otic_applicator() {
 }
 
 ContactQuality_t detect_electrodes() {
-    LOG_DEBUG("Detecting Contact electrodes...");
-    const bool passive = detector_passive_monitoring();
-    if (!passive) {
-        digitalWrite(PIN_ELECTRODE_ENABLE, HIGH);
-        analogWrite(PIN_PWM_OUTPUT, 32);
-        delay_us(500);
-        analogWrite(PIN_PWM_OUTPUT, 0);
-    }
-    // Passive samples never enable the electrode output or alter Timer1.
+    LOG_DEBUG("Monitoring Contact electrodes...");
+    // D6 is shared with IR_MODULATION_PIN. Never toggle the electrode enable
+    // line here: it would corrupt a running IR waveform. Use read-only samples.
     uint32_t sum = 0;
     for (int i = 0; i < 16; i++) {
         sum += analogRead(PIN_ELECTRODE_IMPEDANCE);
-        if (!passive) delay_us(50);
     }
-    int impedanceValue = sum / 16;
-    if (!passive) digitalWrite(PIN_ELECTRODE_ENABLE, LOW);
-    
-    g_device_state.effector.impedance = impedanceValue;
-    
-    // Ocena jakości
+    const int impedanceValue = static_cast<int>(sum / 16U);
+    g_device_state.effector.impedance = static_cast<uint16_t>(impedanceValue);
+
     if (impedanceValue < 100) {
         LOG_ERROR("Electrode short circuit");
         g_device_state.errorCount++;
@@ -451,64 +441,30 @@ EffectorType_t detect_effector() {
 // ============================================================================
 
 bool detect_ir_led_strip() {
-    LOG_DEBUG("Detecting IR LED Strip...");
-    const bool passive = detector_passive_monitoring();
-    // Detection remains live during IR operation; this path is strictly read-only.
-    int detectValue = analogRead(PIN_IR_DETECT);
-    
-    // Jeśli pin IR_DETECT jest podłączony do masy przez rezystor, 
-    // oznacza to podłączenie paska IR
-    if (detectValue < 100) {
-        // Spróbuj potwierdzić poprzez pomiar prądu jeśli dostępny
-        #if defined(PIN_IR_CURRENT_SENSE)
-        int currentSense = analogRead(PIN_IR_CURRENT_SENSE);
-        
-        if (currentSense > IR_CONNECTED_MIN && currentSense <= IR_CONNECTED_MAX) {
-            LOG_INFO("IR LED Strip detected");
-            g_device_state.effector.type = EFFECTOR_IR_LED_STRIP;
-            g_device_state.effector.connected = true;
-            g_device_state.effector.impedance = currentSense;
-            g_device_state.effector.quality = map(currentSense, IR_CONNECTED_MIN, IR_CONNECTED_MAX, 50, 100);
-            return true;
-        } else if (currentSense < IR_SHORT_CIRCUIT) {
-            LOG_ERROR("IR LED Strip short circuit");
-            g_device_state.errorCount++;
-            return false;
-        } else if (currentSense > IR_OPEN_CIRCUIT) {
-            LOG_WARNING("IR LED Strip not connected");
-            return false;
-        }
-        #else
-        // Brak pomiaru prądu - polegaj na detekcji cyfrowej
-        LOG_INFO("IR LED Strip detected via digital pin");
+    LOG_DEBUG("Monitoring IR LED Strip...");
+    // D3 is the Timer2 OC2B carrier output, not an independent detector input.
+    // D6 is shared with electrode enable / IR modulation. Never reconfigure D3
+    // or inject a test pulse on D6 from the detector.
+#if defined(PIN_IR_CURRENT_SENSE)
+    const int currentSense = analogRead(PIN_IR_CURRENT_SENSE);
+    if (currentSense >= IR_CONNECTED_MIN && currentSense <= IR_CONNECTED_MAX) {
+        LOG_INFO("IR LED Strip detected via independent current-sense input");
         g_device_state.effector.type = EFFECTOR_IR_LED_STRIP;
         g_device_state.effector.connected = true;
-        g_device_state.effector.quality = 80;
-        return true;
-        #endif
-    }
-    
-    // A stimulus on IR_MODULATION_PIN would collide with the active IR/electrode
-    // control line. During operation, use only the passive detector sample.
-    if (passive) {
-        LOG_DEBUG("IR strip passive monitoring: no diagnostic stimulus applied");
-        return false;
-    }
-    digitalWrite(IR_MODULATION_PIN, HIGH);
-    delay_us(100);
-    int testValue = analogRead(PIN_IR_DETECT);
-    digitalWrite(IR_MODULATION_PIN, LOW);
-    
-    if (testValue >= IR_CONNECTED_MIN && testValue <= IR_CONNECTED_MAX) {
-        LOG_INFO("IR LED Strip detected via PWM test");
-        g_device_state.effector.type = EFFECTOR_IR_LED_STRIP;
-        g_device_state.effector.connected = true;
-        g_device_state.effector.impedance = testValue;
-        g_device_state.effector.quality = 75;
+        g_device_state.effector.impedance = static_cast<uint16_t>(currentSense);
+        g_device_state.effector.quality = static_cast<uint8_t>(
+            map(currentSense, IR_CONNECTED_MIN, IR_CONNECTED_MAX, 50, 100));
         return true;
     }
-    
-    LOG_DEBUG("IR LED Strip not detected");
+    if (currentSense < IR_SHORT_CIRCUIT) {
+        LOG_ERROR("IR LED Strip current-sense indicates short circuit");
+        g_device_state.errorCount++;
+    } else if (currentSense > IR_OPEN_CIRCUIT) {
+        LOG_DEBUG("IR LED Strip current-sense indicates open circuit");
+    }
+#else
+    LOG_WARNING("IR strip detection unavailable: no independent current-sense input");
+#endif
     return false;
 }
 
