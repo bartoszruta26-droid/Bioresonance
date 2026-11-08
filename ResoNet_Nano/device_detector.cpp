@@ -12,7 +12,6 @@
 #include <string.h>   // Dla strcmp, strncmp, memcpy, strncpy
 #include <avr/pgmspace.h>  // Dla PROGMEM, pgm_read_word
 #include "ir_led_engine.h"
-#include "effector_resource_guard.h"
 
 // ============================================================================
 // ZMIENNE GLOBALNE
@@ -230,22 +229,25 @@ bool detection_parse_cli_args(int argc, char** argv) {
 // DETEKCJA EFEKTORÓW
 // ============================================================================
 
+// Active generators must never be disturbed by a diagnostic stimulus.
+// In that state detector routines perform read-only sampling of their sense inputs.
+static bool detector_passive_monitoring() {
+    return pwm_is_running() || ir_led_is_running();
+}
+
 bool detect_helmholtz_coil() {
     LOG_DEBUG("Detecting Helmholtz coil...");
-    if (!effector_resources::diagnostic_allowed(pwm_is_running(), ir_led_is_running())) {
-        LOG_WARNING("Helmholtz detection deferred while a generator is active");
-        return false;
+    const bool passive = detector_passive_monitoring();
+    int senseValue;
+    if (passive) {
+        // Read-only monitoring: do not touch D9/Timer1 while therapy PWM or IR runs.
+        senseValue = analogRead(PIN_HELMHOLTZ_SENSE);
+    } else {
+        analogWrite(PIN_PWM_OUTPUT, 128);
+        delay_us(1000);
+        senseValue = analogRead(PIN_HELMHOLTZ_SENSE);
+        analogWrite(PIN_PWM_OUTPUT, 0);
     }
-    
-    // Testowy impuls PWM
-    analogWrite(PIN_PWM_OUTPUT, 128);  // 50% duty cycle
-    delay_us(1000);
-    
-    // Pomiar prądu
-    int senseValue = analogRead(PIN_HELMHOLTZ_SENSE);
-    
-    // Zatrzymaj PWM
-    analogWrite(PIN_PWM_OUTPUT, 0);
     
     if (senseValue < HELMHOLTZ_CONNECTED_THRESHOLD) {
         LOG_INFO("Helmholtz coil detected");
@@ -262,29 +264,23 @@ bool detect_helmholtz_coil() {
 
 bool detect_otic_applicator() {
     LOG_DEBUG("Detecting Otic applicator...");
-    if (!effector_resources::diagnostic_allowed(pwm_is_running(), ir_led_is_running())) {
-        LOG_WARNING("Otic detection deferred while a generator is active");
-        return false;
-    }
-    
-    // Włącz driver
-    digitalWrite(PIN_OTIC_ENABLE, HIGH);
-    
-    // The detector pulse uses the shared D9/Timer1 output; never run it during therapy.
-    analogWrite(PIN_PWM_OUTPUT, 64);  // 25% duty cycle
-    delay_us(5000);
-    
-    // Pomiar impedancji (średnia z 10 próbek)
+    const bool passive = detector_passive_monitoring();
     uint32_t sum = 0;
+    if (!passive) {
+        digitalWrite(PIN_OTIC_ENABLE, HIGH);
+        analogWrite(PIN_PWM_OUTPUT, 64);
+        delay_us(5000);
+    }
+    // While any generator is active, sample the sense input only.
     for (int i = 0; i < 10; i++) {
         sum += analogRead(PIN_OTIC_IMPEDANCE);
-        delay_us(100);
+        if (!passive) delay_us(100);
     }
     int impedanceValue = sum / 10;
-    
-    // Zatrzymaj PWM i wyłącz driver
-    analogWrite(PIN_PWM_OUTPUT, 0);
-    digitalWrite(PIN_OTIC_ENABLE, LOW);
+    if (!passive) {
+        analogWrite(PIN_PWM_OUTPUT, 0);
+        digitalWrite(PIN_OTIC_ENABLE, LOW);
+    }
     
     if (impedanceValue >= OTIC_CONNECTED_MIN && impedanceValue <= OTIC_CONNECTED_MAX) {
         LOG_INFO("Otic applicator detected");
@@ -305,30 +301,21 @@ bool detect_otic_applicator() {
 
 ContactQuality_t detect_electrodes() {
     LOG_DEBUG("Detecting Contact electrodes...");
-    if (!effector_resources::diagnostic_allowed(pwm_is_running(), ir_led_is_running())) {
-        LOG_WARNING("Electrode detection deferred while a generator is active");
-        return CONTACT_OPEN;
+    const bool passive = detector_passive_monitoring();
+    if (!passive) {
+        digitalWrite(PIN_ELECTRODE_ENABLE, HIGH);
+        analogWrite(PIN_PWM_OUTPUT, 32);
+        delay_us(500);
+        analogWrite(PIN_PWM_OUTPUT, 0);
     }
-    
-    // Włącz driver
-    digitalWrite(PIN_ELECTRODE_ENABLE, HIGH);
-    
-    // Testowy impuls bipolarny (1ms)
-    analogWrite(PIN_PWM_OUTPUT, 32);
-    delay_us(500);
-    analogWrite(PIN_PWM_OUTPUT, 0);
-    
-    // Pomiar impedancji (średnia z 16 próbek)
+    // Passive samples never enable the electrode output or alter Timer1.
     uint32_t sum = 0;
     for (int i = 0; i < 16; i++) {
         sum += analogRead(PIN_ELECTRODE_IMPEDANCE);
-        delay_us(50);
+        if (!passive) delay_us(50);
     }
     int impedanceValue = sum / 16;
-    
-    // Zatrzymaj PWM i wyłącz driver
-    analogWrite(PIN_PWM_OUTPUT, 0);
-    digitalWrite(PIN_ELECTRODE_ENABLE, LOW);
+    if (!passive) digitalWrite(PIN_ELECTRODE_ENABLE, LOW);
     
     g_device_state.effector.impedance = impedanceValue;
     
@@ -366,27 +353,23 @@ ContactQuality_t detect_electrodes() {
 
 WrapStatus_t detect_wrap_applicator() {
     LOG_DEBUG("Detecting Wrap applicator...");
-    if (!effector_resources::diagnostic_allowed(pwm_is_running(), ir_led_is_running())) {
-        LOG_WARNING("Wrap detection deferred while a generator is active");
-        return WRAP_OPEN;
+    const bool passive = detector_passive_monitoring();
+    // Read the current-sense channel continuously; only apply a test stimulus
+    // when no generator is active.
+    if (!passive) {
+        digitalWrite(PIN_WRAP_ENABLE, LOW);
+        delay_us(100);
     }
-    
-    // Pomiar rezystancji DC
-    digitalWrite(PIN_WRAP_ENABLE, LOW);
-    delay_us(100);
-    
     int resistanceValue = analogRead(PIN_WRAP_CURRENT);
-    
-    // Krótki testowy impuls
-    digitalWrite(PIN_WRAP_ENABLE, HIGH);
-    analogWrite(PIN_PWM_OUTPUT, 64);
-    delay_us(500);
-    
-    int impedanceValue = analogRead(PIN_WRAP_CURRENT);
-    
-    // Zatrzymaj
-    analogWrite(PIN_PWM_OUTPUT, 0);
-    digitalWrite(PIN_WRAP_ENABLE, LOW);
+    int impedanceValue = resistanceValue;
+    if (!passive) {
+        digitalWrite(PIN_WRAP_ENABLE, HIGH);
+        analogWrite(PIN_PWM_OUTPUT, 64);
+        delay_us(500);
+        impedanceValue = analogRead(PIN_WRAP_CURRENT);
+        analogWrite(PIN_PWM_OUTPUT, 0);
+        digitalWrite(PIN_WRAP_ENABLE, LOW);
+    }
     
     // Pomiar temperatury
     const int16_t temperature_c_x10 = read_ntc_temperature_c_x10(PIN_WRAP_TEMP);
@@ -469,12 +452,8 @@ EffectorType_t detect_effector() {
 
 bool detect_ir_led_strip() {
     LOG_DEBUG("Detecting IR LED Strip...");
-    if (!effector_resources::diagnostic_allowed(pwm_is_running(), ir_led_is_running())) {
-        LOG_WARNING("IR strip detection deferred while a generator is active");
-        return false;
-    }
-    
-    // Sprawdź czy pin detekcji jest podłączony (pull-up)
+    const bool passive = detector_passive_monitoring();
+    // Detection remains live during IR operation; this path is strictly read-only.
     int detectValue = analogRead(PIN_IR_DETECT);
     
     // Jeśli pin IR_DETECT jest podłączony do masy przez rezystor, 
@@ -509,11 +488,14 @@ bool detect_ir_led_strip() {
         #endif
     }
     
-    // Alternatywna metoda: test z włączonym PWM
+    // A stimulus on IR_MODULATION_PIN would collide with the active IR/electrode
+    // control line. During operation, use only the passive detector sample.
+    if (passive) {
+        LOG_DEBUG("IR strip passive monitoring: no diagnostic stimulus applied");
+        return false;
+    }
     digitalWrite(IR_MODULATION_PIN, HIGH);
     delay_us(100);
-    
-    // Sprawdź reakcję na teście
     int testValue = analogRead(PIN_IR_DETECT);
     digitalWrite(IR_MODULATION_PIN, LOW);
     
