@@ -7,11 +7,9 @@
 #include "device_detector.h"
 #include <avr/pgmspace.h>
 #include "logging_system.h"
-#include "pwm_engine.h"
 #include "event_system.h"
 #include <string.h>   // Dla strcmp, strncmp, memcpy, strncpy
 #include <avr/pgmspace.h>  // Dla PROGMEM, pgm_read_word
-#include "ir_led_engine.h"
 
 // ============================================================================
 // ZMIENNE GLOBALNE
@@ -134,18 +132,16 @@ void device_detector_init(DetectionConfig_t* config) {
     
     // Konfiguracja pinów cyfrowych
     pinMode(PIN_HELMHOLTZ_DETECT, INPUT_PULLUP);
-    pinMode(PIN_OTIC_ENABLE, OUTPUT);
-    pinMode(PIN_ELECTRODE_ENABLE, OUTPUT);
-    pinMode(PIN_WRAP_ENABLE, OUTPUT);
+    // D4, D6 and D8 are shared with other subsystems in the current map.
+    // The detector must not claim or drive these pins during initialization.
     pinMode(PIN_BIO_DETECT, INPUT_PULLUP);
     pinMode(PIN_PPG_INT, INPUT);
     pinMode(PPG_SPI_CS, OUTPUT);
     // D3 is also IR_LED_PIN / Timer2 OC2B. Never reconfigure it as a detector input.
     
-    // Ustawienie stanów początkowych - wszystkie wyłączone dla bezpieczeństwa
-    digitalWrite(PIN_OTIC_ENABLE, LOW);
-    digitalWrite(PIN_ELECTRODE_ENABLE, LOW);
-    digitalWrite(PIN_WRAP_ENABLE, LOW);
+    // Do not force shared effector-enable lines LOW: D4/D6/D8 are
+    // multiplexed with vibrator, IR modulation, GSR and debug functions.
+    // Their safe idle states require a resolved hardware pin map.
     digitalWrite(PPG_SPI_CS, HIGH);
     // Do not write PIN_IR_DETECT: it aliases the live IR carrier output on D3.
     
@@ -228,12 +224,6 @@ bool detection_parse_cli_args(int argc, char** argv) {
 // ============================================================================
 // DETEKCJA EFEKTORÓW
 // ============================================================================
-
-// Active generators must never be disturbed by a diagnostic stimulus.
-// In that state detector routines perform read-only sampling of their sense inputs.
-static bool detector_passive_monitoring() {
-    return pwm_is_running() || ir_led_is_running();
-}
 
 bool detect_helmholtz_coil() {
     LOG_DEBUG("Detecting Helmholtz coil...");

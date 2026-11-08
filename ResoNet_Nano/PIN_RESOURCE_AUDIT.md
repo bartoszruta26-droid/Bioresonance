@@ -42,6 +42,7 @@ Płytka odniesienia: klasyczne Arduino Nano / ATmega328P. Nie zakładać, że kl
 ## Stan po ostatnich poprawkach
 
 - Detekcja Helmholtza, OTIC, elektrod i Wrap jest pasywna — nie wstrzykuje impulsów przez D9 i nie przełącza linii ENABLE w ramach testu.
+- Inicjalizacja detektora nie konfiguruje już współdzielonych D4/D6/D8 jako wyjść ani nie wymusza na nich stanu LOW. Linie te pozostają własnością sterowników po ustaleniu docelowej mapy sprzętowej.
 - Detekcja IR nie przełącza D3 ani D6. Odczyt A6 jest dostępny tylko, jeśli istnieje rzeczywisty tor pomiaru prądu.
 - Ocena jakości PPG zwraca „niedostępna” (0), dopóki nie powstanie sterownik dostarczający próbki z czasami. Usunięto blokujące oczekiwanie 3 sekund.
 - Detekcja wibratora nie zgłasza już fikcyjnego połączenia na podstawie stałej wartości 500.
