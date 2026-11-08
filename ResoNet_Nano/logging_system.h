@@ -1,11 +1,7 @@
 /**
  * @file logging_system.h
- * @brief Zaawansowany system logowania z ring bufferem - Nagłówki
- * @version 4.0 (Modular Architecture with Pseudo-threading)
- * 
- * System logowania firmware; nie stanowi elementu certyfikacji medycznej
+ * @brief Compact compile-time configurable logging interface.
  */
-
 #ifndef LOGGING_SYSTEM_H
 #define LOGGING_SYSTEM_H
 
@@ -13,24 +9,20 @@
 #include "types.h"
 #include <avr/pgmspace.h>
 
-// ============================================================================
-// KONFIGURACJA LOGOWANIA
-// ============================================================================
-
-// Domyślny poziom logowania
+// Numeric levels match LOG_VERBOSE..LOG_FATAL in types.h.
+// Default firmware profile keeps warnings and errors; set 0 for full diagnostics.
+#ifndef RESONET_LOG_LEVEL
+#define RESONET_LOG_LEVEL 3
+#endif
 #ifndef CURRENT_LOG_LEVEL
-#define CURRENT_LOG_LEVEL LOG_VERBOSE
+#define CURRENT_LOG_LEVEL RESONET_LOG_LEVEL
 #endif
 
-// Rozmiar bufora
 #define LOG_BUFFER_SIZE 4
 #define LOG_MESSAGE_MAX_LEN 24
-
-// Flagi konfiguracyjne
 #define ENABLE_SERIAL_LOG true
 #define ENABLE_REMOTE_LOG true
 
-// Struktura wpisu logu (używamy LogEntry_t z types.h)
 typedef struct {
     uint32_t timestamp;
     uint8_t level;
@@ -38,7 +30,6 @@ typedef struct {
     char message[LOG_MESSAGE_MAX_LEN];
 } LogEntry;
 
-// Ring buffer logów
 typedef struct {
     LogEntry entries[LOG_BUFFER_SIZE];
     uint16_t head;
@@ -47,7 +38,6 @@ typedef struct {
     uint16_t overflow_count;
 } LogBuffer;
 
-// Funkcje publiczne
 void logging_init();
 void logging_loop();
 void log_add_entry(uint8_t level, uint16_t event_code, const char* message);
@@ -57,16 +47,39 @@ LogBuffer* logging_get_buffer();
 void logging_flush_to_serial();
 uint16_t logging_get_overflow_count();
 
-// Makra pomocnicze
+// Compile out disabled log call sites and their flash-resident strings.
+#if RESONET_LOG_LEVEL <= 0
 #define LOG_VERBOSE(msg) log_add_entry_P(LOG_VERBOSE, 0, PSTR(msg))
-#define LOG_DEBUG(msg)   log_add_entry_P(LOG_DEBUG, 0, PSTR(msg))
-#define LOG_INFO(msg)    log_add_entry_P(LOG_INFO, 0, PSTR(msg))
-#define LOG_WARN(msg)    log_add_entry_P(LOG_WARNING, 0, PSTR(msg))
-#define LOG_ERROR(msg)   log_add_entry_P(LOG_ERROR, 0, PSTR(msg))
-#define LOG_FATAL(msg)   log_add_entry_P(LOG_FATAL, 0, PSTR(msg))
-
-#define LOG_EVENT(level, event, msg) log_add_entry(level, event, msg)
+#else
+#define LOG_VERBOSE(msg) ((void)0)
+#endif
+#if RESONET_LOG_LEVEL <= 1
+#define LOG_DEBUG(msg) log_add_entry_P(LOG_DEBUG, 0, PSTR(msg))
+#else
+#define LOG_DEBUG(msg) ((void)0)
+#endif
+#if RESONET_LOG_LEVEL <= 2
+#define LOG_INFO(msg) log_add_entry_P(LOG_INFO, 0, PSTR(msg))
+#else
+#define LOG_INFO(msg) ((void)0)
+#endif
+#if RESONET_LOG_LEVEL <= 3
+#define LOG_WARN(msg) log_add_entry_P(LOG_WARNING, 0, PSTR(msg))
+#else
+#define LOG_WARN(msg) ((void)0)
+#endif
+#if RESONET_LOG_LEVEL <= 4
+#define LOG_ERROR(msg) log_add_entry_P(LOG_ERROR, 0, PSTR(msg))
+#else
+#define LOG_ERROR(msg) ((void)0)
+#endif
+#if RESONET_LOG_LEVEL <= 5
+#define LOG_FATAL(msg) log_add_entry_P(LOG_FATAL, 0, PSTR(msg))
+#else
+#define LOG_FATAL(msg) ((void)0)
+#endif
 
 #define LOG_WARNING(msg) LOG_WARN(msg)
+#define LOG_EVENT(level, event, msg) log_add_entry(level, event, msg)
 
 #endif // LOGGING_SYSTEM_H
