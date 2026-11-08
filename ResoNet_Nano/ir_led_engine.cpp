@@ -20,6 +20,7 @@ static IRLedStatus ir_status;
 // Zmienne do modulacji
 static uint32_t modulation_start_time = 0;
 static uint8_t base_duty_cycle = 50;
+static bool carrier_configured = false;
 
 /* 32-sample sine approximation in flash; avoids AVR libm float/sin cost. */
 static const uint8_t modulation_sine[32] PROGMEM = {
@@ -108,6 +109,7 @@ static void timer2_update_duty(uint8_t duty_cycle) {
  * @param enable true = włącz, false = wyłącz
  */
 static void timer2_enable_carrier(bool enable) {
+    if (enable && !carrier_configured) return;
     if (enable) {
         TCCR2A |= _BV(COM2B1);  // Enable output
     } else {
@@ -138,7 +140,8 @@ void ir_led_init() {
     ir_config.duty_cycle = 50;
     ir_config.intensity_level = 2048;
     ir_config.carrier_freq_hz = IR_CARRIER_FREQ_HZ;
-    
+    carrier_configured = false;
+
     LOG_INFO("IR LED engine initialized");
 }
 
@@ -277,6 +280,8 @@ bool ir_led_set_config(const IRLedConfig* config) {
         return false;
     }
 
+    carrier_configured = true;
+
     // Aktualizuj status
     ir_status.current_therapy_freq_x100 = config->therapy_freq_hz_x100;
     ir_status.current_duty = config->duty_cycle;
@@ -293,6 +298,10 @@ bool ir_led_set_config(const IRLedConfig* config) {
  */
 void ir_led_start() {
     if (ir_status.is_running) {
+        return;
+    }
+    if (!carrier_configured) {
+        LOG_WARN("IR start rejected: carrier is not configured");
         return;
     }
     
@@ -351,7 +360,8 @@ void ir_led_update_intensity(uint16_t level) {
     if (level > 4095) level = 4095;
     
     ir_config.intensity_level = level;
-    
+    if (!carrier_configured) return;
+
     // Intensywność wpływa na duty cycle
     uint8_t new_duty = (uint8_t)((uint32_t)base_duty_cycle * level / 4095);
     timer2_update_duty(new_duty);
