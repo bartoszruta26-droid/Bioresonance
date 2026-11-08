@@ -33,7 +33,9 @@ static uint32_t last_activity_ms = 0;
 static bool server_started = false;
 static const uint32_t PARTIAL_FRAME_TIMEOUT_MS = 2000;
 static const uint32_t CLIENT_IDLE_TIMEOUT_MS = 30000;
-static const uint8_t MAX_RX_BYTES_PER_LOOP = 24;
+// One request frame is 11 bytes. Bound per-loop work to one frame.
+static const uint8_t MAX_RX_BYTES_PER_LOOP = ResoNetProtocolV1::REQUEST_FRAME_SIZE;
+static uint8_t rx_buffer[ResoNetProtocolV1::REQUEST_FRAME_SIZE];
 static uint8_t tx_buffer[ResoNetProtocolV1::RESPONSE_FRAME_SIZE];
 
 static uint16_t freeMemoryBytes() {
@@ -63,7 +65,7 @@ static bool sendStatusFrame(uint16_t sequence, const uint8_t* payload) {
         return false;
     }
 
-    diagnostic_client.flush();
+    // write(buffer, length) already queues the complete frame; flush is unnecessary.
     ++packets_sent;
     return true;
 }
@@ -181,7 +183,6 @@ void network_loop() {
 
     if (!diagnostic_client || !diagnostic_client.connected()) return;
 
-    uint8_t rx_buffer[MAX_RX_BYTES_PER_LOOP];
     const int available_bytes = diagnostic_client.available();
     if (available_bytes > 0) {
         const size_t requested = available_bytes > MAX_RX_BYTES_PER_LOOP
