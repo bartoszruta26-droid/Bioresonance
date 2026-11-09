@@ -27,13 +27,12 @@ arduino-cli core update-index
 arduino-cli core install arduino:avr
 bash ResoNet_Nano/build_nano.sh
 arduino-cli board list
+# Ustaw port znaleziony w poprzednim poleceniu:
+PORT=/dev/ttyUSB0
+RESONET_UPLOAD_PORT="$PORT" bash ResoNet_Nano/build_nano.sh
 ```
 
-2. Wgraj firmware. Zastąp port przykładowy portem wykrytym przez `arduino-cli board list`:
-
-```bash
-arduino-cli upload -p /dev/ttyUSB0 --fqbn arduino:avr:nano:cpu=atmega328old ResoNet_Nano
-```
+Skrypt kompiluje firmware z ustawieniami pamięci i wysyła ten sam obraz na wskazany port. Po otwarciu portu aplikacja odczekuje 2,2 s na automatyczny reset Nano.
 
 3. Dodaj konto do grupy portu szeregowego i zaloguj się ponownie:
 

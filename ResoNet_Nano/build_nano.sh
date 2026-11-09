@@ -138,7 +138,13 @@ if [[ -n "${RESONET_BUILD_DIR:-}" ]]; then
   BUILD_ARGS+=(--build-path "$RESONET_BUILD_DIR")
 fi
 
+UPLOAD_ARGS=()
+if [[ -n "${RESONET_UPLOAD_PORT:-}" ]]; then
+  UPLOAD_ARGS+=(--upload --port "$RESONET_UPLOAD_PORT")
+fi
+
 arduino-cli compile \
+  "${UPLOAD_ARGS[@]}" \
   --fqbn "$FQBN" \
   "${BUILD_ARGS[@]}" \
   --build-property "compiler.cpp.extra_flags=$CPP_FLAGS" \

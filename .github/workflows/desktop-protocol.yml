@@ -10,6 +10,7 @@ on:
       - "gui/src/network_client.cpp"
       - "gui/src/gui_app.cpp"
       - "gui/CMakeLists.txt"
+      - "gui/qt/main.cpp"
       - "gui/tests/network_client_smoke.cpp"
       - "gui/tests/resonet_protocol_v1_smoke.cpp"
       - "bash_tui/**"
