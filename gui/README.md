@@ -19,28 +19,40 @@ ctest --test-dir build/gui --output-on-failure
 
 ## Pierwsze testy Arduino Nano przez USB (Debian 13)
 
-1. Zainstaluj narzędzia i skompiluj firmware:
+1. Zainstaluj Arduino CLI i rdzeń AVR, podłącz Nano, a następnie sprawdź wykryty port:
 
 ```bash
 sudo apt install -y arduino-cli
 arduino-cli core update-index
 arduino-cli core install arduino:avr
-bash ResoNet_Nano/build_nano.sh
 arduino-cli board list
-# Ustaw port znaleziony w poprzednim poleceniu:
-PORT=/dev/ttyUSB0
-RESONET_UPLOAD_PORT="$PORT" bash ResoNet_Nano/build_nano.sh
 ```
 
-Skrypt kompiluje firmware z ustawieniami pamięci i wysyła ten sam obraz na wskazany port. Po otwarciu portu aplikacja odczekuje 2,2 s na automatyczny reset Nano.
-
-3. Dodaj konto do grupy portu szeregowego i zaloguj się ponownie:
+2. Nadaj kontu uprawnienia do portu szeregowego i zaloguj się ponownie (albo uruchom nową sesję użytkownika):
 
 ```bash
 sudo usermod -aG dialout "$USER"
 ```
 
-4. Zamknij Arduino Serial Monitor i inne programy używające portu. Uruchom `./build/gui/bioresonance_gui`, wybierz źródło `Arduino — USB (diagnostyka)`, wybierz port i kliknij `Połącz USB`.
+3. Wgraj firmware. Zastąp przykładową ścieżkę portem wykrytym przez `arduino-cli board list`:
+
+```bash
+PORT=/dev/ttyUSB0
+RESONET_UPLOAD_PORT="$PORT" bash ResoNet_Nano/build_nano.sh
+```
+
+Skrypt kompiluje firmware z ustawieniami pamięci i wgrywa ten sam obraz na płytkę. Domyślny profil to Nano z bootloaderem ATmega328P old; dla nowszego bootloadera użyj `RESONET_FQBN=arduino:avr:nano:cpu=atmega328`.
+
+4. Zamknij Arduino Serial Monitor i inne programy używające portu. Zbuduj i uruchom aplikację:
+
+```bash
+sudo apt-get install -y build-essential cmake qt6-base-dev libqt6charts6-dev libqt6serialport6-dev
+cmake -S gui -B build/gui -DCMAKE_BUILD_TYPE=Release
+cmake --build build/gui --parallel
+./build/gui/bioresonance_gui
+```
+
+Wybierz źródło `Arduino — USB (diagnostyka)`, port i kliknij `Połącz USB`. Aplikacja odczekuje 2,2 s na automatyczny reset Nano po otwarciu portu.
 
 5. Sprawdź stan firmware, czas pracy, wolną pamięć i flagi błędów. Odłącz przewód i sprawdź, czy aplikacja zgłosi utratę połączenia.
 
