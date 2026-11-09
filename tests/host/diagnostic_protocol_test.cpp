@@ -52,5 +52,18 @@ int main() {
     for (size_t i = 0; i < bad_length.size(); ++i)
         assert(!parser.feed(bad_length[i], decoded));
 
+
+    // Unknown request opcodes must never be accepted as executable commands.
+    std::vector<uint8_t> unsupported = request(0x20, 9);
+    for (size_t i = 0; i < unsupported.size(); ++i)
+        assert(!parser.feed(unsupported[i], decoded));
+
+    // USB STATUS request is the exact empty-payload v1 request used by Qt.
+    std::vector<uint8_t> status = request(STATUS_REQ, 0xBEEF);
+    ready = false;
+    for (size_t i = 0; i < status.size(); ++i)
+        ready = parser.feed(status[i], decoded) || ready;
+    assert(ready && decoded.type == STATUS_REQ && decoded.sequence == 0xBEEF);
+
     return 0;
 }
