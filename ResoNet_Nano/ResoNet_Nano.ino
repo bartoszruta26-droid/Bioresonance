@@ -33,6 +33,7 @@
 #include "event_system.h"
 #include "pwm_engine.h"
 #include "network_system.h"
+#include "usb_serial_diagnostic.h"
 #include "ir_led_engine.h"  // Nowy moduł: IR LED Strip
 #include "device_detector.h"  // Nowy moduł: Wykrywanie efektorów i sensorów
 
@@ -253,17 +254,10 @@ static void task_stats_run() {
  * @brief Inicjalizacja systemu
  */
 void setup() {
-    // Inicjalizacja Serial
+    // USB serial is a binary, read-only diagnostic transport.
+    // Do not wait for a host: classic Nano has no native USB CDC connection state.
     Serial.begin(115200);
-    while (!Serial) {
-        ;  // Czekaj na połączenie USB
-    }
-    
-    delay(1000);  // Stabilizacja
-    
-    Serial.println(F("\n=== ResoNet Nano v4.0 ==="));
-    Serial.println(F("Experimental diagnostic platform"));
-    Serial.println(F("Modular Architecture with Pseudo-threading\n"));
+    usb_serial_diagnostic_init();
     
     // Konfiguracja pinów
     pinMode(STATUS_LED, OUTPUT);
@@ -286,7 +280,6 @@ void setup() {
     // Sprawdź czy jesteśmy w bezpiecznym stanie
     if (!SAFE_IS_SAFE()) {
         LOG_FATAL("Safety system in unsafe state - aborting startup");
-        Serial.println(F("FATAL: Safety system fault!"));
         
         // Migaj diodą błędu
         while (true) {
@@ -319,7 +312,6 @@ void setup() {
     delay(500);
     digitalWrite(STATUS_LED, LOW);
     
-    Serial.println(F("System ready. Waiting for commands..."));
 }
 
 /**
@@ -387,172 +379,8 @@ void loop() {
         stats.total_tasks_executed++;
     }
     
-    // ================================================================
-    // OBSŁUGA WEJŚCIA SZEREGOWEGO (DEBUG/KOMENDY)
-    // ================================================================
-    
-    if (Serial.available() > 0) {
-        char cmd = Serial.read();
-        
-        switch (cmd) {
-            case 's':
-                // Status
-                Serial.println(F("\n=== System Status ==="));
-                Serial.print(F("Uptime: "));
-                Serial.print(millis() / 1000);
-                Serial.println(F("s"));
-                Serial.print(F("Free Memory: "));
-                Serial.print(stats.free_memory);
-                Serial.println(F(" bytes"));
-                Serial.print(F("Loop Count: "));
-                Serial.println(stats.loop_count);
-                Serial.print(F("Tasks Executed: "));
-                Serial.println(stats.total_tasks_executed);
-                
-                SafetyStatus* safe = safety_get_status();
-                Serial.print(F("Safety State: "));
-                Serial.println(safe->safe_state);
-                Serial.print(F("Temperature: "));
-                Serial.print(safe->temperature_x10 / 10);
-                Serial.println(F(" C"));
-                
-                PWMStatus* pwm = pwm_get_status();
-                Serial.print(F("PWM Running: "));
-                Serial.println(pwm->is_running ? F("YES") : F("NO"));
-                if (pwm->is_running) {
-                    Serial.print(F("Frequency: "));
-                    Serial.print(pwm->current_freq_x100 / 100);
-                    Serial.print(F("."));
-                    Serial.print(pwm->current_freq_x100 % 100);
-                    Serial.println(F(" Hz"));
-                }
-                
-                Serial.println(F("Network: "));
-                Serial.println(network_is_connected() ? F("CONNECTED") : F("DISCONNECTED"));
-                
-                // Device status
-                DeviceSystemState_t* dev = get_device_system_state();
-                Serial.print(F("Effector: "));
-                switch (dev->effector.type) {
-                    case EFFECTOR_HELMHOLTZ: Serial.println(F("Helmholtz Coil")); break;
-                    case EFFECTOR_OTIC: Serial.println(F("Otic Applicator")); break;
-                    case EFFECTOR_CONTACT: Serial.println(F("Contact Electrodes")); break;
-                    case EFFECTOR_WRAP: Serial.println(F("Wrap Applicator")); break;
-                    case EFFECTOR_IR_LED_STRIP: Serial.println(F("IR LED Strip")); break;
-                    case EFFECTOR_PIEZO_SPEAKER: Serial.println(F("Piezo Speaker/Audio")); break;
-                    case EFFECTOR_VIBRATOR: Serial.println(F("Vibrator")); break;
-                    default: Serial.println(F("None")); break;
-                }
-                Serial.print(F("Connected: "));
-                Serial.println(dev->effector.connected ? F("YES") : F("NO"));
-                Serial.print(F("Biofeedback: "));
-                Serial.println(dev->biofeedbackEnabled ? F("ENABLED") : F("DISABLED"));
-                break;
-                
-            case 't':
-                // Test PWM
-                {
-                    LOG_INFO("Manual PWM test triggered");
-                    PWMConfig config;
-                    config.frequency_hz_x100 = 72700;  // 727 Hz
-                    config.duty_cycle = 50;
-                    config.modulation_type = MODULATION_NONE;
-                    config.intensity_level = 2048;
-                    config.duration_ms = 5000;
-                    
-                    if (pwm_set_config(&config)) {
-                        pwm_start();
-                        Serial.println(F("PWM started: 727 Hz, 5s"));
-                    } else {
-                        Serial.println(F("PWM config failed!"));
-                    }
-                }
-                break;
-                
-            case 'x':
-                // Stop PWM
-                pwm_stop();
-                Serial.println(F("PWM stopped"));
-                break;
-                
-            case 'l':
-                // Flush logs
-                Serial.println(F("\n=== Log History ==="));
-                logging_flush_to_serial();
-                break;
-                
-            case 'e':
-                // Event stats
-                Serial.println(F("\n=== Event Stats ==="));
-                Serial.print(F("Events in queue: "));
-                Serial.println(event_get_count());
-                Serial.print(F("Dropped events: "));
-                Serial.println(event_get_dropped_count());
-                break;
-                
-            case 'd':
-                // Device detection scan
-                {
-                    Serial.println(F("\n=== Device Detection Scan ==="));
-                    EffectorType_t eff = detect_effector();
-                    
-                    Serial.print(F("Detected effector: "));
-                    switch (eff) {
-                        case EFFECTOR_HELMHOLTZ: Serial.println(F("Helmholtz Coil")); break;
-                        case EFFECTOR_OTIC: Serial.println(F("Otic Applicator")); break;
-                        case EFFECTOR_CONTACT: Serial.println(F("Contact Electrodes")); break;
-                        case EFFECTOR_WRAP: Serial.println(F("Wrap Applicator")); break;
-                        case EFFECTOR_IR_LED_STRIP: Serial.println(F("IR LED Strip")); break;
-                        case EFFECTOR_PIEZO_SPEAKER: Serial.println(F("Piezo Speaker/Audio")); break;
-                        case EFFECTOR_VIBRATOR: Serial.println(F("Vibrator")); break;
-                        default: Serial.println(F("None")); break;
-                    }
-                    
-                    BioSensorStatus_t bio_status;
-                    BioStatus_t bio = detect_biofeedback_sensors(&bio_status);
-                    
-                    Serial.print(F("Biofeedback status: "));
-                    switch (bio) {
-                        case BIO_READY: Serial.println(F("READY - All sensors OK")); break;
-                        case BIO_PARTIAL: Serial.println(F("PARTIAL - Some sensors missing")); break;
-                        case BIO_GSR_MISSING: Serial.println(F("GSR sensor missing")); break;
-                        case BIO_PPG_MISSING: Serial.println(F("PPG sensor missing")); break;
-                        case BIO_TEMP_MISSING: Serial.println(F("Temp sensor missing")); break;
-                        default: Serial.println(F("ERROR")); break;
-                    }
-                    
-                    if (bio_status.gsrConnected) {
-                        Serial.print(F("  GSR Quality: "));
-                        Serial.print(bio_status.gsrQuality);
-                        Serial.println(F("%"));
-                    }
-                    if (bio_status.ppgConnected) {
-                        Serial.print(F("  PPG Quality: "));
-                        Serial.print(bio_status.ppgQuality);
-                        Serial.println(F("%"));
-                    }
-                    
-                    DeviceSystemState_t* dev = get_device_system_state();
-                    Serial.print(F("Detection count: "));
-                    Serial.println(dev->detectionCount);
-                    Serial.print(F("Error count: "));
-                    Serial.println(dev->errorCount);
-                }
-                break;
-                
-            case 'h':
-            default:
-                Serial.println(F("\nCommands:"));
-                Serial.println(F("  s - System status"));
-                Serial.println(F("  t - Test PWM (727 Hz, 5s)"));
-                Serial.println(F("  x - Stop PWM"));
-                Serial.println(F("  l - Show log history"));
-                Serial.println(F("  e - Event statistics"));
-                Serial.println(F("  d - Detect devices"));
-                Serial.println(F("  h - This help"));
-                break;
-        }
-    }
+    // Service bounded binary USB diagnostic requests on every loop pass.
+    usb_serial_diagnostic_loop();
     
     // ================================================================
     // BEZPIECZEŃSTWO - CHECK EMERGENCY

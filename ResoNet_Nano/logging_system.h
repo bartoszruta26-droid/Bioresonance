@@ -20,7 +20,7 @@
 
 #define LOG_BUFFER_SIZE 4
 #define LOG_MESSAGE_MAX_LEN 24
-#define ENABLE_SERIAL_LOG true
+#define ENABLE_SERIAL_LOG false // USB serial is reserved for binary diagnostics
 #define ENABLE_REMOTE_LOG true
 
 typedef struct {
