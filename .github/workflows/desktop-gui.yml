@@ -20,7 +20,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build build-essential libgl1-mesa-dev qt6-base-dev libqt6charts6-dev qt6-serialport-dev
+          sudo apt-get install -y cmake ninja-build build-essential libgl1-mesa-dev qt6-base-dev libqt6charts6-dev libqt6serialport6-dev
       - name: Configure
         run: cmake -S gui -B build/gui -G Ninja -DCMAKE_BUILD_TYPE=Release
       - name: Build
@@ -48,7 +48,7 @@ jobs:
           host: windows
           target: desktop
           arch: win64_msvc2019_64
-          modules: qtcharts qtserialport
+          modules: qtcharts qtserialport qtserialport
           cache: true
       - name: Configure
         shell: pwsh
