@@ -451,12 +451,12 @@ BioStatus_t detect_biofeedback_sensors(BioSensorStatus_t* status) {
     Wire.beginTransmission(GSR_I2C_ADDRESS);
     status->gsrConnected = (Wire.endTransmission() == 0);
     
-    // Test PPG (SPI)
-    digitalWrite(PPG_SPI_CS, LOW);
-    delay_us(10);
-    uint8_t ppgId = SPI.transfer(0x00);  // Read ID register
-    digitalWrite(PPG_SPI_CS, HIGH);
-    status->ppgConnected = (ppgId == 0x15);  // MAX30102 ID
+    // PPG probing is intentionally disabled: PPG_SPI_CS is D10, which is
+    // also PIN_ENC28J60_CS. Pulling it LOW would select both SPI devices and
+    // corrupt Ethernet/PPG transactions. A dedicated PPG CS pin is required.
+    status->ppgConnected = false;
+    status->ppgQuality = 0;
+    LOG_WARNING("PPG unavailable: SPI chip-select is shared with ENC28J60");
     
     // Test Temp (I2C)
     Wire.beginTransmission(TEMP_I2C_ADDRESS);

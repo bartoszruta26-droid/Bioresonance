@@ -23,7 +23,7 @@ Płytka odniesienia: klasyczne Arduino Nano / ATmega328P. Nie zakładać, że kl
 | D7 | `PIN_BIO_DETECT`, `PIN_PIEZO_ENABLE` | Konflikt wejścia detekcji i sterowania piezo. |
 | D8 | `PIN_WRAP_ENABLE`, `PIN_VIBRATOR_PWM`, `DEBUG_LED` | Konflikt sterowania efektorami i diody diagnostycznej. |
 | D9 | `PIN_PWM_OUTPUT` / Timer1 OC1A | Zarezerwować wyłącznie dla głównego generatora PWM. |
-| D10 | `PPG_SPI_CS` | Współdzielenie SPI CS wymaga jawnej obsługi wyboru urządzenia. Sprawdzić także CS ENC28J60 w konfiguracji sieci. |
+| D10 | `PPG_SPI_CS` / `PIN_ENC28J60_CS` | Krytyczny konflikt: oba urządzenia mają ten sam CS. Detektor nie może wybierać PPG, gdyż wybierze jednocześnie ENC28J60. Odczyt PPG wyłączony do czasu wydzielenia osobnego CS. |
 | A0 | `PIN_NTC_TEMP` | Wejście temperatury; nie przedstawiać jako GSR. |
 | A1 | `PIN_HELMHOLTZ_SENSE` | Odczyt analogowy. |
 | A2 | `PIN_OTIC_IMPEDANCE` | Odczyt analogowy. |
@@ -42,7 +42,7 @@ Płytka odniesienia: klasyczne Arduino Nano / ATmega328P. Nie zakładać, że kl
 ## Stan po ostatnich poprawkach
 
 - Detekcja Helmholtza, OTIC, elektrod i Wrap jest pasywna — nie wstrzykuje impulsów przez D9 i nie przełącza linii ENABLE w ramach testu.
-- Inicjalizacja detektora nie konfiguruje już współdzielonych D4/D6/D8 jako wyjść ani nie wymusza na nich stanu LOW. Linie te pozostają własnością sterowników po ustaleniu docelowej mapy sprzętowej.
+- Inicjalizacja detektora nie konfiguruje już współdzielonych D4/D6/D8 jako wyjść ani nie wymusza na nich stanu LOW. Linie te pozostają własnością sterowników po ustaleniu docelowej mapy sprzętowej.\n- Odczyt identyfikatora PPG przez SPI jest wyłączony, ponieważ `PPG_SPI_CS` i `PIN_ENC28J60_CS` wskazują D10. Wspólne CS wybierałoby równocześnie oba układy i mogłoby zakłócić Ethernet.
 - Detekcja IR nie przełącza D3 ani D6. Odczyt A6 jest dostępny tylko, jeśli istnieje rzeczywisty tor pomiaru prądu.
 - Ocena jakości PPG zwraca „niedostępna” (0), dopóki nie powstanie sterownik dostarczający próbki z czasami. Usunięto blokujące oczekiwanie 3 sekund.
 - Detekcja wibratora nie zgłasza już fikcyjnego połączenia na podstawie stałej wartości 500.
