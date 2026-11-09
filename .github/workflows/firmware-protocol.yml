@@ -51,6 +51,11 @@ jobs:
         run: g++ -std=c++11 -Wall -Wextra -Werror -pedantic tests/host/diagnostic_protocol_test.cpp -o diagnostic_protocol_test
       - name: Run compact diagnostic protocol tests
         run: ./diagnostic_protocol_test
+      - name: Check diagnostic Nano USB mode and compile sketch
+        run: |
+          grep -q 'Serial.begin(115200)' ResoNet_Diagnostic_Nano/ResoNet_Diagnostic_Nano.ino
+          grep -q 'usb_parser.feed' ResoNet_Diagnostic_Nano/ResoNet_Diagnostic_Nano.ino
+          bash -n ResoNet_Diagnostic_Nano/build.sh
       - name: Compile effector resource guard tests
         run: g++ -std=c++11 -Wall -Wextra -Werror -pedantic -I ResoNet_Nano tests/host/effector_resource_guard_test.cpp -o effector_resource_guard_test
       - name: Run effector resource guard tests
