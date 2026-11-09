@@ -105,13 +105,6 @@ static int16_t read_ntc_temperature_c_x10(uint8_t pin) {
     return (int16_t)interpolated;
 }
 
-/**
- * @brief Krótkie opóźnienie w mikrosekundach
- */
-static void delay_us(uint32_t us) {
-    delayMicroseconds(us);
-}
-
 // ============================================================================
 // INICJALIZACJA Z OBSŁUGĄ CLI
 // ============================================================================
