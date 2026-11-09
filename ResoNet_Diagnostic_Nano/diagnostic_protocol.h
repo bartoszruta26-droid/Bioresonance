@@ -57,12 +57,15 @@ public:
             const uint16_t received = static_cast<uint16_t>((buffer_[9] << 8) | buffer_[10]);
             const uint16_t calculated = crc16(buffer_, 9);
             const bool valid = received == calculated;
-            if (valid && (buffer_[3] == HELLO_REQ || buffer_[3] == PING || buffer_[3] == STATUS_REQ)) {
+            const bool supported = buffer_[3] == HELLO_REQ ||
+                                   buffer_[3] == PING ||
+                                   buffer_[3] == STATUS_REQ;
+            if (valid && supported) {
                 request.type = buffer_[3];
                 request.sequence = static_cast<uint16_t>((buffer_[5] << 8) | buffer_[6]);
             }
             reset();
-            return valid && (request.type == HELLO_REQ || request.type == PING || request.type == STATUS_REQ);
+            return valid && supported;
         }
         default:
             reset();
