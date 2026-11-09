@@ -25,6 +25,7 @@ ctest --test-dir build/gui --output-on-failure
 sudo apt install -y arduino-cli
 arduino-cli core update-index
 arduino-cli core install arduino:avr
+arduino-cli lib install EthernetENC@2.0.5
 arduino-cli board list
 ```
 
@@ -54,7 +55,17 @@ cmake --build build/gui --parallel
 
 Wybierz źródło `Arduino — USB (diagnostyka)`, port i kliknij `Połącz USB`. Aplikacja odczekuje 2,2 s na automatyczny reset Nano po otwarciu portu.
 
-5. Sprawdź stan firmware, czas pracy, wolną pamięć i flagi błędów. Odłącz przewód i sprawdź, czy aplikacja zgłosi utratę połączenia.
+5. Sprawdź stan firmware, czas pracy, wolną pamięć i flagi błędów. Odłącz przewód i sprawdź, czy aplikacja zgłosi utratę połączenia. Ponownie podłącz przewód i sprawdź ponowne połączenie.
+
+### Protokół pierwszego testu na żywo
+
+- Test wykonuj najpierw na samej płytce Nano, bez podłączonych efektorów, elektrod, anten, generatorów ani obciążeń.
+- Płytkę zasilaj wyłącznie przez USB komputera. Nie łącz równocześnie zewnętrznych źródeł zasilania bez sprawdzenia wspólnej masy i schematu połączeń.
+- Po starcie oczekuj stanu firmware, czasu pracy i wolnej pamięci. Czas pracy powinien rosnąć przy kolejnych odpowiedziach.
+- Sprawdź zachowanie po odłączeniu i ponownym podłączeniu USB oraz po ponownym uruchomieniu aplikacji.
+- Zapisz wynik: model Nano/układ USB-UART, port, FQBN/bootloader, wersję firmware (commit), wynik połączenia, stan, wolną pamięć, timeouty i zachowanie po odłączeniu.
+
+Nie uruchamiaj generatorów ani testów wyjść na pacjencie lub podłączonym osprzęcie. Aktualny transport USB jest tylko diagnostyczny; nie dostarcza próbek biofeedback i nie steruje wyjściami. Firmware pozostaje eksperymentalny, a status programowy nie jest potwierdzeniem fizycznego odłączenia wyjść.
 
 Protokół USB działa z parametrami 115200 bit/s, 8N1. Udostępnia tylko zapytania STATUS v1: nie przesyła próbek biologicznych ani nie steruje wyjściami. W pierwszej sesji pozostaw wszystkie efektory odłączone. Wartości temperatury, stan blokady fizycznej i flagi czujników są jawnie oznaczane jako niezweryfikowane.
 
