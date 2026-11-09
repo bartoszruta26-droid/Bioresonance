@@ -64,7 +64,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Qt 6 build dependencies
-        run: sudo apt-get update && sudo apt-get install -y cmake build-essential libgl1-mesa-dev qt6-base-dev libqt6charts6-dev
+        run: sudo apt-get update && sudo apt-get install -y cmake build-essential libgl1-mesa-dev qt6-base-dev libqt6charts6-dev libqt6serialport6-dev
       - name: Configure desktop application and tests
         run: cmake -S gui -B build/gui -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
       - name: Build desktop application and host tests
