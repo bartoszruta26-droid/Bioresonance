@@ -13,6 +13,13 @@
 using namespace ResoNetDiagnostic;
 static const uint8_t device_mac[6] = { RESONET_DIAG_MAC_0, RESONET_DIAG_MAC_1, RESONET_DIAG_MAC_2, RESONET_DIAG_MAC_3, RESONET_DIAG_MAC_4, RESONET_DIAG_MAC_5 };
 static EthernetServer server(RESONET_DIAG_TCP_PORT);
+#ifndef RESONET_DIAG_USB_SERIAL
+#define RESONET_DIAG_USB_SERIAL 1
+#endif
+#ifndef RESONET_DIAG_ENABLE_ETHERNET
+#define RESONET_DIAG_ENABLE_ETHERNET 0
+#endif
+static Parser usb_parser;
 static EthernetClient client;
 static Parser parser;
 static EffectorRuntime effector_runtime;
@@ -27,6 +34,10 @@ static uint16_t freeMemoryBytes() {
     int available = (int)&stack_marker - heap_end;
     return available > 0 ? static_cast<uint16_t>(available) : 0;
 }
+static bool sendSerialFrame(uint8_t type, uint16_t sequence, const uint8_t* payload, uint8_t length) {
+    size_t size = encode(type, sequence, payload, length, tx_buffer, sizeof(tx_buffer));
+    return size != 0 && Serial.write(tx_buffer, size) == size;
+}
 static bool sendFrame(uint8_t type, uint16_t sequence, const uint8_t* payload, uint8_t length) {
     if (!client || !client.connected()) return false;
     size_t size = encode(type, sequence, payload, length, tx_buffer, sizeof(tx_buffer));
@@ -35,13 +46,17 @@ static bool sendFrame(uint8_t type, uint16_t sequence, const uint8_t* payload, u
     }
     return true;
 }
-static void handleRequest(const Request& request) {
+static void handleRequest(const Request& request, bool serial_transport) {
+    const auto send = [serial_transport](uint8_t type, uint16_t seq, const uint8_t* payload, uint8_t length) -> bool {
+        if (serial_transport) return sendSerialFrame(type, seq, payload, length);
+        return sendFrame(type, seq, payload, length);
+    };
     last_activity_ms = millis();
     if (request.type == HELLO_REQ) {
         uint8_t payload[13] = {'R','N',device_mac[0],device_mac[1],device_mac[2],device_mac[3],device_mac[4],device_mac[5],1,0,0,0,0};
-        sendFrame(HELLO_RESP, request.sequence, payload, sizeof(payload)); return;
+        send(HELLO_RESP, request.sequence, payload, sizeof(payload)); return;
     }
-    if (request.type == PING) { sendFrame(PONG, request.sequence, NULL, 0); return; }
+    if (request.type == PING) { send(PONG, request.sequence, NULL, 0); return; }
     if (request.type == STATUS_REQ) {
         uint8_t payload[14];
         uint32_t uptime = millis() / 1000UL;
@@ -51,12 +66,17 @@ static void handleRequest(const Request& request) {
         payload[5]=static_cast<uint8_t>(uptime>>8); payload[6]=static_cast<uint8_t>(uptime);
         payload[7]=static_cast<uint8_t>(free_memory>>8); payload[8]=static_cast<uint8_t>(free_memory);
         payload[9]=0x7F; payload[10]=0xFF; payload[11]=0; payload[12]=0; payload[13]=0;
-        sendFrame(STATUS_RESP, request.sequence, payload, sizeof(payload)); return;
+        send(STATUS_RESP, request.sequence, payload, sizeof(payload)); return;
     }
     const uint8_t nack[2] = { request.type, 0x02 };
-    sendFrame(NACK, request.sequence, nack, sizeof(nack));
+    send(NACK, request.sequence, nack, sizeof(nack));
 }
 void setup() {
+#if RESONET_DIAG_USB_SERIAL
+    Serial.begin(115200);
+    usb_parser.reset();
+#endif
+#if RESONET_DIAG_ENABLE_ETHERNET
     SPI.begin(); Ethernet.init(RESONET_DIAG_CS_PIN);
     IPAddress ip(RESONET_DIAG_IP_0,RESONET_DIAG_IP_1,RESONET_DIAG_IP_2,RESONET_DIAG_IP_3);
     IPAddress dns(RESONET_DIAG_DNS_0,RESONET_DIAG_DNS_1,RESONET_DIAG_DNS_2,RESONET_DIAG_DNS_3);
@@ -65,12 +85,24 @@ void setup() {
     Ethernet.begin(device_mac, ip, dns, gateway, subnet);
     parser.reset(); effector_runtime.clearModel();
     if (Ethernet.hardwareStatus()!=EthernetNoHardware && Ethernet.linkStatus()==LinkON) { server.begin(); server_started=true; }
+#endif
 }
 void loop() {
     // Bounded state transition in RAM only; deliberately no GPIO/PWM operation.
     const uint32_t now_ms = millis();
     effector_runtime.processOne(now_ms);
     effector_runtime.tick(now_ms);
+#if RESONET_DIAG_USB_SERIAL
+    uint8_t serial_processed = 0;
+    while (Serial.available() > 0 && serial_processed < 32) {
+        const int value = Serial.read();
+        if (value < 0) break;
+        ++serial_processed;
+        Request request;
+        if (usb_parser.feed(static_cast<uint8_t>(value), request)) handleRequest(request, true);
+    }
+#endif
+#if RESONET_DIAG_ENABLE_ETHERNET
     if (Ethernet.hardwareStatus()==EthernetNoHardware || Ethernet.linkStatus()!=LinkON) {
         if (client) client.stop(); parser.reset(); server_started=false; return;
     }
@@ -85,9 +117,10 @@ void loop() {
     while (client.available()>0 && processed<RESONET_DIAG_MAX_RX_PER_LOOP) {
         int value=client.read(); if (value<0) break;
         ++processed; last_rx_ms=millis(); Request request;
-        if (parser.feed(static_cast<uint8_t>(value),request)) handleRequest(request);
+        if (parser.feed(static_cast<uint8_t>(value),request)) handleRequest(request, false);
     }
     uint32_t now=millis();
     if (parser.partial() && now-last_rx_ms>RESONET_DIAG_PARTIAL_TIMEOUT_MS) parser.reset();
     if (now-last_activity_ms>RESONET_DIAG_IDLE_TIMEOUT_MS) { client.stop(); parser.reset(); }
+#endif
 }
