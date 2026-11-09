@@ -8,6 +8,7 @@
 #include <avr/pgmspace.h>
 #include "logging_system.h"
 #include "event_system.h"
+#include "effector_presence.h"
 #include <string.h>   // Dla strcmp, strncmp, memcpy, strncpy
 #include <avr/pgmspace.h>  // Dla PROGMEM, pgm_read_word
 
@@ -519,25 +520,76 @@ void adapt_therapy_based_on_biofeedback(TherapyParams_t* params) {
 // ============================================================================
 
 void device_detector_loop() {
-    static uint32_t last_detection = 0;
-    
-    // Sprawdzaj urządzenia co 5 sekund
-    if (millis() - last_detection >= 5000) {
-        last_detection = millis();
-        
-        // Wykryj efektor jeśli nie jest aktywny
-        if (g_device_state.effector.type == EFFECTOR_NONE) {
-            detect_effector();
+    // Rozłóż diagnostykę pięciu torów na osobne wywołania pętli.
+    // Każdy przebieg wykonuje najwyżej jedną grupę odczytów ADC; nie ma delay().
+    static uint32_t last_effector_step = 0;
+    static uint32_t last_bio_scan = 0;
+    static uint8_t scan_phase = 0;
+    static const uint8_t scan_phase_count = 5;
+    const uint32_t now = millis();
+    const uint32_t configured_seconds =
+        (s_detection_config.detection_interval == 0U) ? 5U :
+        (uint32_t)s_detection_config.detection_interval;
+    const uint32_t phase_interval_ms =
+        ((configured_seconds + scan_phase_count - 1U) / scan_phase_count) * 1000UL;
+
+    if ((uint32_t)(now - last_effector_step) >= phase_interval_ms) {
+        last_effector_step = now;
+        EffectorType_t checked_type = EFFECTOR_NONE;
+        bool present = false;
+
+        switch (scan_phase) {
+            case 0:
+                checked_type = EFFECTOR_HELMHOLTZ;
+                present = detect_helmholtz_coil();
+                break;
+            case 1:
+                checked_type = EFFECTOR_OTIC;
+                present = detect_otic_applicator();
+                break;
+            case 2: {
+                checked_type = EFFECTOR_CONTACT;
+                const ContactQuality_t contact = detect_electrodes();
+                present = (contact != CONTACT_OPEN && contact != CONTACT_SHORT);
+                break;
+            }
+            case 3: {
+                checked_type = EFFECTOR_WRAP;
+                const WrapStatus_t wrap = detect_wrap_applicator();
+                present = (wrap == WRAP_READY || wrap == WRAP_CONNECTED);
+                break;
+            }
+            default:
+                checked_type = EFFECTOR_IR_LED_STRIP;
+                present = detect_ir_led_strip();
+                break;
         }
-        
-        // Monitoruj biofeedback jeśli włączony
-        if (g_device_state.biofeedbackEnabled) {
-            detect_biofeedback_sensors(&g_bio_status);
-            
-            // Ciągła adaptacja terapii
-            // TherapyParams_t* params = get_current_therapy_params();
-            // adapt_therapy_based_on_biofeedback(params);
+
+        g_device_state.activeEffectorMask =
+            effector_presence::set(g_device_state.activeEffectorMask,
+                                   static_cast<uint8_t>(checked_type), present);
+
+        scan_phase++;
+        if (scan_phase >= scan_phase_count) {
+            scan_phase = 0;
+            g_device_state.detectionCount++;
         }
+
+        // activeEffectorMask zachowuje równoczesną obecność wielu urządzeń.
+        // EffectorStatus_t jest historycznie pojedynczy, więc type wskazuje
+        // najniższy aktywny identyfikator, a szczegółowy pomiar ostatni skan.
+        const uint8_t primary = effector_presence::primary(
+            g_device_state.activeEffectorMask, static_cast<uint8_t>(EFFECTOR_VIBRATOR));
+        g_device_state.effector.type = static_cast<EffectorType_t>(primary);
+        g_device_state.effector.connected = (primary != EFFECTOR_NONE);
+        g_device_state.effector.last_check = now;
+    }
+
+    // Skan czujników jest osobnym zadaniem czasowym, a nie częścią skanu efektorów.
+    // Funkcja wykonuje krótkie transakcje I2C/SPI; nie czeka na próbki PPG.
+    if ((uint32_t)(now - last_bio_scan) >= 5000UL) {
+        last_bio_scan = now;
+        detect_biofeedback_sensors(&g_bio_status);
     }
 }
 
