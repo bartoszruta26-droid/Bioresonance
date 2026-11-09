@@ -3,10 +3,11 @@
 #include "protocol_v1.h"
 #include "safety_system.h"
 
+extern int __heap_start, *__brkval;
+
 namespace {
 ResoNetProtocolV1::Parser parser;
 uint16_t freeMemoryBytes() {
-    extern int __heap_start, *__brkval;
     int stack_marker = 0;
     const int heap_end = (__brkval == 0) ? (int)&__heap_start : (int)__brkval;
     const int available = (int)&stack_marker - heap_end;

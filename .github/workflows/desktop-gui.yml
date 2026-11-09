@@ -48,7 +48,7 @@ jobs:
           host: windows
           target: desktop
           arch: win64_msvc2019_64
-          modules: qtcharts
+          modules: qtcharts qtserialport
           cache: true
       - name: Configure
         shell: pwsh
