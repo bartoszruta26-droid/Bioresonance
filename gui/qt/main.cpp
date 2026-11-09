@@ -34,6 +34,7 @@
 #include <QRandomGenerator>
 #include <QtMath>
 #include "ui_error_catalog.h"
+#include "resonet_protocol_v1.h"
 
 struct Sample { QDateTime time; int channel=1; double value=0; QString source="SIMULATOR"; };
 class Window final : public QMainWindow {
