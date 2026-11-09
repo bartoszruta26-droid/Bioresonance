@@ -39,7 +39,9 @@ sudo usermod -aG dialout "$USER"
 
 ```bash
 PORT=/dev/ttyUSB0
-RESONET_UPLOAD_PORT="$PORT" bash ResoNet_Nano/build_nano.sh
+# Wgraj oddzielny, minimalny obraz diagnostyczny USB (nie pełny firmware).
+arduino-cli compile --fqbn arduino:avr:nano:cpu=atmega328old ResoNet_Diagnostic_Nano
+arduino-cli upload --fqbn arduino:avr:nano:cpu=atmega328old --port "$PORT" ResoNet_Diagnostic_Nano
 ```
 
 Skrypt kompiluje firmware z ustawieniami pamięci i wgrywa ten sam obraz na płytkę. Domyślny profil to Nano z bootloaderem ATmega328P old; dla nowszego bootloadera użyj `RESONET_FQBN=arduino:avr:nano:cpu=atmega328`.
@@ -67,7 +69,7 @@ Wybierz źródło `Arduino — USB (diagnostyka)`, port i kliknij `Połącz USB`
 
 Nie uruchamiaj generatorów ani testów wyjść na pacjencie lub podłączonym osprzęcie. Aktualny transport USB jest tylko diagnostyczny; nie dostarcza próbek biofeedback i nie steruje wyjściami. Firmware pozostaje eksperymentalny, a status programowy nie jest potwierdzeniem fizycznego odłączenia wyjść.
 
-Protokół USB działa z parametrami 115200 bit/s, 8N1. Udostępnia tylko zapytania STATUS v1: nie przesyła próbek biologicznych ani nie steruje wyjściami. W pierwszej sesji pozostaw wszystkie efektory odłączone. Wartości temperatury, stan blokady fizycznej i flagi czujników są jawnie oznaczane jako niezweryfikowane.
+USB działa z parametrami 115200 bit/s, 8N1. Komunikacja binarna używa ramek ResoNet v1 z CRC-16/CCITT-FALSE. Udostępnia tylko zapytania STATUS v1: nie przesyła próbek biologicznych ani nie steruje wyjściami. W pierwszej sesji pozostaw wszystkie efektory odłączone. Wartości temperatury, stan blokady fizycznej i flagi czujników są jawnie oznaczane jako niezweryfikowane.
 
 ## Windows
 Wymagane Qt 6 z modułami Widgets i Charts oraz MSVC 2022:
