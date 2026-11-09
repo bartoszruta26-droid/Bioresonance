@@ -55,8 +55,10 @@ int main() {
 
     // Unknown request opcodes must never be accepted as executable commands.
     std::vector<uint8_t> unsupported = request(0x20, 9);
+    bool unsupported_ready = false;
     for (size_t i = 0; i < unsupported.size(); ++i)
-        assert(!parser.feed(unsupported[i], decoded));
+        unsupported_ready = parser.feed(unsupported[i], decoded) || unsupported_ready;
+    assert(!unsupported_ready);
 
     // USB STATUS request is the exact empty-payload v1 request used by Qt.
     std::vector<uint8_t> status = request(STATUS_REQ, 0xBEEF);
